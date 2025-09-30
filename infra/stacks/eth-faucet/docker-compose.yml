@@ -12,6 +12,4 @@ services:
     networks:
       - evstack_shared
 
-networks:
-  evstack_shared:
-    external: true
+

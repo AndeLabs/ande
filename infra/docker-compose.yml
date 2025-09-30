@@ -3,6 +3,8 @@ services: {}
 include:
   - ./stacks/da-local/docker-compose.yml
   - ./stacks/single-sequencer/docker-compose.da.local.yml
+  - ./stacks/eth-explorer/docker-compose.yml
+  - ./stacks/eth-faucet/docker-compose.yml
 
 networks:
   evstack_shared:

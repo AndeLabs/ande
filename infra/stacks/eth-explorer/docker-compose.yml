@@ -155,6 +155,4 @@ volumes:
   redis-data:
     driver: local
 
-networks:
-  evstack_shared:
-    external: true
+
