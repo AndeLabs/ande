@@ -1,0 +1,582 @@
+name: AndeChain EVM Rollup CI/CD
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    branches: [main, develop]
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+  actions: read
+  packages: write
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+  PYTHON_VERSION: '3.11'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================
+  # 1. LINTING & CODE FORMAT
+  # ============================================
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./andechain/contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint Solidity
+        run: pnpm solhint 'contracts/**/*.sol'
+
+      - name: Check Code Formatting
+        run: pnpm prettier --check .
+
+      - name: Check TypeScript
+        run: pnpm tsc --noEmit
+
+  # ============================================
+  # 2. SMART CONTRACT TESTS
+  # ============================================
+  test:
+    name: Smart Contract Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./andechain/contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Hardhat tests
+        run: pnpm hardhat test
+
+      - name: Generate coverage report
+        run: pnpm hardhat coverage
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./andechain/contracts/coverage/lcov.info
+          flags: smart-contracts
+        continue-on-error: true
+
+  # ============================================
+  # 3. COMPILE CONTRACTS
+  # ============================================
+  build:
+    name: Compile Contracts
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    defaults:
+      run:
+        working-directory: ./andechain/contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Compile contracts
+        run: pnpm hardhat compile
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardhat-artifacts
+          path: andechain/contracts/artifacts/
+          retention-days: 30
+
+      - name: Generate ABI exports
+        run: |
+          if [ -f scripts/export-abis.ts ]; then
+            pnpm hardhat run scripts/export-abis.ts
+          fi
+
+  # ============================================
+  # 4. GAS ANALYSIS
+  # ============================================
+  gas-analysis:
+    name: Gas Usage Analysis
+    runs-on: ubuntu-latest
+    needs: [test]
+    defaults:
+      run:
+        working-directory: ./andechain/contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run gas reporter
+        run: |
+          REPORT_GAS=true pnpm hardhat test
+        continue-on-error: true
+
+      - name: Upload gas report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gas-report
+          path: andechain/contracts/gas-report.txt
+        continue-on-error: true
+
+  # ============================================
+  # 5. DOCKER BUILD & TEST
+  # ============================================
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        component: [reth, evolve, local-da]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./andechain/infra
+          file: ./andechain/infra/Dockerfile.${{ matrix.component }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================
+  # 6. INFRASTRUCTURE VALIDATION
+  # ============================================
+  infra-test:
+    name: Infrastructure Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: |
+          cd andechain/infra
+          docker compose config
+
+      - name: Check .env.example
+        run: |
+          if [ ! -f andechain/infra/.env.example ]; then
+            echo "Error: .env.example not found"
+            exit 1
+          fi
+
+      - name: Validate network configuration
+        run: |
+          cd andechain/infra
+          # Verificar puertos no conflictivos
+          grep -E "ports:" docker-compose.yml || true
+
+  # ============================================
+  # 7. AI CODE REVIEW (PULL REQUESTS)
+  # ============================================
+  ai-review:
+    name: AI Code Review with PrometeoDEV
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install google-genai
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+          
+          # Limitar tamaño del diff
+          if [ $(wc -c < pr_diff.txt) -gt 50000 ]; then
+            head -c 50000 pr_diff.txt > pr_diff_truncated.txt
+            mv pr_diff_truncated.txt pr_diff.txt
+            echo "⚠️ Diff truncado por tamaño" >> pr_diff.txt
+          fi
+
+      - name: Review with Gemini AI
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -f scripts/cicd/ai_code_review.py ]; then
+            python scripts/cicd/ai_code_review.py
+          else
+            echo "## ⚠️ AI Review Script Not Found" > ai_review.md
+            echo "El script de revisión no está disponible en este momento." >> ai_review.md
+          fi
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            let review = '## 🤖 Revisión Automática con PrometeoDEV\n\n';
+            review += '_Análisis automatizado del código usando Gemini AI_\n\n';
+            
+            if (fs.existsSync('ai_review.md')) {
+              review += fs.readFileSync('ai_review.md', 'utf8');
+            } else {
+              review += '⚠️ No se pudo generar la revisión automática.\n';
+              review += 'Por favor, revisa manualmente los cambios.';
+            }
+            
+            // Agregar contexto del PR
+            review += '\n\n---\n';
+            review += `📊 **Estadísticas del PR:**\n`;
+            review += `- Commits: ${context.payload.pull_request.commits}\n`;
+            review += `- Archivos cambiados: ${context.payload.pull_request.changed_files}\n`;
+            review += `- Adiciones: +${context.payload.pull_request.additions}\n`;
+            review += `- Eliminaciones: -${context.payload.pull_request.deletions}\n`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: review
+            });
+
+  # ============================================
+  # 8. DOCUMENTATION GENERATION
+  # ============================================
+  documentation:
+    name: Generate Documentation with AI
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install google-genai
+
+      - name: Generate project documentation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -f scripts/cicd/generate_docs.py ]; then
+            python scripts/cicd/generate_docs.py
+          else
+            echo "⚠️ Documentation script not found"
+          fi
+
+      - name: Generate contract documentation
+        run: |
+          cd andechain/contracts
+          if command -v solidity-docgen &> /dev/null; then
+            pnpm exec solidity-docgen --solc-module solc
+          fi
+        continue-on-error: true
+
+      - name: Commit documentation
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update automatic documentation [skip ci]"
+          file_pattern: "*.md docs/**"
+          commit_user_name: "AndeChain Bot"
+          commit_user_email: "bot@andechain.org"
+
+  # ============================================
+  # 9. SECURITY SCANNING
+  # ============================================
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Mythril Smart Contract Analysis
+        run: |
+          docker pull mythril/myth
+          cd andechain/contracts/contracts
+          for contract in *.sol; do
+            echo "Analyzing $contract..."
+            docker run -v $(pwd):/contracts mythril/myth analyze /contracts/$contract || true
+          done
+        continue-on-error: true
+
+  # ============================================
+  # 10. RELEASE NOTES GENERATION
+  # ============================================
+  release-notes:
+    name: Generate Release Notes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install google-genai
+
+      - name: Get commit messages
+        run: |
+          git log --pretty=format:"%h - %s" $(git describe --tags --abbrev=0 @^)..@ > COMMITS_MENSAJES.txt
+
+      - name: Generate release notes
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -f scripts/cicd/generate_release_notes.py ]; then
+            python scripts/cicd/generate_release_notes.py
+          fi
+
+      - name: Update release
+        uses: softprops/action-gh-release@v1
+        if: github.event_name == 'release'
+        with:
+          body_path: RELEASE_NOTES.md
+          files: |
+            andechain/contracts/artifacts/**/*.json
+
+  # ============================================
+  # 11. DEPLOYMENT TO TESTNET (STAGING)
+  # ============================================
+  deploy-testnet:
+    name: Deploy to Celestia Testnet
+    runs-on: ubuntu-latest
+    needs: [build, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    environment:
+      name: testnet
+      url: https://testnet-explorer.andechain.org
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ./andechain/contracts
+        run: pnpm install
+
+      - name: Deploy contracts to testnet
+        working-directory: ./andechain/contracts
+        env:
+          PRIVATE_KEY: ${{ secrets.TESTNET_DEPLOYER_KEY }}
+          RPC_URL: ${{ secrets.TESTNET_RPC_URL }}
+        run: |
+          pnpm hardhat run scripts/deploy.ts --network celestia-testnet
+
+      - name: Verify contracts
+        working-directory: ./andechain/contracts
+        env:
+          ETHERSCAN_API_KEY: ${{ secrets.BLOCKSCOUT_API_KEY }}
+        run: |
+          pnpm hardhat verify --network celestia-testnet
+        continue-on-error: true
+
+  # ============================================
+  # 12. NOTIFICATION & SUMMARY
+  # ============================================
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [lint, test, build, security, infra-test]
+    if: always()
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          if [[ "${{ needs.test.result }}" == "failure" || "${{ needs.lint.result }}" == "failure" || "${{ needs.build.result }}" == "failure" ]]; then
+            echo "status=❌ FAILED" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          else
+            echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Job Summary
+        run: |
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          # 📊 AndeChain CI/CD Pipeline Summary
+          
+          ## 🏗️ Build Status: ${{ steps.status.outputs.status }}
+          
+          ### Job Results
+          | Job | Status |
+          |-----|--------|
+          | 🔍 Lint & Format | ${{ needs.lint.result }} |
+          | 🧪 Tests | ${{ needs.test.result }} |
+          | 📦 Build | ${{ needs.build.result }} |
+          | 🔒 Security | ${{ needs.security.result }} |
+          | 🏗️ Infrastructure | ${{ needs.infra-test.result }} |
+          
+          ### 📈 Metrics
+          - **Branch:** \`${{ github.ref_name }}\`
+          - **Commit:** [\`${{ github.sha }}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          - **Triggered by:** ${{ github.actor }}
+          - **Workflow:** [${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ### 🔗 Quick Links
+          - [📋 View Full Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - [📚 Documentation](https://docs.andechain.org)
+          - [🔍 Explorer](http://localhost:4000)
+          EOF
+
+      - name: Notify Slack (if configured)
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST $SLACK_WEBHOOK_URL \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "AndeChain CI/CD: ${{ steps.status.outputs.status }}",
+              "attachments": [{
+                "color": "${{ steps.status.outputs.color }}",
+                "fields": [
+                  {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                  {"title": "Commit", "value": "${{ github.sha }}", "short": true}
+                ]
+              }]
+            }'
+        continue-on-error: true
