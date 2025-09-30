@@ -4,7 +4,7 @@
 
 Bienvenido a AndeChain. No estamos construyendo una blockchain más; estamos construyendo una solución soberana para la fragmentación financiera de América Latina.
 
-Nuestra visión, detallada en `planande.md`, es crear un ecosistema económico regional que comienza en Bolivia y se expande. El objetivo es resolver problemas del mundo real como la evasión de controles de capital, las remesas lentas y costosas, y la protección contra la inflación, utilizando un sistema económico sofisticado (Tri-Token) implementado sobre una infraestructura tecnológica de vanguardia.
+Nuestra visión, detallada en `planande.md`, es crear un ecosistema económico regional que comienza en Bolivia y se expande. El objetivo es resolver problemas del mundo real como la evasión de controles de capital, las remesas lentas y costosas, y la protección contra la inflación. Para lograrlo, hemos diseñado un sofisticado motor económico, **Tokenomics V3.0**, implementado sobre una infraestructura tecnológica de vanguardia.
 
 ## 2. Arquitectura Técnica (El "Qué")
 
@@ -128,11 +128,27 @@ Hemos integrado un pipeline de CI/CD en `.github/workflows/ci-cd.yml` que automa
 
 ## 5. Próximos Pasos
 
-Nuestra infraestructura está lista, probada, versionada y documentada. El siguiente paso es empezar a construir la primera pieza de la lógica de negocio:
+Nuestra infraestructura está lista, probada, versionada y documentada. El siguiente paso es construir el motor económico de la cadena, basado en nuestra arquitectura **Tokenomics V3.0**. La implementación se divide en los siguientes módulos de contratos inteligentes:
 
-1.  **Crear el contrato del token `ANDES`** en `andechain/contracts/contracts/`.
-2.  **Escribir pruebas** para asegurar su funcionalidad como un token ERC-20 estándar.
-3.  **Crear un script de despliegue** con Hardhat Ignition.
-4.  **Desplegarlo** en nuestra red local.
+1.  **`ANDEToken.sol`:**
+    *   Implementar el contrato ERC-20 actualizable que servirá como el token nativo.
+    *   Debe incluir roles de acceso (`MINTER_ROLE`) y la funcionalidad de `ERC20Votes` para la gobernanza.
+
+2.  **`veANDE.sol`:**
+    *   Implementar la lógica de vote-escrow, permitiendo a los usuarios bloquear `ANDE` por hasta 4 años.
+    *   Desarrollar el cálculo de poder de voto que decrece linealmente con el tiempo.
+    *   Incluir el sistema de `Gauge Voting` para que la comunidad dirija los incentivos.
+
+3.  **`DualTrackBurnEngine.sol`:**
+    *   Implementar la lógica para la quema en tiempo real de una porción de las tarifas de transacción (Track 1).
+    *   Desarrollar la funcionalidad para las quemas trimestrales programadas basadas en las ganancias del protocolo (Track 2).
+
+4.  **`MintController.sol`:**
+    *   Implementar las barreras de seguridad críticas: límite máximo de suministro (hard cap) y límite de emisión anual.
+    *   Crear el sistema de propuestas y votación por supermayoría para autorizar cualquier nueva emisión de tokens.
+
+5.  **Pruebas y Simulación:**
+    *   Escribir suites de pruebas unitarias y de integración exhaustivas para todos los contratos.
+    *   Desarrollar simulaciones para modelar la economía bajo diferentes escenarios y validar la sostenibilidad del modelo.
 
 Este documento debe servir como tu mapa y brújula. ¡Bienvenido a bordo!

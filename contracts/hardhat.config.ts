@@ -5,6 +5,9 @@ import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { configVariable } from "hardhat/config";
 
 const config: HardhatUserConfig = {
+  paths: {
+    sources: "./contracts",
+  },
   plugins: [hardhatToolboxViemPlugin],
   solidity: {
     profiles: {
