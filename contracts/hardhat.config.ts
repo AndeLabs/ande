@@ -1,5 +1,5 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-ignition-ethers";
+// import "@nomicfoundation/hardhat-ignition-ethers"; // Temporarily disabled to resolve module issue
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 
@@ -10,14 +10,14 @@ const config: HardhatUserConfig = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
-    ignition: "./ignition",
+    ignition: "./ignition"
   },
   networks: {
     localhost: {
       url: "http://127.0.0.1:8545",
-      chainId: 1234,
-    },
-  },
+      chainId: 1234
+    }
+  }
 };
 
 export default config;

@@ -1,4 +1,15 @@
-services: {}
+services:
+  contracts:
+    build:
+      context: ../contracts
+      dockerfile: ../contracts/Dockerfile
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ../contracts:/app
+    networks:
+      - evstack_shared
 
 include:
   - ./stacks/da-local/docker-compose.yml
