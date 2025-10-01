@@ -1,5 +1,5 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-ignition-ethers";
+// import "@nomicfoundation/hardhat-ignition-ethers"; // Temporarily disabled to resolve module issue
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 

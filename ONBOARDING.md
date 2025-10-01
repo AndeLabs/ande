@@ -32,9 +32,9 @@ Esta sección es la guía paso a paso para levantar y trabajar con el proyecto.
 
 ### 3.1. Requisitos Previos
 
-1.  **Docker Desktop**: Es la "fábrica de maquetas" que corre nuestros contenedores. Asegúrate de que esté instalado y en ejecución.
+1.  **Docker Desktop**: Es la "fábrica de maquetas" que corre nuestros contenedores. Asegúrate de que esté instalado y en ejecución en su versión más reciente.
     *   **Descarga aquí**: [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
-2.  **Node.js y pnpm**: Necesarios para gestionar las dependencias de los contratos.
+2.  **Node.js y npm**: Necesarios para gestionar las dependencias de los contratos. `npm` viene incluido con Node.js.
 
 ### 3.2. Configuración Inicial (UNA SOLA VEZ)
 
@@ -50,13 +50,13 @@ cd andechain
 
 **Paso 2: Configura la Infraestructura**
 
-Navega a la carpeta de infraestructura. Aquí es donde vive toda la configuración de Docker.
+Navega a la carpeta de infraestructura, que será tu centro de operaciones principal.
 
 ```bash
-cd infra
+cd andechain/infra
 ```
 
-Copia los archivos de ejemplo de configuración para crear tus archivos locales. Estos archivos están ignorados por Git para proteger tus secretos.
+Copia los archivos de ejemplo de configuración para crear tus archivos locales.
 
 ```bash
 # Copia la configuración general
@@ -70,21 +70,24 @@ cp stacks/eth-faucet/.env.example stacks/eth-faucet/.env
 
 ⚠️ **ACCIÓN MANUAL REQUERIDA:**
 
-Necesitas una cuenta de Ethereum con su llave privada. Esta cuenta será fondeada en el génesis y la usarás para desplegar contratos y para que el Faucet dispense fondos.
+Necesitas una cuenta de Ethereum con su llave privada. Esta cuenta será fondeada en el génesis y la usarás para interactuar con la red.
 
-1.  Abre el archivo `infra/.env` y edita la línea `PRIVATE_KEY`.
-2.  Abre el archivo `infra/stacks/eth-faucet/.env` y edita la línea `PRIVATE_KEY`.
+1.  Abre el archivo `infra/.env` que acabas de crear.
+2.  Añade la siguiente línea al final, reemplazando `0x...` con tu llave privada:
+    ```
+    PRIVATE_KEY=0x...
+    ```
 
-**Importante:** En ambos casos, pega tu llave privada **sin el prefijo `0x`**.
+**Importante:** Para que las herramientas de Hardhat y Ethers.js funcionen, **DEBES incluir el prefijo `0x`** en tu llave privada.
 
 **Paso 4: Lanza el Stack**
 
-Este único comando levantará todos los servicios en segundo plano.
+Desde el directorio `andechain/infra`, este único comando levantará todos los servicios en segundo plano.
 
 ```bash
 docker compose up -d --build
 ```
-¡Listo! Después de unos minutos (la primera vez descarga varias imágenes), toda la pila de AndeChain estará funcionando.
+¡Listo! Después de unos minutos, toda la pila de AndeChain estará funcionando.
 
 ### 3.3. Uso Diario del Entorno
 
@@ -103,40 +106,55 @@ Desde el directorio `andechain/infra`:
 
 ### 3.5. Flujo de Desarrollo de Smart Contracts
 
-#### **ADVERTENCIA: Flujo de Trabajo Obsoleto**
-El siguiente flujo de trabajo depende del entorno de Node.js de tu máquina local. Como hemos descubierto, esto puede llevar a problemas de dependencias y configuración difíciles de depurar. **Se recomienda encarecidamente utilizar el flujo de desarrollo con Docker descrito en la sección 3.5.1.**
+La interacción y prueba de los smart contracts se realiza a través de un servicio de Docker controlado desde el directorio `infra`. Esto garantiza un entorno consistente y reproducible para todos los desarrolladores.
 
-1.  **Navegar al directorio:** `cd ../contracts` (desde `infra`).
-2.  **Instalar dependencias:** `pnpm install`.
-3.  **Escribir código** en la carpeta `contracts/`.
-4.  **Compilar:** `npx hardhat compile`.
-5.  **Probar:** `npx hardhat test`.
-6.  **Desplegar:** `npx hardhat ignition deploy ignition/modules/MiModulo.ts --network andechain_local`.
+#### **Paso 1: Preparar el Entorno de Contratos (Solo la primera vez)**
 
-### 3.5.1. Flujo de Desarrollo con Docker (Recomendado)
+Antes de poder ejecutar pruebas o scripts, necesitas que `npm` instale las dependencias de los contratos. Esto creará el archivo `package-lock.json` necesario para las builds de Docker.
 
-Para evitar problemas de incompatibilidad con el entorno local ("funciona en mi máquina"), hemos encapsulado el entorno de desarrollo de los contratos en Docker. **Este es el flujo de trabajo recomendado para garantizar un entorno consistente y libre de errores.**
+```bash
+# Navega al directorio de los contratos
+cd andechain/contracts
 
-Desde el directorio `andechain/contracts`:
+# Instala las dependencias
+npm install
 
--   **Construir el entorno y ejecutar pruebas (el comando más común):**
+# Regresa al directorio de infraestructura
+cd ../infra
+```
+
+#### **Paso 2: Interactuar con los Contratos desde la Carpeta `infra`**
+
+Todos los comandos para compilar, probar o interactuar con los contratos se ejecutan desde el directorio `andechain/infra`.
+
+-   **Ejecutar todas las pruebas:**
+    El comando más común. Reconstruye el entorno si es necesario y corre toda la suite de tests.
     ```bash
-    docker compose run --build contracts pnpm test
+    docker compose run --build contracts npm test
     ```
+
+-   **Ejecutar un archivo de prueba específico:**
+    Útil para centrarse en un solo test.
+    ```bash
+    docker compose run --build contracts npm exec -- hardhat test test/mi-prueba.ts --network localhost
+    ```
+
 -   **Compilar los contratos:**
     ```bash
-    docker compose run contracts pnpm compile
+    docker compose run --build contracts npm run compile
     ```
+
 -   **Abrir una terminal dentro del contenedor:**
     Para ejecutar comandos ad-hoc o depurar.
     ```bash
     docker compose run contracts /bin/sh
     ```
--   **Desplegar a la red local:**
+
+-   **Desplegar a la red local (usando Hardhat Ignition):**
+    *Nota: El plugin de Ignition fue deshabilitado temporalmente. Se debe resolver el conflicto de dependencias antes de usar este comando.*
     ```bash
-    docker compose run contracts npx hardhat ignition deploy ignition/modules/MiModulo.ts --network andechain_local
+    docker compose run --build contracts npm exec -- hardhat ignition deploy ignition/modules/MiModulo.ts --network localhost
     ```
-**Nota:** El `docker-compose.yml` en este directorio está configurado para montar el código fuente local, por lo que cualquier cambio que hagas en los archivos se reflejará automáticamente dentro del contenedor.
 
 ### 3.5.2. Flujo de Desarrollo Avanzado: Contratos Actualizables
 
@@ -165,7 +183,7 @@ Hemos integrado un pipeline de CI/CD en `.github/workflows/ci-cd.yml` que automa
 ### ¿Cómo nos Ayuda?
 
 1.  **Calidad del Código (`lint`):** En cada Pull Request, revisa automáticamente que el código de Solidity cumpla con las mejores prácticas y el formato estándar usando `solhint` y `prettier`.
-2.  **Pruebas Automáticas (`test`):** Ejecuta toda nuestra suite de pruebas de los smart contracts con `pnpm hardhat test`.
+2.  **Pruebas Automáticas (`test`):** Ejecuta toda nuestra suite de pruebas de los smart contracts con `npm test`.
 3.  **Verificación de Compilación (`build`):** Asegura que los contratos siempre compilen correctamente.
 4.  **Escaneo de Seguridad (`security`):** Utiliza `Trivy` para escanear el repositorio en busca de vulnerabilidades.
 5.  **Asistentes de IA (`documentation` y `ai-review`):** Automatiza la generación de documentación y las revisiones de código en Pull Requests.

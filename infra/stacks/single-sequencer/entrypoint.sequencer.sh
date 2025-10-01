@@ -58,6 +58,15 @@ if [ ! -f "$CONFIG_HOME/config/node_key.json" ]; then
 	log "INIT" "Initializing sequencer with command: $INIT_COMMAND"
 	$INIT_COMMAND
 	log "SUCCESS" "Sequencer initialization completed"
+
+	# --- BEGIN ANDE TOKEN PATCH ---
+	# Modify genesis to use 'aande' as the native gas token
+	log "INIT" "Patching genesis.json to set 'aande' as the native gas token"
+	sed -i 's/"evm_denom": "eth"/"evm_denom": "aande"/g' "$CONFIG_HOME/config/genesis.json"
+	sed -i 's/"fee_denom": "eth"/"fee_denom": "aande"/g' "$CONFIG_HOME/config/genesis.json"
+	log "SUCCESS" "Genesis patched successfully. 'aande' is now the fee token."
+	# --- END ANDE TOKEN PATCH ---
+
 else
 	log "INFO" "Node key already exists. Skipping initialization"
 fi
