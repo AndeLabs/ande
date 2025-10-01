@@ -51,11 +51,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Lint Solidity
-        run: pnpm solhint 'contracts/**/*.sol'
-
-      - name: Check Code Formatting
-        run: pnpm prettier --check .
+      - name: Lint & Format Check
+        run: pnpm lint
 
       - name: Check TypeScript
         run: pnpm tsc --noEmit

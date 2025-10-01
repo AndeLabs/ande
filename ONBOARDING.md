@@ -34,7 +34,7 @@ Esta sección es la guía paso a paso para levantar y trabajar con el proyecto.
 
 1.  **Docker Desktop**: Es la "fábrica de maquetas" que corre nuestros contenedores. Asegúrate de que esté instalado y en ejecución.
     *   **Descarga aquí**: [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/)
-2.  **Node.js y pnpm**: Necesarios para el desarrollo de smart contracts.
+2.  **Node.js y pnpm**: Necesarios para gestionar las dependencias de los contratos.
 
 ### 3.2. Configuración Inicial (UNA SOLA VEZ)
 
@@ -103,14 +103,58 @@ Desde el directorio `andechain/infra`:
 
 ### 3.5. Flujo de Desarrollo de Smart Contracts
 
-Todo el desarrollo de la lógica de la aplicación ocurre en `andechain/contracts`.
+#### **ADVERTENCIA: Flujo de Trabajo Obsoleto**
+El siguiente flujo de trabajo depende del entorno de Node.js de tu máquina local. Como hemos descubierto, esto puede llevar a problemas de dependencias y configuración difíciles de depurar. **Se recomienda encarecidamente utilizar el flujo de desarrollo con Docker descrito en la sección 3.5.1.**
 
 1.  **Navegar al directorio:** `cd ../contracts` (desde `infra`).
 2.  **Instalar dependencias:** `pnpm install`.
 3.  **Escribir código** en la carpeta `contracts/`.
-4.  **Compilar:** `pnpm hardhat compile`.
-5.  **Probar:** `pnpm hardhat test`.
-6.  **Desplegar:** `pnpm hardhat ignition deploy ignition/modules/MiModulo.ts --network andechain_local`.
+4.  **Compilar:** `npx hardhat compile`.
+5.  **Probar:** `npx hardhat test`.
+6.  **Desplegar:** `npx hardhat ignition deploy ignition/modules/MiModulo.ts --network andechain_local`.
+
+### 3.5.1. Flujo de Desarrollo con Docker (Recomendado)
+
+Para evitar problemas de incompatibilidad con el entorno local ("funciona en mi máquina"), hemos encapsulado el entorno de desarrollo de los contratos en Docker. **Este es el flujo de trabajo recomendado para garantizar un entorno consistente y libre de errores.**
+
+Desde el directorio `andechain/contracts`:
+
+-   **Construir el entorno y ejecutar pruebas (el comando más común):**
+    ```bash
+    docker compose run --build contracts pnpm test
+    ```
+-   **Compilar los contratos:**
+    ```bash
+    docker compose run contracts pnpm compile
+    ```
+-   **Abrir una terminal dentro del contenedor:**
+    Para ejecutar comandos ad-hoc o depurar.
+    ```bash
+    docker compose run contracts /bin/sh
+    ```
+-   **Desplegar a la red local:**
+    ```bash
+    docker compose run contracts npx hardhat ignition deploy ignition/modules/MiModulo.ts --network andechain_local
+    ```
+**Nota:** El `docker-compose.yml` en este directorio está configurado para montar el código fuente local, por lo que cualquier cambio que hagas en los archivos se reflejará automáticamente dentro del contenedor.
+
+### 3.5.2. Flujo de Desarrollo Avanzado: Contratos Actualizables
+
+A medida que el proyecto madura, utilizamos patrones de contratos actualizables (upgradeable) para permitir la mejora de la lógica de negocio sin migrar datos. Esto introduce dependencias y consideraciones específicas.
+
+**Dependencias Clave:**
+
+Para trabajar con contratos actualizables, el entorno de `contracts` necesita dos paquetes principales de OpenZeppelin:
+
+1.  `@openzeppelin/contracts-upgradeable`: Proporciona las implementaciones base de contratos como `ERC20Upgradeable` que están diseñadas para ser usadas detrás de un proxy.
+2.  `@openzeppelin/hardhat-upgrades`: Es el plugin de Hardhat que nos da las herramientas para desplegar y gestionar los proxies (ej. `upgrades.deployProxy`).
+
+Estas dependencias ya están incluidas en `andechain/contracts/package.json`.
+
+**Lecciones Aprendidas en la Configuración:**
+
+-   **Conflicto de Herencia con `nonces`:** Al combinar `ERC20PermitUpgradeable` y `ERC20VotesUpgradeable`, ambos contratos definen una función `nonces`. Solidity requiere que anulemos (override) explícitamente esta función en nuestro contrato final (`ANDEToken.sol`) para resolver la ambigüedad.
+-   **Pruebas con Proxies:** Las pruebas para contratos actualizables son ligeramente diferentes. En lugar de desplegar el contrato directamente, se utiliza `upgrades.deployProxy()` para simular el entorno de producción real, que incluye el contrato de implementación y el proxy.
 
 ## 4. Automatización con GitHub Actions (El "Guardián de la Calidad")
 
@@ -131,8 +175,9 @@ Hemos integrado un pipeline de CI/CD en `.github/workflows/ci-cd.yml` que automa
 Nuestra infraestructura está lista, probada, versionada y documentada. El siguiente paso es construir el motor económico de la cadena, basado en nuestra arquitectura **Tokenomics V3.0**. La implementación se divide en los siguientes módulos de contratos inteligentes:
 
 1.  **`ANDEToken.sol`:**
-    *   Implementar el contrato ERC-20 actualizable que servirá como el token nativo.
-    *   Debe incluir roles de acceso (`MINTER_ROLE`) y la funcionalidad de `ERC20Votes` para la gobernanza.
+    *   ✅ **Implementado y Probado:** El contrato ERC-20 actualizable que servirá como token nativo ya está implementado.
+    *   ✅ **Funcionalidad Base:** Incluye roles de acceso (`MINTER_ROLE`) y la funcionalidad `ERC20Votes` para la gobernanza.
+    *   **Siguiente Paso:** Integrar con los demás contratos del motor económico.
 
 2.  **`veANDE.sol`:**
     *   Implementar la lógica de vote-escrow, permitiendo a los usuarios bloquear `ANDE` por hasta 4 años.
@@ -148,7 +193,7 @@ Nuestra infraestructura está lista, probada, versionada y documentada. El sigui
     *   Crear el sistema de propuestas y votación por supermayoría para autorizar cualquier nueva emisión de tokens.
 
 5.  **Pruebas y Simulación:**
-    *   Escribir suites de pruebas unitarias y de integración exhaustivas para todos los contratos.
+    *   Escribir suites de pruebas unitarias y de integración exhaustivas para todos los nuevos contratos.
     *   Desarrollar simulaciones para modelar la economía bajo diferentes escenarios y validar la sostenibilidad del modelo.
 
 Este documento debe servir como tu mapa y brújula. ¡Bienvenido a bordo!
