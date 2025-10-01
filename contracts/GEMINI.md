@@ -1,4 +1,5 @@
 # 🧠 Guía Conceptual: El Arte de Desarrollar Contratos Inteligentes EVM
+
 ## Principios Atemporales para Desarrolladores Profesionales
 
 > "Las herramientas cambian cada trimestre. Los principios duran décadas."
@@ -59,7 +60,7 @@ Cuando despliegas un contrato:
 
 **Práctica:**
 
-Antes de desplegar, pregúntate: *"¿Estaría tranquilo si mi familia almacenara sus ahorros de vida aquí?"*
+Antes de desplegar, pregúntate: _"¿Estaría tranquilo si mi familia almacenara sus ahorros de vida aquí?"_
 
 Si la respuesta es no, **no despliegues**.
 
@@ -190,26 +191,31 @@ Adapta el modelo CIA de seguridad tradicional:
 Todo desarrollador EVM debe tener en mente estas categorías:
 
 **1. Vulnerabilidades Lógicas**
+
 - Condiciones de carrera
 - Manipulación de orden de transacciones
 - Lógica de negocio incorrecta
 
 **2. Vulnerabilidades de Acceso**
+
 - Control de acceso faltante o incorrecto
 - Configuración insegura de roles
 - Funciones expuestas sin protección
 
 **3. Vulnerabilidades Aritméticas**
+
 - Overflow/Underflow (menos común post-0.8.0, pero aún posible con unchecked)
 - División por cero
 - Precisión numérica
 
 **4. Vulnerabilidades de Interacción**
+
 - Reentrancy (la más famosa)
 - Unexpected reverts
 - Delegatecall a contratos no confiables
 
 **5. Vulnerabilidades Económicas**
+
 - Manipulación de oráculos
 - MEV (Maximal Extractable Value)
 - Flash loan attacks
@@ -232,6 +238,7 @@ Antes de cada commit, recorre mentalmente estas categorías para tu código nuev
 **Ejercicio Mental:**
 
 Para cada función pública:
+
 1. "¿Cómo la atacaría yo mismo?"
 2. "¿Qué necesitaría para drenar fondos?"
 3. "¿Qué pasa si el llamador es un contrato?"
@@ -283,22 +290,26 @@ En contratos inteligentes, los tests son **tu única salvavida**.
 ### 4.2 La Pirámide de Testing para Contratos
 
 **Nivel 1: Unit Tests (70% de tu esfuerzo)**
+
 - Cada función pública
 - Cada edge case
 - Cada path de ejecución
 - Comportamiento esperado + inesperado
 
 **Nivel 2: Integration Tests (20% de tu esfuerzo)**
+
 - Interacciones entre contratos
 - Flujos completos de usuario
 - Escenarios realistas de uso
 
 **Nivel 3: Fuzzing/Property Tests (10% de tu esfuerzo)**
+
 - Invariantes del sistema
 - Propiedades matemáticas
 - Comportamiento bajo inputs aleatorios
 
 **Nivel 4: Formal Verification (Si es crítico)**
+
 - Pruebas matemáticas de corrección
 - Para contratos de alto valor
 - Complementa, no reemplaza otros tests
@@ -354,6 +365,7 @@ Tus tests son la mejor documentación de cómo REALMENTE funciona tu contrato.
    - ❌ `test_transfer_fail()`
 
 2. **Estructura Given-When-Then**:
+
    ```
    // Given: Alice tiene 100 tokens
    // When: Alice intenta transferir 150 tokens
@@ -427,6 +439,7 @@ No agregues funcionalidad "por si acaso". Agrégala cuando realmente la necesite
 **Práctica:**
 
 Antes de agregar una feature:
+
 - ¿Hay un caso de uso CONCRETO ahora?
 - ¿O es especulación sobre futuros requerimientos?
 
@@ -815,21 +828,25 @@ Cada desarrollador que mejoras hace el ecosistema más seguro para todos.
 ### 10.1 Niveles de Competencia
 
 **Nivel 1: Consciente Incompetente**
+
 - Sabes que no sabes
 - Sigues tutoriales
 - Copias patrones sin entender completamente
 
 **Nivel 2: Consciente Competente**
+
 - Puedes construir contratos funcionales
 - Sigues checklists religiosamente
 - Aún necesitas referencia constante
 
 **Nivel 3: Inconsciente Competente**
+
 - Los patrones de seguridad son segunda naturaleza
 - Identificas vulnerabilidades intuitivamente
 - Diseñas arquitecturas robustas naturalmente
 
 **Nivel 4: Maestro Reflexivo**
+
 - Puedes explicar el "por qué" detrás de cada decisión
 - Creas nuevos patrones para problemas nuevos
 - Mentorizas efectivamente a otros
@@ -927,29 +944,35 @@ Este campo es mentalmente intenso. Puedes quemarte.
 Cuando enfrentes una decisión técnica:
 
 **Paso 1: Clarifica el Problema**
+
 - ¿Qué estoy intentando resolver REALMENTE?
 - ¿Cuál es el costo de no resolver esto?
 
 **Paso 2: Identifica Opciones**
+
 - Lluvia de ideas sin filtrar
 - Al menos 3 alternativas
 
 **Paso 3: Evalúa Trade-offs**
+
 - Seguridad vs. Gas costs
 - Simplicidad vs. Flexibilidad
 - Tiempo de desarrollo vs. Robustez
 
 **Paso 4: Considera Consecuencias**
+
 - Best case scenario
 - Worst case scenario
 - Most likely scenario
 
 **Paso 5: Decide y Documenta**
+
 - Elige la opción
 - Documenta el razonamiento
 - Define criterios de éxito
 
 **Paso 6: Review Retrospectivo**
+
 - ¿Fue la decisión correcta?
 - ¿Qué aprendiste?
 - ¿Qué harías diferente?
@@ -959,6 +982,7 @@ Cuando enfrentes una decisión técnica:
 Antes de cada deployment, verifica:
 
 **Seguridad:**
+
 - ✅ Tests de cobertura 100%
 - ✅ Edge cases cubiertos
 - ✅ Fuzzing ejecutado
@@ -967,12 +991,14 @@ Antes de cada deployment, verifica:
 - ✅ Revisión de código por pares
 
 **Funcionalidad:**
+
 - ✅ Todas las features funcionan en testnet
 - ✅ Interacciones con otros contratos validadas
 - ✅ Gas costs aceptables
 - ✅ UX flows probados end-to-end
 
 **Operacional:**
+
 - ✅ Circuit breakers funcionando
 - ✅ Monitoring setup listo
 - ✅ Plan de respuesta a incidentes documentado
@@ -980,6 +1006,7 @@ Antes de cada deployment, verifica:
 - ✅ Ownership y roles configurados correctamente
 
 **Legal/Ético:**
+
 - ✅ Terms of service claros
 - ✅ Riesgos comunicados transparentemente
 - ✅ Compliance verificado (si aplica)
@@ -1211,12 +1238,14 @@ function stake(address user, uint amount) { ... }
 ### 13.2 Herencia vs. Composición
 
 **Herencia (es-un):**
+
 - ✅ Relación fuerte y permanente
 - ✅ Código compartido en base contract
 - ❌ Acoplamiento fuerte
 - ❌ Puede complicar upgrades
 
 **Composición (tiene-un):**
+
 - ✅ Flexibilidad para cambiar componentes
 - ✅ Separación clara de responsabilidades
 - ✅ Fácil testing de componentes aislados
@@ -1236,11 +1265,12 @@ Las interfaces son promesas públicas. Una vez desplegadas, son inmutables.
 **Best practices:**
 
 1. **Diseña interfaces pensando en expansión**
+
    ```solidity
    interface ITokenV1 {
      function transfer(address to, uint amount) external returns (bool);
    }
-   
+
    // Futuro: ITokenV2 extiende ITokenV1
    interface ITokenV2 is ITokenV1 {
      function transferWithMemo(address to, uint amount, string calldata memo) external returns (bool);
@@ -1382,18 +1412,23 @@ Invierte en estas skills. Durarán toda tu carrera.
 ### 15.2 Mantras para Momentos Críticos
 
 **Cuando estés tentado a atajar:**
+
 > "El código vivirá más que mi pereza temporal."
 
 **Cuando el deadline presione:**
+
 > "Mejor tarde y seguro que temprano y hackeado."
 
 **Cuando algo parezca obvio:**
+
 > "Lo obvio para mí no es obvio para la EVM."
 
 **Cuando encuentres un bug en producción:**
+
 > "Esto es una oportunidad de aprendizaje, no un fracaso definitivo."
 
 **Cuando todo funcione perfectamente:**
+
 > "¿Qué no estoy viendo?"
 
 ### 15.3 La Lista de Nunca
@@ -1416,24 +1451,28 @@ Invierte en estas skills. Durarán toda tu carrera.
 **Etapas de tu viaje:**
 
 **Fase 1: Aprendiz (Meses 0-6)**
+
 - Domina Solidity básico
 - Entiende la EVM conceptualmente
 - Implementa contratos simples con guías
 - Aprende patrones establecidos
 
 **Fase 2: Practicante (Meses 6-18)**
+
 - Diseña arquitecturas simples independientemente
 - Identifica vulnerabilidades comunes
 - Escribe tests completos naturalmente
 - Contribuyes a proyectos existentes
 
 **Fase 3: Profesional (Años 1.5-3)**
+
 - Diseñas sistemas complejos seguros
 - Anticipas vectores de ataque no obvios
 - Mentorizas developers junior
 - Contribuyes a estándares y mejores prácticas
 
 **Fase 4: Guardián (Año 3+)**
+
 - Tu código es referencia para otros
 - Creas nuevos patrones de seguridad
 - Elevas el nivel del ecosistema
@@ -1527,6 +1566,7 @@ Este documento no es solo texto. Es un mapa, una brújula, un recordatorio.
 Desarrollar contratos inteligentes no es solo escribir código.
 
 Es un arte que combina:
+
 - Ingeniería rigurosa
 - Pensamiento sistémico
 - Paranoia constructiva
@@ -1534,12 +1574,14 @@ Es un arte que combina:
 - Responsabilidad ética
 
 Es un oficio que requiere:
+
 - Paciencia para hacer las cosas bien
 - Coraje para admitir errores
 - Disciplina para seguir principios
 - Pasión para aprender continuamente
 
 Es una misión que demanda:
+
 - Priorizar usuarios sobre deadlines
 - Valorar seguridad sobre features
 - Elegir simplicidad sobre cleverness
@@ -1560,17 +1602,20 @@ Es una misión que demanda:
 ### Lecturas Esenciales (Atemporales)
 
 **Fundamentos de Seguridad:**
+
 - "Thinking in Systems" - Donella Meadows
 - "The Pragmatic Programmer" - Hunt & Thomas
 - "Code Complete" - Steve McConnell
 
 **Análisis de Hacks Históricos:**
+
 - The DAO Hack (2016) - Reentrancy
 - Parity Multisig (2017) - Delegatecall
 - bZx Flashloan Attacks (2020) - Economic exploits
 - Poly Network (2021) - Access control
 
 **Conceptos Fundamentales:**
+
 - Byzantine Fault Tolerance
 - Game Theory básico
 - Cryptographic primitives
@@ -1579,21 +1624,25 @@ Es una misión que demanda:
 ### Prácticas Continuas
 
 **Diarias:**
+
 - Lee al menos un post-mortem de hack
 - Revisa código de un proyecto establecido
 - Practica un edge case en testing
 
 **Semanales:**
+
 - Completa un desafío de seguridad (CTF)
 - Escribe sobre algo que aprendiste
 - Revisa código de un peer
 
 **Mensuales:**
+
 - Lee un reporte de auditoría completo
 - Contribuye a un proyecto open-source
 - Actualiza tus patrones y anti-patrones
 
 **Anuales:**
+
 - Revisa todos tus contratos del año
 - Identifica patrones de errores personales
 - Define áreas de mejora para el siguiente año
@@ -1604,4 +1653,4 @@ Es una misión que demanda:
 **Fecha:** Octubre 2025  
 **Próxima revisión:** Cuando la sabiduría colectiva demande actualización
 
-*Esta guía está viva. Evoluciona con la comunidad.*
+_Esta guía está viva. Evoluciona con la comunidad._

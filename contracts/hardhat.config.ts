@@ -10,14 +10,14 @@ const config: HardhatUserConfig = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
-    ignition: "./ignition"
+    ignition: "./ignition",
   },
   networks: {
     localhost: {
       url: "http://127.0.0.1:8545",
-      chainId: 1234
-    }
-  }
+      chainId: 1234,
+    },
+  },
 };
 
 export default config;
