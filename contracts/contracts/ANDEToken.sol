@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 
 contract ANDEToken is
     Initializable,
@@ -14,7 +15,8 @@ contract ANDEToken is
     AccessControlUpgradeable,
     UUPSUpgradeable,
     ERC20PermitUpgradeable,
-    ERC20VotesUpgradeable
+    ERC20VotesUpgradeable,
+    ERC20BurnableUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -30,6 +32,7 @@ contract ANDEToken is
         __UUPSUpgradeable_init();
         __ERC20Permit_init("ANDE Token");
         __ERC20Votes_init();
+        __ERC20Burnable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
