@@ -28,10 +28,12 @@ export interface TrustedRelayerOracleInterface extends Interface {
     nameOrSignature:
       | "ADMIN_ROLE"
       | "DEFAULT_ADMIN_ROLE"
-      | "MAX_DEVIATION"
+      | "MAX_ACTIONS_PER_HOUR"
       | "MAX_PRICE_AGE"
+      | "MIN_DELAY"
       | "MIN_RELAYERS"
       | "RELAYER_ROLE"
+      | "actionCount"
       | "addRelayer"
       | "getAggregatedPrice"
       | "getPairId"
@@ -42,6 +44,7 @@ export interface TrustedRelayerOracleInterface extends Interface {
       | "grantRole"
       | "hasRole"
       | "initialize"
+      | "lastActionTimestamp"
       | "pause"
       | "paused"
       | "prices"
@@ -55,7 +58,7 @@ export interface TrustedRelayerOracleInterface extends Interface {
       | "totalUpdates"
       | "unpause"
       | "updatePrice"
-      | "updatePricesBatch",
+      | "updatePricesBatch"
   ): FunctionFragment;
 
   getEvent(
@@ -70,195 +73,213 @@ export interface TrustedRelayerOracleInterface extends Interface {
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
-      | "Unpaused",
+      | "Unpaused"
   ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "ADMIN_ROLE",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "DEFAULT_ADMIN_ROLE",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "MAX_DEVIATION",
-    values?: undefined,
+    functionFragment: "MAX_ACTIONS_PER_HOUR",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "MAX_PRICE_AGE",
-    values?: undefined,
+    values?: undefined
   ): string;
+  encodeFunctionData(functionFragment: "MIN_DELAY", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "MIN_RELAYERS",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "RELAYER_ROLE",
-    values?: undefined,
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "actionCount",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "addRelayer",
-    values: [AddressLike, string],
+    values: [AddressLike, string]
   ): string;
   encodeFunctionData(
     functionFragment: "getAggregatedPrice",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getPairId",
-    values: [string, string],
+    values: [string, string]
   ): string;
   encodeFunctionData(functionFragment: "getPrice", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "getPriceWithMetadata",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "getSystemHealth",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "grantRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "hasRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "initialize",
-    values?: undefined,
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "lastActionTimestamp",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(functionFragment: "paused", values?: undefined): string;
   encodeFunctionData(functionFragment: "prices", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "relayerPrices",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "relayers",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "removeRelayer",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "renounceRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "totalRelayers",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "totalUpdates",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "updatePrice",
-    values: [BytesLike, BigNumberish],
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "updatePricesBatch",
-    values: [BytesLike[], BigNumberish[]],
+    values: [BytesLike[], BigNumberish[]]
   ): string;
 
   decodeFunctionResult(functionFragment: "ADMIN_ROLE", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "DEFAULT_ADMIN_ROLE",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "MAX_DEVIATION",
-    data: BytesLike,
+    functionFragment: "MAX_ACTIONS_PER_HOUR",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "MAX_PRICE_AGE",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "MIN_DELAY", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "MIN_RELAYERS",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "RELAYER_ROLE",
-    data: BytesLike,
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "actionCount",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "addRelayer", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getAggregatedPrice",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getPairId", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getPrice", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getPriceWithMetadata",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "getSystemHealth",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "lastActionTimestamp",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "prices", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "relayerPrices",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "relayers", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "removeRelayer",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "supportsInterface",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "totalRelayers",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "totalUpdates",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "updatePrice",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "updatePricesBatch",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
 }
 
@@ -291,13 +312,13 @@ export namespace PriceDeviationEvent {
     pairId: BytesLike,
     oldPrice: BigNumberish,
     newPrice: BigNumberish,
-    deviation: BigNumberish,
+    deviation: BigNumberish
   ];
   export type OutputTuple = [
     pairId: string,
     oldPrice: bigint,
     newPrice: bigint,
-    deviation: bigint,
+    deviation: bigint
   ];
   export interface OutputObject {
     pairId: string;
@@ -316,13 +337,13 @@ export namespace PriceUpdatedEvent {
     pairId: BytesLike,
     price: BigNumberish,
     timestamp: BigNumberish,
-    relayer: AddressLike,
+    relayer: AddressLike
   ];
   export type OutputTuple = [
     pairId: string,
     price: bigint,
     timestamp: bigint,
-    relayer: string,
+    relayer: string
   ];
   export interface OutputObject {
     pairId: string;
@@ -377,12 +398,12 @@ export namespace RoleAdminChangedEvent {
   export type InputTuple = [
     role: BytesLike,
     previousAdminRole: BytesLike,
-    newAdminRole: BytesLike,
+    newAdminRole: BytesLike
   ];
   export type OutputTuple = [
     role: string,
     previousAdminRole: string,
-    newAdminRole: string,
+    newAdminRole: string
   ];
   export interface OutputObject {
     role: string;
@@ -399,7 +420,7 @@ export namespace RoleGrantedEvent {
   export type InputTuple = [
     role: BytesLike,
     account: AddressLike,
-    sender: AddressLike,
+    sender: AddressLike
   ];
   export type OutputTuple = [role: string, account: string, sender: string];
   export interface OutputObject {
@@ -417,7 +438,7 @@ export namespace RoleRevokedEvent {
   export type InputTuple = [
     role: BytesLike,
     account: AddressLike,
-    sender: AddressLike,
+    sender: AddressLike
   ];
   export type OutputTuple = [role: string, account: string, sender: string];
   export interface OutputObject {
@@ -452,51 +473,55 @@ export interface TrustedRelayerOracle extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
   ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
 
   DEFAULT_ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
 
-  MAX_DEVIATION: TypedContractMethod<[], [bigint], "view">;
+  MAX_ACTIONS_PER_HOUR: TypedContractMethod<[], [bigint], "view">;
 
   MAX_PRICE_AGE: TypedContractMethod<[], [bigint], "view">;
+
+  MIN_DELAY: TypedContractMethod<[], [bigint], "view">;
 
   MIN_RELAYERS: TypedContractMethod<[], [bigint], "view">;
 
   RELAYER_ROLE: TypedContractMethod<[], [string], "view">;
+
+  actionCount: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
   addRelayer: TypedContractMethod<
     [relayer: AddressLike, endpoint: string],
@@ -526,7 +551,7 @@ export interface TrustedRelayerOracle extends BaseContract {
         timestamp: bigint;
         isStale: boolean;
         source: string;
-      },
+      }
     ],
     "view"
   >;
@@ -540,7 +565,7 @@ export interface TrustedRelayerOracle extends BaseContract {
         isHealthy: boolean;
         activeRelayers: bigint;
         stalePairs: bigint;
-      },
+      }
     ],
     "view"
   >;
@@ -559,6 +584,12 @@ export interface TrustedRelayerOracle extends BaseContract {
 
   initialize: TypedContractMethod<[], [void], "nonpayable">;
 
+  lastActionTimestamp: TypedContractMethod<
+    [arg0: AddressLike],
+    [bigint],
+    "view"
+  >;
+
   pause: TypedContractMethod<[], [void], "nonpayable">;
 
   paused: TypedContractMethod<[], [boolean], "view">;
@@ -572,7 +603,7 @@ export interface TrustedRelayerOracle extends BaseContract {
         blockNumber: bigint;
         relayer: string;
         updateCount: bigint;
-      },
+      }
     ],
     "view"
   >;
@@ -591,7 +622,7 @@ export interface TrustedRelayerOracle extends BaseContract {
         totalUpdates: bigint;
         lastUpdate: bigint;
         endpoint: string;
-      },
+      }
     ],
     "view"
   >;
@@ -639,48 +670,56 @@ export interface TrustedRelayerOracle extends BaseContract {
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "ADMIN_ROLE",
+    nameOrSignature: "ADMIN_ROLE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "DEFAULT_ADMIN_ROLE",
+    nameOrSignature: "DEFAULT_ADMIN_ROLE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "MAX_DEVIATION",
+    nameOrSignature: "MAX_ACTIONS_PER_HOUR"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "MAX_PRICE_AGE",
+    nameOrSignature: "MAX_PRICE_AGE"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "MIN_RELAYERS",
+    nameOrSignature: "MIN_DELAY"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "RELAYER_ROLE",
+    nameOrSignature: "MIN_RELAYERS"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "RELAYER_ROLE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "addRelayer",
+    nameOrSignature: "actionCount"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "addRelayer"
   ): TypedContractMethod<
     [relayer: AddressLike, endpoint: string],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "getAggregatedPrice",
+    nameOrSignature: "getAggregatedPrice"
   ): TypedContractMethod<
     [pairId: BytesLike],
     [[bigint, bigint] & { price: bigint; confidence: bigint }],
     "view"
   >;
   getFunction(
-    nameOrSignature: "getPairId",
+    nameOrSignature: "getPairId"
   ): TypedContractMethod<[base: string, quote: string], [string], "view">;
   getFunction(
-    nameOrSignature: "getPrice",
+    nameOrSignature: "getPrice"
   ): TypedContractMethod<[pairId: BytesLike], [bigint], "view">;
-  getFunction(nameOrSignature: "getPriceWithMetadata"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "getPriceWithMetadata"
+  ): TypedContractMethod<
     [pairId: BytesLike],
     [
       [bigint, bigint, boolean, string] & {
@@ -688,48 +727,55 @@ export interface TrustedRelayerOracle extends BaseContract {
         timestamp: bigint;
         isStale: boolean;
         source: string;
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "getRoleAdmin",
+    nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
-  getFunction(nameOrSignature: "getSystemHealth"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "getSystemHealth"
+  ): TypedContractMethod<
     [],
     [
       [boolean, bigint, bigint] & {
         isHealthy: boolean;
         activeRelayers: bigint;
         stalePairs: bigint;
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "grantRole",
+    nameOrSignature: "grantRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "hasRole",
+    nameOrSignature: "hasRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [boolean],
     "view"
   >;
   getFunction(
-    nameOrSignature: "initialize",
+    nameOrSignature: "initialize"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "pause",
+    nameOrSignature: "lastActionTimestamp"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "pause"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "paused",
+    nameOrSignature: "paused"
   ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(nameOrSignature: "prices"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "prices"
+  ): TypedContractMethod<
     [arg0: BytesLike],
     [
       [bigint, bigint, bigint, string, bigint] & {
@@ -738,18 +784,20 @@ export interface TrustedRelayerOracle extends BaseContract {
         blockNumber: bigint;
         relayer: string;
         updateCount: bigint;
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "relayerPrices",
+    nameOrSignature: "relayerPrices"
   ): TypedContractMethod<
     [arg0: BytesLike, arg1: AddressLike],
     [bigint],
     "view"
   >;
-  getFunction(nameOrSignature: "relayers"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "relayers"
+  ): TypedContractMethod<
     [arg0: AddressLike],
     [
       [boolean, bigint, bigint, string] & {
@@ -757,48 +805,48 @@ export interface TrustedRelayerOracle extends BaseContract {
         totalUpdates: bigint;
         lastUpdate: bigint;
         endpoint: string;
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "removeRelayer",
+    nameOrSignature: "removeRelayer"
   ): TypedContractMethod<[relayer: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "renounceRole",
+    nameOrSignature: "renounceRole"
   ): TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "revokeRole",
+    nameOrSignature: "revokeRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "supportsInterface",
+    nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: "totalRelayers",
+    nameOrSignature: "totalRelayers"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "totalUpdates",
+    nameOrSignature: "totalUpdates"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "unpause",
+    nameOrSignature: "unpause"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "updatePrice",
+    nameOrSignature: "updatePrice"
   ): TypedContractMethod<
     [pairId: BytesLike, newPrice: BigNumberish],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "updatePricesBatch",
+    nameOrSignature: "updatePricesBatch"
   ): TypedContractMethod<
     [pairIds: BytesLike[], newPrices: BigNumberish[]],
     [void],
@@ -806,77 +854,77 @@ export interface TrustedRelayerOracle extends BaseContract {
   >;
 
   getEvent(
-    key: "Initialized",
+    key: "Initialized"
   ): TypedContractEvent<
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: "Paused",
+    key: "Paused"
   ): TypedContractEvent<
     PausedEvent.InputTuple,
     PausedEvent.OutputTuple,
     PausedEvent.OutputObject
   >;
   getEvent(
-    key: "PriceDeviation",
+    key: "PriceDeviation"
   ): TypedContractEvent<
     PriceDeviationEvent.InputTuple,
     PriceDeviationEvent.OutputTuple,
     PriceDeviationEvent.OutputObject
   >;
   getEvent(
-    key: "PriceUpdated",
+    key: "PriceUpdated"
   ): TypedContractEvent<
     PriceUpdatedEvent.InputTuple,
     PriceUpdatedEvent.OutputTuple,
     PriceUpdatedEvent.OutputObject
   >;
   getEvent(
-    key: "RelayerAdded",
+    key: "RelayerAdded"
   ): TypedContractEvent<
     RelayerAddedEvent.InputTuple,
     RelayerAddedEvent.OutputTuple,
     RelayerAddedEvent.OutputObject
   >;
   getEvent(
-    key: "RelayerPaused",
+    key: "RelayerPaused"
   ): TypedContractEvent<
     RelayerPausedEvent.InputTuple,
     RelayerPausedEvent.OutputTuple,
     RelayerPausedEvent.OutputObject
   >;
   getEvent(
-    key: "RelayerRemoved",
+    key: "RelayerRemoved"
   ): TypedContractEvent<
     RelayerRemovedEvent.InputTuple,
     RelayerRemovedEvent.OutputTuple,
     RelayerRemovedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleAdminChanged",
+    key: "RoleAdminChanged"
   ): TypedContractEvent<
     RoleAdminChangedEvent.InputTuple,
     RoleAdminChangedEvent.OutputTuple,
     RoleAdminChangedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleGranted",
+    key: "RoleGranted"
   ): TypedContractEvent<
     RoleGrantedEvent.InputTuple,
     RoleGrantedEvent.OutputTuple,
     RoleGrantedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleRevoked",
+    key: "RoleRevoked"
   ): TypedContractEvent<
     RoleRevokedEvent.InputTuple,
     RoleRevokedEvent.OutputTuple,
     RoleRevokedEvent.OutputObject
   >;
   getEvent(
-    key: "Unpaused",
+    key: "Unpaused"
   ): TypedContractEvent<
     UnpausedEvent.InputTuple,
     UnpausedEvent.OutputTuple,

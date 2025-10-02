@@ -4,11 +4,12 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./IOracle.sol";
+import "./security/Utils.sol";
 
 /**
  * @title AndeOracleAggregator
  * @notice Agrega múltiples fuentes de oráculos con ponderación y detección de outliers
- * @dev Refactorizado para ser "upgrade-safe" usando un inicializador.
+ * @dev Refactorizado para ser "upgrade-safe" y usar la librería SafeAggregation.
  */
 contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
     
@@ -32,8 +33,9 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
     mapping(bytes32 => OracleSource[]) public sources;
     mapping(bytes32 => AggregatedPrice) private priceCache;
     
-    uint256 public constant MAX_DEVIATION = 500;
-    uint256 public constant MIN_SOURCES = 1;
+    // MAX_DEVIATION será manejado por SafeAggregation
+    // uint256 public constant MAX_DEVIATION = 500;
+    uint256 public constant MIN_SOURCES = 3; // Requerido por SafeAggregation
     uint256 public constant CACHE_DURATION = 1 minutes;
     
     // ============ EVENTS ============    
@@ -135,70 +137,79 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         return _aggregatePrice(pairId);
     }
     
-    function _aggregatePrice(bytes32 pairId) 
-        internal 
-        view 
+    function _aggregatePrice(bytes32 pairId)
+        internal
+        view
         returns (
             uint256 finalPrice,
             uint256 confidence,
             uint256 sourcesUsed
-        ) 
+        )
     {
         OracleSource[] storage pairSources = sources[pairId];
-        
-        if (pairSources.length == 0) revert NoSourcesAvailable();
-        
-        uint256[] memory prices = new uint256[](pairSources.length);
-        uint256[] memory weights = new uint256[](pairSources.length);
+        uint256 sourceCount = pairSources.length;
+
+        if (sourceCount == 0) revert NoSourcesAvailable();
+
+        // Usamos arrays temporales en memoria para pasar a la librería
+        SafeAggregation.Source[] memory libSources = new SafeAggregation.Source[](sourceCount);
+        uint256[] memory prices = new uint256[](sourceCount);
         uint256 validCount = 0;
-        uint256 totalWeight = 0;
-        
-        for (uint256 i = 0; i < pairSources.length; i++) {
+        uint256 totalWeightAllSources = 0;
+
+        for (uint256 i = 0; i < sourceCount; i++) {
             if (!pairSources[i].isActive) continue;
-            
-            try IOracle(pairSources[i].oracle).getPrice(pairId) returns (uint256 price) {
-                if (price > 0) {
+
+            totalWeightAllSources += pairSources[i].weight;
+
+            try IOracle(pairSources[i].oracle).getPriceWithMetadata(pairId) returns (uint256 price, uint256 timestamp, bool isStale, address source) {
+                // Ignoramos precios inválidos o datos obsoletos
+                if (price > 0 && !isStale) {
                     prices[validCount] = price;
-                    weights[validCount] = pairSources[i].weight;
-                    totalWeight += pairSources[i].weight;
+                    libSources[validCount] = SafeAggregation.Source({
+                        oracle: pairSources[i].oracle,
+                        weight: pairSources[i].weight,
+                        lastUpdate: timestamp,
+                        active: true
+                    });
                     validCount++;
                 }
             } catch {
+                // Si un oráculo falla, simplemente lo ignoramos
                 continue;
             }
         }
-        
-        if (validCount == 0) revert InsufficientSources();
-        
-        uint256 medianPrice = _calculateMedian(prices, validCount);
-        
-        uint256 weightedSum = 0;
-        uint256 validWeight = 0;
-        uint256 finalSourceCount = 0;
-        
+
+        if (validCount < MIN_SOURCES) revert InsufficientSources();
+
+        // Redimensionamos los arrays al tamaño real de datos válidos
+        SafeAggregation.Source[] memory finalLibSources = new SafeAggregation.Source[](validCount);
+        uint256[] memory finalPrices = new uint256[](validCount);
+        uint256 totalWeightValidSources = 0;
+
         for (uint256 i = 0; i < validCount; i++) {
-            uint256 deviation = _calculateDeviation(medianPrice, prices[i]);
-            
-            if (deviation > MAX_DEVIATION) {
-                continue;
-            }
-            
-            weightedSum += prices[i] * weights[i];
-            validWeight += weights[i];
-            finalSourceCount++;
+            finalLibSources[i] = libSources[i];
+            finalPrices[i] = prices[i];
+            totalWeightValidSources += libSources[i].weight;
         }
+
+        // Delegamos el cálculo complejo a la librería segura
+        (finalPrice, sourcesUsed) = SafeAggregation.aggregateWithOutlierRemoval(finalLibSources, finalPrices);
         
-        if (validWeight == 0) {
-            return (medianPrice, 5000, validCount);
+        // La confianza es el peso de las fuentes usadas vs el peso total de fuentes activas
+        if (totalWeightAllSources > 0) {
+            confidence = (totalWeightValidSources * 10000) / totalWeightAllSources;
+        } else {
+            confidence = 0;
         }
-        
-        finalPrice = weightedSum / validWeight;
-        confidence = (validWeight * 10000) / totalWeight;
-        sourcesUsed = finalSourceCount;
-        
+
         return (finalPrice, confidence, sourcesUsed);
     }
-    
+
+    function getSourcesForPair(bytes32 pairId) external view returns (OracleSource[] memory) {
+        return sources[pairId];
+    }
+
     function updateCache(bytes32 pairId) external {
         (uint256 price, uint256 confidence, uint256 sourcesUsed) = _aggregatePrice(pairId);
         
@@ -211,44 +222,7 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         
         emit PriceAggregated(pairId, price, confidence, sourcesUsed);
     }
-    
-    // ============ UTILITIES ============    
-    function _calculateMedian(uint256[] memory data, uint256 length) 
-        internal 
-        pure 
-        returns (uint256) 
-    {
-        if (length == 0) return 0;
-        if (length == 1) return data[0];
-        
-        for (uint256 i = 0; i < length - 1; i++) {
-            for (uint256 j = 0; j < length - i - 1; j++) {
-                if (data[j] > data[j + 1]) {
-                    uint256 temp = data[j];
-                    data[j] = data[j + 1];
-                    data[j + 1] = temp;
-                }
-            }
-        }
-        
-        if (length % 2 == 0) {
-            return (data[length / 2 - 1] + data[length / 2]) / 2;
-        } else {
-            return data[length / 2];
-        }
-    }
 
-    function _calculateDeviation(uint256 oldPrice, uint256 newPrice) 
-        internal 
-        pure 
-        returns (uint256 deviation) 
-    {
-        if (oldPrice == 0) return 0;
-        
-        uint256 diff = newPrice > oldPrice 
-            ? newPrice - oldPrice 
-            : oldPrice - newPrice;
-        
-        return (diff * 10000) / oldPrice;
-    }
+    // Las funciones _calculateMedian y _calculateDeviation ya no son necesarias,
+    // su lógica ahora está centralizada en la librería SafeAggregation.
 }

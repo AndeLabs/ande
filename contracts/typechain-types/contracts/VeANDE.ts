@@ -23,144 +23,308 @@ import type {
   TypedContractMethod,
 } from "../common";
 
+export declare namespace VeANDE {
+  export type CheckpointStruct = {
+    fromBlock: BigNumberish;
+    votes: BigNumberish;
+  };
+
+  export type CheckpointStructOutput = [fromBlock: bigint, votes: bigint] & {
+    fromBlock: bigint;
+    votes: bigint;
+  };
+}
+
 export interface VeANDEInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "CLOCK_MODE"
       | "DEFAULT_ADMIN_ROLE"
       | "MAX_LOCK_TIME"
       | "UPGRADE_INTERFACE_VERSION"
       | "andeToken"
       | "balanceOf"
+      | "clock"
       | "createLock"
+      | "delegate"
+      | "delegateBySig"
+      | "delegates"
+      | "eip712Domain"
+      | "getCheckpoint"
+      | "getCheckpointCount"
+      | "getPastTotalSupply"
+      | "getPastVotes"
       | "getRoleAdmin"
+      | "getVotes"
       | "grantRole"
       | "hasRole"
       | "initialize"
       | "lockedBalances"
+      | "nonces"
       | "proxiableUUID"
       | "renounceRole"
       | "revokeRole"
       | "supportsInterface"
       | "upgradeToAndCall"
-      | "withdraw",
+      | "withdraw"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "DelegateChanged"
+      | "DelegateVotesChanged"
+      | "EIP712DomainChanged"
       | "Initialized"
+      | "LockCreated"
+      | "LockExtended"
+      | "LockIncreased"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
-      | "Upgraded",
+      | "Upgraded"
+      | "Withdrawn"
   ): EventFragment;
 
   encodeFunctionData(
+    functionFragment: "CLOCK_MODE",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "DEFAULT_ADMIN_ROLE",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "MAX_LOCK_TIME",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "UPGRADE_INTERFACE_VERSION",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "andeToken", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "balanceOf",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
+  encodeFunctionData(functionFragment: "clock", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "createLock",
-    values: [BigNumberish, BigNumberish],
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "delegate",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "delegateBySig",
+    values: [
+      AddressLike,
+      BigNumberish,
+      BigNumberish,
+      BigNumberish,
+      BytesLike,
+      BytesLike
+    ]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "delegates",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "eip712Domain",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getCheckpoint",
+    values: [AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getCheckpointCount",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getPastTotalSupply",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getPastVotes",
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
-    values: [BytesLike],
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getVotes",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "grantRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "hasRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "initialize",
-    values: [AddressLike, AddressLike],
+    values: [AddressLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "lockedBalances",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
+  encodeFunctionData(functionFragment: "nonces", values: [AddressLike]): string;
   encodeFunctionData(
     functionFragment: "proxiableUUID",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "renounceRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "upgradeToAndCall",
-    values: [AddressLike, BytesLike],
+    values: [AddressLike, BytesLike]
   ): string;
   encodeFunctionData(functionFragment: "withdraw", values?: undefined): string;
 
+  decodeFunctionResult(functionFragment: "CLOCK_MODE", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "DEFAULT_ADMIN_ROLE",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "MAX_LOCK_TIME",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "UPGRADE_INTERFACE_VERSION",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "andeToken", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "clock", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "createLock", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "delegate", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "delegateBySig",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "delegates", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "eip712Domain",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getCheckpoint",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getCheckpointCount",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getPastTotalSupply",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getPastVotes",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "getVotes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "lockedBalances",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "nonces", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "proxiableUUID",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "supportsInterface",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "upgradeToAndCall",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "withdraw", data: BytesLike): Result;
+}
+
+export namespace DelegateChangedEvent {
+  export type InputTuple = [
+    delegator: AddressLike,
+    fromDelegate: AddressLike,
+    toDelegate: AddressLike
+  ];
+  export type OutputTuple = [
+    delegator: string,
+    fromDelegate: string,
+    toDelegate: string
+  ];
+  export interface OutputObject {
+    delegator: string;
+    fromDelegate: string;
+    toDelegate: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace DelegateVotesChangedEvent {
+  export type InputTuple = [
+    delegate: AddressLike,
+    previousVotes: BigNumberish,
+    newVotes: BigNumberish
+  ];
+  export type OutputTuple = [
+    delegate: string,
+    previousVotes: bigint,
+    newVotes: bigint
+  ];
+  export interface OutputObject {
+    delegate: string;
+    previousVotes: bigint;
+    newVotes: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace EIP712DomainChangedEvent {
+  export type InputTuple = [];
+  export type OutputTuple = [];
+  export interface OutputObject {}
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace InitializedEvent {
@@ -175,16 +339,60 @@ export namespace InitializedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace LockCreatedEvent {
+  export type InputTuple = [
+    user: AddressLike,
+    amount: BigNumberish,
+    unlockTime: BigNumberish
+  ];
+  export type OutputTuple = [user: string, amount: bigint, unlockTime: bigint];
+  export interface OutputObject {
+    user: string;
+    amount: bigint;
+    unlockTime: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace LockExtendedEvent {
+  export type InputTuple = [user: AddressLike, newUnlockTime: BigNumberish];
+  export type OutputTuple = [user: string, newUnlockTime: bigint];
+  export interface OutputObject {
+    user: string;
+    newUnlockTime: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace LockIncreasedEvent {
+  export type InputTuple = [user: AddressLike, additionalAmount: BigNumberish];
+  export type OutputTuple = [user: string, additionalAmount: bigint];
+  export interface OutputObject {
+    user: string;
+    additionalAmount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export namespace RoleAdminChangedEvent {
   export type InputTuple = [
     role: BytesLike,
     previousAdminRole: BytesLike,
-    newAdminRole: BytesLike,
+    newAdminRole: BytesLike
   ];
   export type OutputTuple = [
     role: string,
     previousAdminRole: string,
-    newAdminRole: string,
+    newAdminRole: string
   ];
   export interface OutputObject {
     role: string;
@@ -201,7 +409,7 @@ export namespace RoleGrantedEvent {
   export type InputTuple = [
     role: BytesLike,
     account: AddressLike,
-    sender: AddressLike,
+    sender: AddressLike
   ];
   export type OutputTuple = [role: string, account: string, sender: string];
   export interface OutputObject {
@@ -219,7 +427,7 @@ export namespace RoleRevokedEvent {
   export type InputTuple = [
     role: BytesLike,
     account: AddressLike,
-    sender: AddressLike,
+    sender: AddressLike
   ];
   export type OutputTuple = [role: string, account: string, sender: string];
   export interface OutputObject {
@@ -245,6 +453,19 @@ export namespace UpgradedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace WithdrawnEvent {
+  export type InputTuple = [user: AddressLike, amount: BigNumberish];
+  export type OutputTuple = [user: string, amount: bigint];
+  export interface OutputObject {
+    user: string;
+    amount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export interface VeANDE extends BaseContract {
   connect(runner?: ContractRunner | null): VeANDE;
   waitForDeployment(): Promise<this>;
@@ -254,39 +475,41 @@ export interface VeANDE extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
+
+  CLOCK_MODE: TypedContractMethod<[], [string], "view">;
 
   DEFAULT_ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
 
@@ -298,13 +521,74 @@ export interface VeANDE extends BaseContract {
 
   balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
+  clock: TypedContractMethod<[], [bigint], "view">;
+
   createLock: TypedContractMethod<
     [amount: BigNumberish, unlockTime: BigNumberish],
     [void],
     "nonpayable"
   >;
 
+  delegate: TypedContractMethod<[delegatee: AddressLike], [void], "nonpayable">;
+
+  delegateBySig: TypedContractMethod<
+    [
+      delegatee: AddressLike,
+      nonce: BigNumberish,
+      expiry: BigNumberish,
+      v: BigNumberish,
+      r: BytesLike,
+      s: BytesLike
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  delegates: TypedContractMethod<[account: AddressLike], [string], "view">;
+
+  eip712Domain: TypedContractMethod<
+    [],
+    [
+      [string, string, string, bigint, string, string, bigint[]] & {
+        fields: string;
+        name: string;
+        version: string;
+        chainId: bigint;
+        verifyingContract: string;
+        salt: string;
+        extensions: bigint[];
+      }
+    ],
+    "view"
+  >;
+
+  getCheckpoint: TypedContractMethod<
+    [account: AddressLike, pos: BigNumberish],
+    [VeANDE.CheckpointStructOutput],
+    "view"
+  >;
+
+  getCheckpointCount: TypedContractMethod<
+    [account: AddressLike],
+    [bigint],
+    "view"
+  >;
+
+  getPastTotalSupply: TypedContractMethod<
+    [timepoint: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
+  getPastVotes: TypedContractMethod<
+    [account: AddressLike, timepoint: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
+
+  getVotes: TypedContractMethod<[account: AddressLike], [bigint], "view">;
 
   grantRole: TypedContractMethod<
     [role: BytesLike, account: AddressLike],
@@ -329,6 +613,8 @@ export interface VeANDE extends BaseContract {
     [[bigint, bigint] & { amount: bigint; end: bigint }],
     "view"
   >;
+
+  nonces: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
   proxiableUUID: TypedContractMethod<[], [string], "view">;
 
@@ -359,130 +645,281 @@ export interface VeANDE extends BaseContract {
   withdraw: TypedContractMethod<[], [void], "nonpayable">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "DEFAULT_ADMIN_ROLE",
+    nameOrSignature: "CLOCK_MODE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "MAX_LOCK_TIME",
+    nameOrSignature: "DEFAULT_ADMIN_ROLE"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "MAX_LOCK_TIME"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "UPGRADE_INTERFACE_VERSION",
+    nameOrSignature: "UPGRADE_INTERFACE_VERSION"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "andeToken",
+    nameOrSignature: "andeToken"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "balanceOf",
+    nameOrSignature: "balanceOf"
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "createLock",
+    nameOrSignature: "clock"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "createLock"
   ): TypedContractMethod<
     [amount: BigNumberish, unlockTime: BigNumberish],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "getRoleAdmin",
+    nameOrSignature: "delegate"
+  ): TypedContractMethod<[delegatee: AddressLike], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "delegateBySig"
+  ): TypedContractMethod<
+    [
+      delegatee: AddressLike,
+      nonce: BigNumberish,
+      expiry: BigNumberish,
+      v: BigNumberish,
+      r: BytesLike,
+      s: BytesLike
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "delegates"
+  ): TypedContractMethod<[account: AddressLike], [string], "view">;
+  getFunction(
+    nameOrSignature: "eip712Domain"
+  ): TypedContractMethod<
+    [],
+    [
+      [string, string, string, bigint, string, string, bigint[]] & {
+        fields: string;
+        name: string;
+        version: string;
+        chainId: bigint;
+        verifyingContract: string;
+        salt: string;
+        extensions: bigint[];
+      }
+    ],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getCheckpoint"
+  ): TypedContractMethod<
+    [account: AddressLike, pos: BigNumberish],
+    [VeANDE.CheckpointStructOutput],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getCheckpointCount"
+  ): TypedContractMethod<[account: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "getPastTotalSupply"
+  ): TypedContractMethod<[timepoint: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "getPastVotes"
+  ): TypedContractMethod<
+    [account: AddressLike, timepoint: BigNumberish],
+    [bigint],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
   getFunction(
-    nameOrSignature: "grantRole",
+    nameOrSignature: "getVotes"
+  ): TypedContractMethod<[account: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "grantRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "hasRole",
+    nameOrSignature: "hasRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [boolean],
     "view"
   >;
   getFunction(
-    nameOrSignature: "initialize",
+    nameOrSignature: "initialize"
   ): TypedContractMethod<
     [defaultAdmin: AddressLike, andeTokenAddress: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "lockedBalances",
+    nameOrSignature: "lockedBalances"
   ): TypedContractMethod<
     [arg0: AddressLike],
     [[bigint, bigint] & { amount: bigint; end: bigint }],
     "view"
   >;
   getFunction(
-    nameOrSignature: "proxiableUUID",
+    nameOrSignature: "nonces"
+  ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "proxiableUUID"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "renounceRole",
+    nameOrSignature: "renounceRole"
   ): TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "revokeRole",
+    nameOrSignature: "revokeRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "supportsInterface",
+    nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: "upgradeToAndCall",
+    nameOrSignature: "upgradeToAndCall"
   ): TypedContractMethod<
     [newImplementation: AddressLike, data: BytesLike],
     [void],
     "payable"
   >;
   getFunction(
-    nameOrSignature: "withdraw",
+    nameOrSignature: "withdraw"
   ): TypedContractMethod<[], [void], "nonpayable">;
 
   getEvent(
-    key: "Initialized",
+    key: "DelegateChanged"
+  ): TypedContractEvent<
+    DelegateChangedEvent.InputTuple,
+    DelegateChangedEvent.OutputTuple,
+    DelegateChangedEvent.OutputObject
+  >;
+  getEvent(
+    key: "DelegateVotesChanged"
+  ): TypedContractEvent<
+    DelegateVotesChangedEvent.InputTuple,
+    DelegateVotesChangedEvent.OutputTuple,
+    DelegateVotesChangedEvent.OutputObject
+  >;
+  getEvent(
+    key: "EIP712DomainChanged"
+  ): TypedContractEvent<
+    EIP712DomainChangedEvent.InputTuple,
+    EIP712DomainChangedEvent.OutputTuple,
+    EIP712DomainChangedEvent.OutputObject
+  >;
+  getEvent(
+    key: "Initialized"
   ): TypedContractEvent<
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleAdminChanged",
+    key: "LockCreated"
+  ): TypedContractEvent<
+    LockCreatedEvent.InputTuple,
+    LockCreatedEvent.OutputTuple,
+    LockCreatedEvent.OutputObject
+  >;
+  getEvent(
+    key: "LockExtended"
+  ): TypedContractEvent<
+    LockExtendedEvent.InputTuple,
+    LockExtendedEvent.OutputTuple,
+    LockExtendedEvent.OutputObject
+  >;
+  getEvent(
+    key: "LockIncreased"
+  ): TypedContractEvent<
+    LockIncreasedEvent.InputTuple,
+    LockIncreasedEvent.OutputTuple,
+    LockIncreasedEvent.OutputObject
+  >;
+  getEvent(
+    key: "RoleAdminChanged"
   ): TypedContractEvent<
     RoleAdminChangedEvent.InputTuple,
     RoleAdminChangedEvent.OutputTuple,
     RoleAdminChangedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleGranted",
+    key: "RoleGranted"
   ): TypedContractEvent<
     RoleGrantedEvent.InputTuple,
     RoleGrantedEvent.OutputTuple,
     RoleGrantedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleRevoked",
+    key: "RoleRevoked"
   ): TypedContractEvent<
     RoleRevokedEvent.InputTuple,
     RoleRevokedEvent.OutputTuple,
     RoleRevokedEvent.OutputObject
   >;
   getEvent(
-    key: "Upgraded",
+    key: "Upgraded"
   ): TypedContractEvent<
     UpgradedEvent.InputTuple,
     UpgradedEvent.OutputTuple,
     UpgradedEvent.OutputObject
   >;
+  getEvent(
+    key: "Withdrawn"
+  ): TypedContractEvent<
+    WithdrawnEvent.InputTuple,
+    WithdrawnEvent.OutputTuple,
+    WithdrawnEvent.OutputObject
+  >;
 
   filters: {
+    "DelegateChanged(address,address,address)": TypedContractEvent<
+      DelegateChangedEvent.InputTuple,
+      DelegateChangedEvent.OutputTuple,
+      DelegateChangedEvent.OutputObject
+    >;
+    DelegateChanged: TypedContractEvent<
+      DelegateChangedEvent.InputTuple,
+      DelegateChangedEvent.OutputTuple,
+      DelegateChangedEvent.OutputObject
+    >;
+
+    "DelegateVotesChanged(address,uint256,uint256)": TypedContractEvent<
+      DelegateVotesChangedEvent.InputTuple,
+      DelegateVotesChangedEvent.OutputTuple,
+      DelegateVotesChangedEvent.OutputObject
+    >;
+    DelegateVotesChanged: TypedContractEvent<
+      DelegateVotesChangedEvent.InputTuple,
+      DelegateVotesChangedEvent.OutputTuple,
+      DelegateVotesChangedEvent.OutputObject
+    >;
+
+    "EIP712DomainChanged()": TypedContractEvent<
+      EIP712DomainChangedEvent.InputTuple,
+      EIP712DomainChangedEvent.OutputTuple,
+      EIP712DomainChangedEvent.OutputObject
+    >;
+    EIP712DomainChanged: TypedContractEvent<
+      EIP712DomainChangedEvent.InputTuple,
+      EIP712DomainChangedEvent.OutputTuple,
+      EIP712DomainChangedEvent.OutputObject
+    >;
+
     "Initialized(uint64)": TypedContractEvent<
       InitializedEvent.InputTuple,
       InitializedEvent.OutputTuple,
@@ -492,6 +929,39 @@ export interface VeANDE extends BaseContract {
       InitializedEvent.InputTuple,
       InitializedEvent.OutputTuple,
       InitializedEvent.OutputObject
+    >;
+
+    "LockCreated(address,uint256,uint256)": TypedContractEvent<
+      LockCreatedEvent.InputTuple,
+      LockCreatedEvent.OutputTuple,
+      LockCreatedEvent.OutputObject
+    >;
+    LockCreated: TypedContractEvent<
+      LockCreatedEvent.InputTuple,
+      LockCreatedEvent.OutputTuple,
+      LockCreatedEvent.OutputObject
+    >;
+
+    "LockExtended(address,uint256)": TypedContractEvent<
+      LockExtendedEvent.InputTuple,
+      LockExtendedEvent.OutputTuple,
+      LockExtendedEvent.OutputObject
+    >;
+    LockExtended: TypedContractEvent<
+      LockExtendedEvent.InputTuple,
+      LockExtendedEvent.OutputTuple,
+      LockExtendedEvent.OutputObject
+    >;
+
+    "LockIncreased(address,uint256)": TypedContractEvent<
+      LockIncreasedEvent.InputTuple,
+      LockIncreasedEvent.OutputTuple,
+      LockIncreasedEvent.OutputObject
+    >;
+    LockIncreased: TypedContractEvent<
+      LockIncreasedEvent.InputTuple,
+      LockIncreasedEvent.OutputTuple,
+      LockIncreasedEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<
@@ -536,6 +1006,17 @@ export interface VeANDE extends BaseContract {
       UpgradedEvent.InputTuple,
       UpgradedEvent.OutputTuple,
       UpgradedEvent.OutputObject
+    >;
+
+    "Withdrawn(address,uint256)": TypedContractEvent<
+      WithdrawnEvent.InputTuple,
+      WithdrawnEvent.OutputTuple,
+      WithdrawnEvent.OutputObject
+    >;
+    Withdrawn: TypedContractEvent<
+      WithdrawnEvent.InputTuple,
+      WithdrawnEvent.OutputTuple,
+      WithdrawnEvent.OutputObject
     >;
   };
 }
