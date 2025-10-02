@@ -9,6 +9,7 @@ yarn-error.log
 # Build artifacts
 artifacts
 cache
+contracts/typechain-types
 
 # Gemini local files
 **/GEMINI.md
