@@ -9,3 +9,6 @@ yarn-error.log
 # Build artifacts
 artifacts
 cache
+
+# Gemini local files
+**/GEMINI.md
