@@ -29,7 +29,6 @@ export interface VeANDEInterface extends Interface {
       | "DEFAULT_ADMIN_ROLE"
       | "MAX_LOCK_TIME"
       | "UPGRADE_INTERFACE_VERSION"
-      | "WEEK"
       | "andeToken"
       | "balanceOf"
       | "createLock"
@@ -49,12 +48,10 @@ export interface VeANDEInterface extends Interface {
   getEvent(
     nameOrSignatureOrTopic:
       | "Initialized"
-      | "LockCreated"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
-      | "Upgraded"
-      | "Withdrawn",
+      | "Upgraded",
   ): EventFragment;
 
   encodeFunctionData(
@@ -69,7 +66,6 @@ export interface VeANDEInterface extends Interface {
     functionFragment: "UPGRADE_INTERFACE_VERSION",
     values?: undefined,
   ): string;
-  encodeFunctionData(functionFragment: "WEEK", values?: undefined): string;
   encodeFunctionData(functionFragment: "andeToken", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "balanceOf",
@@ -133,7 +129,6 @@ export interface VeANDEInterface extends Interface {
     functionFragment: "UPGRADE_INTERFACE_VERSION",
     data: BytesLike,
   ): Result;
-  decodeFunctionResult(functionFragment: "WEEK", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "andeToken", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "createLock", data: BytesLike): Result;
@@ -173,24 +168,6 @@ export namespace InitializedEvent {
   export type OutputTuple = [version: bigint];
   export interface OutputObject {
     version: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace LockCreatedEvent {
-  export type InputTuple = [
-    user: AddressLike,
-    amount: BigNumberish,
-    unlockTime: BigNumberish,
-  ];
-  export type OutputTuple = [user: string, amount: bigint, unlockTime: bigint];
-  export interface OutputObject {
-    user: string;
-    amount: bigint;
-    unlockTime: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -268,19 +245,6 @@ export namespace UpgradedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace WithdrawnEvent {
-  export type InputTuple = [user: AddressLike, amount: BigNumberish];
-  export type OutputTuple = [user: string, amount: bigint];
-  export interface OutputObject {
-    user: string;
-    amount: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
 export interface VeANDE extends BaseContract {
   connect(runner?: ContractRunner | null): VeANDE;
   waitForDeployment(): Promise<this>;
@@ -330,14 +294,12 @@ export interface VeANDE extends BaseContract {
 
   UPGRADE_INTERFACE_VERSION: TypedContractMethod<[], [string], "view">;
 
-  WEEK: TypedContractMethod<[], [bigint], "view">;
-
   andeToken: TypedContractMethod<[], [string], "view">;
 
-  balanceOf: TypedContractMethod<[_user: AddressLike], [bigint], "view">;
+  balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
   createLock: TypedContractMethod<
-    [_amount: BigNumberish, _unlockTime: BigNumberish],
+    [amount: BigNumberish, unlockTime: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -357,14 +319,14 @@ export interface VeANDE extends BaseContract {
   >;
 
   initialize: TypedContractMethod<
-    [_andeTokenAddress: AddressLike, _defaultAdmin: AddressLike],
+    [defaultAdmin: AddressLike, andeTokenAddress: AddressLike],
     [void],
     "nonpayable"
   >;
 
   lockedBalances: TypedContractMethod<
     [arg0: AddressLike],
-    [[bigint, bigint] & { amount: bigint; unlockTime: bigint }],
+    [[bigint, bigint] & { amount: bigint; end: bigint }],
     "view"
   >;
 
@@ -410,18 +372,15 @@ export interface VeANDE extends BaseContract {
     nameOrSignature: "UPGRADE_INTERFACE_VERSION",
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "WEEK",
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
     nameOrSignature: "andeToken",
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "balanceOf",
-  ): TypedContractMethod<[_user: AddressLike], [bigint], "view">;
+  ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "createLock",
   ): TypedContractMethod<
-    [_amount: BigNumberish, _unlockTime: BigNumberish],
+    [amount: BigNumberish, unlockTime: BigNumberish],
     [void],
     "nonpayable"
   >;
@@ -445,7 +404,7 @@ export interface VeANDE extends BaseContract {
   getFunction(
     nameOrSignature: "initialize",
   ): TypedContractMethod<
-    [_andeTokenAddress: AddressLike, _defaultAdmin: AddressLike],
+    [defaultAdmin: AddressLike, andeTokenAddress: AddressLike],
     [void],
     "nonpayable"
   >;
@@ -453,7 +412,7 @@ export interface VeANDE extends BaseContract {
     nameOrSignature: "lockedBalances",
   ): TypedContractMethod<
     [arg0: AddressLike],
-    [[bigint, bigint] & { amount: bigint; unlockTime: bigint }],
+    [[bigint, bigint] & { amount: bigint; end: bigint }],
     "view"
   >;
   getFunction(
@@ -495,13 +454,6 @@ export interface VeANDE extends BaseContract {
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: "LockCreated",
-  ): TypedContractEvent<
-    LockCreatedEvent.InputTuple,
-    LockCreatedEvent.OutputTuple,
-    LockCreatedEvent.OutputObject
-  >;
-  getEvent(
     key: "RoleAdminChanged",
   ): TypedContractEvent<
     RoleAdminChangedEvent.InputTuple,
@@ -529,13 +481,6 @@ export interface VeANDE extends BaseContract {
     UpgradedEvent.OutputTuple,
     UpgradedEvent.OutputObject
   >;
-  getEvent(
-    key: "Withdrawn",
-  ): TypedContractEvent<
-    WithdrawnEvent.InputTuple,
-    WithdrawnEvent.OutputTuple,
-    WithdrawnEvent.OutputObject
-  >;
 
   filters: {
     "Initialized(uint64)": TypedContractEvent<
@@ -547,17 +492,6 @@ export interface VeANDE extends BaseContract {
       InitializedEvent.InputTuple,
       InitializedEvent.OutputTuple,
       InitializedEvent.OutputObject
-    >;
-
-    "LockCreated(address,uint256,uint256)": TypedContractEvent<
-      LockCreatedEvent.InputTuple,
-      LockCreatedEvent.OutputTuple,
-      LockCreatedEvent.OutputObject
-    >;
-    LockCreated: TypedContractEvent<
-      LockCreatedEvent.InputTuple,
-      LockCreatedEvent.OutputTuple,
-      LockCreatedEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<
@@ -602,17 +536,6 @@ export interface VeANDE extends BaseContract {
       UpgradedEvent.InputTuple,
       UpgradedEvent.OutputTuple,
       UpgradedEvent.OutputObject
-    >;
-
-    "Withdrawn(address,uint256)": TypedContractEvent<
-      WithdrawnEvent.InputTuple,
-      WithdrawnEvent.OutputTuple,
-      WithdrawnEvent.OutputObject
-    >;
-    Withdrawn: TypedContractEvent<
-      WithdrawnEvent.InputTuple,
-      WithdrawnEvent.OutputTuple,
-      WithdrawnEvent.OutputObject
     >;
   };
 }

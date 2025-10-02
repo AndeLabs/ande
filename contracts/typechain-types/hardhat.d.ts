@@ -38,6 +38,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.ERC20Upgradeable__factory>;
     getContractFactory(
+      name: "ERC20BurnableUpgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions,
+    ): Promise<Contracts.ERC20BurnableUpgradeable__factory>;
+    getContractFactory(
       name: "ERC20PermitUpgradeable",
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.ERC20PermitUpgradeable__factory>;
@@ -66,17 +70,9 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.PausableUpgradeable__factory>;
     getContractFactory(
-      name: "AccessControl",
-      signerOrOptions?: ethers.Signer | FactoryOptions,
-    ): Promise<Contracts.AccessControl__factory>;
-    getContractFactory(
       name: "IAccessControl",
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.IAccessControl__factory>;
-    getContractFactory(
-      name: "Ownable",
-      signerOrOptions?: ethers.Signer | FactoryOptions,
-    ): Promise<Contracts.Ownable__factory>;
     getContractFactory(
       name: "IVotes",
       signerOrOptions?: ethers.Signer | FactoryOptions,
@@ -154,10 +150,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.Errors__factory>;
     getContractFactory(
-      name: "ERC165",
-      signerOrOptions?: ethers.Signer | FactoryOptions,
-    ): Promise<Contracts.ERC165__factory>;
-    getContractFactory(
       name: "IERC165",
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.IERC165__factory>;
@@ -165,10 +157,6 @@ declare module "hardhat/types/runtime" {
       name: "SafeCast",
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.SafeCast__factory>;
-    getContractFactory(
-      name: "Pausable",
-      signerOrOptions?: ethers.Signer | FactoryOptions,
-    ): Promise<Contracts.Pausable__factory>;
     getContractFactory(
       name: "Strings",
       signerOrOptions?: ethers.Signer | FactoryOptions,
@@ -185,6 +173,10 @@ declare module "hardhat/types/runtime" {
       name: "ANDEToken",
       signerOrOptions?: ethers.Signer | FactoryOptions,
     ): Promise<Contracts.ANDEToken__factory>;
+    getContractFactory(
+      name: "DualTrackBurnEngine",
+      signerOrOptions?: ethers.Signer | FactoryOptions,
+    ): Promise<Contracts.DualTrackBurnEngine__factory>;
     getContractFactory(
       name: "IOracle",
       signerOrOptions?: ethers.Signer | FactoryOptions,
@@ -229,6 +221,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer,
     ): Promise<Contracts.ERC20Upgradeable>;
     getContractAt(
+      name: "ERC20BurnableUpgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer,
+    ): Promise<Contracts.ERC20BurnableUpgradeable>;
+    getContractAt(
       name: "ERC20PermitUpgradeable",
       address: string | ethers.Addressable,
       signer?: ethers.Signer,
@@ -264,20 +261,10 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer,
     ): Promise<Contracts.PausableUpgradeable>;
     getContractAt(
-      name: "AccessControl",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer,
-    ): Promise<Contracts.AccessControl>;
-    getContractAt(
       name: "IAccessControl",
       address: string | ethers.Addressable,
       signer?: ethers.Signer,
     ): Promise<Contracts.IAccessControl>;
-    getContractAt(
-      name: "Ownable",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer,
-    ): Promise<Contracts.Ownable>;
     getContractAt(
       name: "IVotes",
       address: string | ethers.Addressable,
@@ -374,11 +361,6 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer,
     ): Promise<Contracts.Errors>;
     getContractAt(
-      name: "ERC165",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer,
-    ): Promise<Contracts.ERC165>;
-    getContractAt(
       name: "IERC165",
       address: string | ethers.Addressable,
       signer?: ethers.Signer,
@@ -388,11 +370,6 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer,
     ): Promise<Contracts.SafeCast>;
-    getContractAt(
-      name: "Pausable",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer,
-    ): Promise<Contracts.Pausable>;
     getContractAt(
       name: "Strings",
       address: string | ethers.Addressable,
@@ -413,6 +390,11 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer,
     ): Promise<Contracts.ANDEToken>;
+    getContractAt(
+      name: "DualTrackBurnEngine",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer,
+    ): Promise<Contracts.DualTrackBurnEngine>;
     getContractAt(
       name: "IOracle",
       address: string | ethers.Addressable,
@@ -454,6 +436,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.ERC20Upgradeable>;
     deployContract(
+      name: "ERC20BurnableUpgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
+    ): Promise<Contracts.ERC20BurnableUpgradeable>;
+    deployContract(
       name: "ERC20PermitUpgradeable",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.ERC20PermitUpgradeable>;
@@ -482,17 +468,9 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.PausableUpgradeable>;
     deployContract(
-      name: "AccessControl",
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.AccessControl>;
-    deployContract(
       name: "IAccessControl",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IAccessControl>;
-    deployContract(
-      name: "Ownable",
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.Ownable>;
     deployContract(
       name: "IVotes",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
@@ -570,10 +548,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.Errors>;
     deployContract(
-      name: "ERC165",
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.ERC165>;
-    deployContract(
       name: "IERC165",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IERC165>;
@@ -581,10 +555,6 @@ declare module "hardhat/types/runtime" {
       name: "SafeCast",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.SafeCast>;
-    deployContract(
-      name: "Pausable",
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.Pausable>;
     deployContract(
       name: "Strings",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
@@ -601,6 +571,10 @@ declare module "hardhat/types/runtime" {
       name: "ANDEToken",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.ANDEToken>;
+    deployContract(
+      name: "DualTrackBurnEngine",
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
+    ): Promise<Contracts.DualTrackBurnEngine>;
     deployContract(
       name: "IOracle",
       signerOrOptions?: ethers.Signer | DeployContractOptions,
@@ -645,6 +619,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.ERC20Upgradeable>;
     deployContract(
+      name: "ERC20BurnableUpgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
+    ): Promise<Contracts.ERC20BurnableUpgradeable>;
+    deployContract(
       name: "ERC20PermitUpgradeable",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions,
@@ -680,20 +659,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.PausableUpgradeable>;
     deployContract(
-      name: "AccessControl",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.AccessControl>;
-    deployContract(
       name: "IAccessControl",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.IAccessControl>;
-    deployContract(
-      name: "Ownable",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.Ownable>;
     deployContract(
       name: "IVotes",
       args: any[],
@@ -790,11 +759,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.Errors>;
     deployContract(
-      name: "ERC165",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.ERC165>;
-    deployContract(
       name: "IERC165",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions,
@@ -804,11 +768,6 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.SafeCast>;
-    deployContract(
-      name: "Pausable",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions,
-    ): Promise<Contracts.Pausable>;
     deployContract(
       name: "Strings",
       args: any[],
@@ -829,6 +788,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions,
     ): Promise<Contracts.ANDEToken>;
+    deployContract(
+      name: "DualTrackBurnEngine",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions,
+    ): Promise<Contracts.DualTrackBurnEngine>;
     deployContract(
       name: "IOracle",
       args: any[],

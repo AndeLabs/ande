@@ -5,7 +5,9 @@ import { ANDEToken } from "../typechain-types";
 
 describe("ANDEToken", function () {
   let andeToken: ANDEToken;
-  let owner: HardhatEthersSigner, minter: HardhatEthersSigner, otherAccount: HardhatEthersSigner;
+  let owner: HardhatEthersSigner,
+    minter: HardhatEthersSigner,
+    otherAccount: HardhatEthersSigner;
 
   beforeEach(async function () {
     [owner, minter, otherAccount] = await ethers.getSigners();
@@ -47,7 +49,9 @@ describe("ANDEToken", function () {
     it("Should allow the minter to mint tokens", async function () {
       const mintAmount = ethers.parseUnits("1000", 18);
       await andeToken.connect(minter).mint(otherAccount.address, mintAmount);
-      expect(await andeToken.balanceOf(otherAccount.address)).to.equal(mintAmount);
+      expect(await andeToken.balanceOf(otherAccount.address)).to.equal(
+        mintAmount,
+      );
     });
 
     it("Should NOT allow a non-minter to mint tokens", async function () {
@@ -65,26 +69,26 @@ describe("ANDEToken", function () {
     });
 
     it("Should NOT allow the admin to mint tokens if they don't have the minter role", async function () {
-        const mintAmount = ethers.parseUnits("1000", 18);
-        const MINTER_ROLE = await andeToken.MINTER_ROLE();
-  
-        // Granting admin role but not minter role to `owner`
-        await expect(
-          andeToken.connect(owner).mint(otherAccount.address, mintAmount),
+      const mintAmount = ethers.parseUnits("1000", 18);
+      const MINTER_ROLE = await andeToken.MINTER_ROLE();
+
+      // Granting admin role but not minter role to `owner`
+      await expect(
+        andeToken.connect(owner).mint(otherAccount.address, mintAmount),
+      )
+        .to.be.revertedWithCustomError(
+          andeToken,
+          "AccessControlUnauthorizedAccount",
         )
-          .to.be.revertedWithCustomError(
-            andeToken,
-            "AccessControlUnauthorizedAccount",
-          )
-          .withArgs(owner.address, MINTER_ROLE);
-      });
+        .withArgs(owner.address, MINTER_ROLE);
+    });
   });
 
   describe("Burning", function () {
     it("Should allow a token holder to burn their own tokens", async function () {
       const mintAmount = ethers.parseUnits("1000", 18);
       await andeToken.connect(minter).mint(otherAccount.address, mintAmount);
-      
+
       const initialBalance = await andeToken.balanceOf(otherAccount.address);
       const initialTotalSupply = await andeToken.totalSupply();
 

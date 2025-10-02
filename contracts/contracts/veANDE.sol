@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract veANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
+contract VeANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     struct LockedBalance {
@@ -16,7 +16,7 @@ contract veANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     }
 
     IERC20 public andeToken;
-    mapping(address => LockedBalance) public locked_balances;
+    mapping(address => LockedBalance) public lockedBalances;
 
     uint256 public constant MAX_LOCK_TIME = 4 * 365 days;
 
@@ -35,48 +35,48 @@ contract veANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
         andeToken = IERC20(andeTokenAddress);
     }
 
-    function create_lock(uint256 _amount, uint256 _unlock_time) external {
-        LockedBalance storage user_lock = locked_balances[msg.sender];
+    function createLock(uint256 amount, uint256 unlockTime) external {
+        LockedBalance storage userLock = lockedBalances[msg.sender];
 
-        if (user_lock.amount == 0) {
-            require(_amount > 0, "Amount must be positive for new locks");
+        if (userLock.amount == 0) {
+            require(amount > 0, "Amount must be positive for new locks");
         }
 
-        require(_unlock_time > block.timestamp, "Unlock time must be in the future");
+        require(unlockTime > block.timestamp, "Unlock time must be in the future");
 
-        if (user_lock.amount > 0) {
-            require(_unlock_time >= user_lock.end, "Cannot shorten lock time");
+        if (userLock.amount > 0) {
+            require(unlockTime >= userLock.end, "Cannot shorten lock time");
         }
 
-        uint256 lock_duration = _unlock_time - block.timestamp;
-        require(lock_duration <= MAX_LOCK_TIME, "Lock duration cannot exceed 4 years");
+        uint256 lockDuration = unlockTime - block.timestamp;
+        require(lockDuration <= MAX_LOCK_TIME, "Lock duration cannot exceed 4 years");
 
-        if (_amount > 0) {
-            andeToken.safeTransferFrom(msg.sender, address(this), _amount);
+        if (amount > 0) {
+            andeToken.safeTransferFrom(msg.sender, address(this), amount);
         }
 
-        user_lock.amount += _amount;
-        user_lock.end = _unlock_time;
+        userLock.amount += amount;
+        userLock.end = unlockTime;
     }
 
     function withdraw() external {
-        LockedBalance storage user_lock = locked_balances[msg.sender];
-        require(user_lock.amount > 0, "No lock found");
-        require(block.timestamp >= user_lock.end, "Lock has not expired");
+        LockedBalance storage userLock = lockedBalances[msg.sender];
+        require(userLock.amount > 0, "No lock found");
+        require(block.timestamp >= userLock.end, "Lock has not expired");
 
-        uint256 amount = user_lock.amount;
-        delete locked_balances[msg.sender];
+        uint256 amount = userLock.amount;
+        delete lockedBalances[msg.sender];
 
         andeToken.safeTransfer(msg.sender, amount);
     }
 
-    function balanceOf(address _owner) public view returns (uint256) {
-        LockedBalance storage user_lock = locked_balances[_owner];
-        if (user_lock.amount == 0 || block.timestamp >= user_lock.end) {
+    function balanceOf(address owner) public view returns (uint256) {
+        LockedBalance storage userLock = lockedBalances[owner];
+        if (userLock.amount == 0 || block.timestamp >= userLock.end) {
             return 0;
         }
-        uint256 time_remaining = user_lock.end - block.timestamp;
-        return user_lock.amount * time_remaining / MAX_LOCK_TIME;
+        uint256 timeRemaining = userLock.end - block.timestamp;
+        return userLock.amount * timeRemaining / MAX_LOCK_TIME;
     }
 
     // The following functions are required by UUPSUpgradeable.
@@ -84,5 +84,7 @@ contract veANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
         internal
         onlyRole(DEFAULT_ADMIN_ROLE)
         override
-    {}
+    {
+        newImplementation;
+    }
 }

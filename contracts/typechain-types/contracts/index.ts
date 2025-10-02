@@ -3,6 +3,7 @@
 /* eslint-disable */
 export type { ANDEToken } from "./ANDEToken";
 export type { AndeOracleAggregator } from "./AndeOracleAggregator";
+export type { DualTrackBurnEngine } from "./DualTrackBurnEngine";
 export type { IOracle } from "./IOracle";
 export type { TrustedRelayerOracle } from "./TrustedRelayerOracle";
 export type { VeANDE } from "./VeANDE";
