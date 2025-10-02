@@ -115,7 +115,7 @@ export class OwnableUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): OwnableUpgradeable {
     return new Contract(address, _abi, runner) as unknown as OwnableUpgradeable;
   }

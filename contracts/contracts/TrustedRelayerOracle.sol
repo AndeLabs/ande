@@ -5,19 +5,20 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./IOracle.sol";
+import "./security/Utils.sol";
 
 /**
  * @title TrustedRelayerOracle
  * @notice Oracle simple con relayers de confianza para bootstrap de Ande Chain
- * @dev Refactorizado para ser "upgrade-safe" usando un inicializador en lugar de un constructor.
+ * @dev Refactorizado para ser "upgrade-safe". Lógica de Circuit Breaker desactivada temporalmente.
  */
-contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, PausableUpgradeable, IOracle {
+contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, PausableUpgradeable, IOracle, RateLimiter { // CircuitBreaker removed
     
-    // ============ ROLES ============    
+    using PriceValidator for PriceValidator.PriceData;
+
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     
-    // ============ STRUCTURES ============    
     struct PriceData {
         uint256 price;
         uint256 timestamp;
@@ -33,26 +34,22 @@ contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, Pausab
         string endpoint;
     }
     
-    // ============ STORAGE ============    
     mapping(bytes32 => PriceData) public prices;
     mapping(address => RelayerInfo) public relayers;
     mapping(bytes32 => mapping(address => uint256)) public relayerPrices;
     
     uint256 public constant MAX_PRICE_AGE = 5 minutes;
     uint256 public constant MIN_RELAYERS = 2;
-    uint256 public constant MAX_DEVIATION = 500;
     
     uint256 public totalRelayers;
     uint256 public totalUpdates;
     
-    // ============ EVENTS ============    
     event PriceUpdated(bytes32 indexed pairId, uint256 price, uint256 timestamp, address indexed relayer);
     event RelayerAdded(address indexed relayer, string endpoint);
     event RelayerRemoved(address indexed relayer);
     event RelayerPaused(address indexed relayer);
     event PriceDeviation(bytes32 indexed pairId, uint256 oldPrice, uint256 newPrice, uint256 deviation);
     
-    // ============ ERRORS ============    
     error OnlyRelayer();
     error PriceStale();
     error InvalidPrice();
@@ -60,10 +57,6 @@ contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, Pausab
     error NotEnoughRelayers();
     error RelayerAlreadyExists();
     
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
 
     function initialize() public initializer {
         __AccessControl_init();
@@ -72,24 +65,16 @@ contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, Pausab
         _grantRole(ADMIN_ROLE, msg.sender);
     }
     
-    // ============ RELAYER MANAGEMENT ============    
-    function addRelayer(address relayer, string calldata endpoint) 
-        external 
-        onlyRole(ADMIN_ROLE) 
-    {
+    function addRelayer(address relayer, string calldata endpoint) external onlyRole(ADMIN_ROLE) {
         if (hasRole(RELAYER_ROLE, relayer)) revert RelayerAlreadyExists();
-        
         _grantRole(RELAYER_ROLE, relayer);
-        
         relayers[relayer] = RelayerInfo({
             isActive: true,
             totalUpdates: 0,
             lastUpdate: 0,
             endpoint: endpoint
         });
-        
         totalRelayers++;
-        
         emit RelayerAdded(relayer, endpoint);
     }
     
@@ -97,29 +82,23 @@ contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, Pausab
         _revokeRole(RELAYER_ROLE, relayer);
         relayers[relayer].isActive = false;
         totalRelayers--;
-        
         emit RelayerRemoved(relayer);
     }
     
-    // ============ PRICE UPDATES ============    
-    function updatePrice(bytes32 pairId, uint256 newPrice) 
-        public 
-        onlyRole(RELAYER_ROLE)
-        whenNotPaused 
-    {
-        if (newPrice == 0) revert InvalidPrice();
+    function updatePrice(bytes32 pairId, uint256 newPrice) public onlyRole(RELAYER_ROLE) whenNotPaused rateLimit {
+        PriceValidator.PriceData memory priceToValidate = PriceValidator.PriceData({
+            price: newPrice,
+            timestamp: block.timestamp,
+            confidence: 10000
+        });
+        require(priceToValidate.validatePrice(), "Invalid price data");
+
         if (!relayers[msg.sender].isActive) revert OnlyRelayer();
-        
+
         PriceData storage data = prices[pairId];
-        
-        if (data.price > 0) {
-            uint256 deviation = _calculateDeviation(data.price, newPrice);
-            
-            if (deviation > MAX_DEVIATION) {
-                emit PriceDeviation(pairId, data.price, newPrice, deviation);
-            }
-        }
-        
+
+        // NOTE: Lógica de Circuit Breaker desactivada temporalmente.
+
         data.price = newPrice;
         data.timestamp = block.timestamp;
         data.blockNumber = block.number;
@@ -141,100 +120,42 @@ contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, Pausab
         uint256[] calldata newPrices
     ) external onlyRole(RELAYER_ROLE) whenNotPaused {
         require(pairIds.length == newPrices.length, "Length mismatch");
-        
         for (uint256 i = 0; i < pairIds.length; i++) {
             updatePrice(pairIds[i], newPrices[i]);
         }
     }
     
-    // ============ GETTERS ============    
     function getPrice(bytes32 pairId) external view override returns (uint256 price) {
         PriceData memory data = prices[pairId];
-        
         if (data.price == 0) revert InvalidPrice();
-        
-        if (block.timestamp - data.timestamp > MAX_PRICE_AGE) {
-            revert PriceStale();
-        }
-        
+        if (block.timestamp - data.timestamp > MAX_PRICE_AGE) revert PriceStale();
         return data.price;
     }
     
-    function getPriceWithMetadata(bytes32 pairId) 
-        external 
-        view 
-        override
-        returns (
-            uint256 price,
-            uint256 timestamp,
-            bool isStale,
-            address source
-        ) 
-    {
+    function getPriceWithMetadata(bytes32 pairId) external view override returns (uint256 price, uint256 timestamp, bool isStale, address source) {
         PriceData memory data = prices[pairId];
-        
         isStale = block.timestamp - data.timestamp > MAX_PRICE_AGE;
-        
         return (data.price, data.timestamp, isStale, data.relayer);
     }
     
-    function getAggregatedPrice(bytes32 pairId) 
-        external 
-        view 
-        returns (uint256 price, uint256 confidence) 
-    {
-        // (Lógica de agregación real pendiente de implementación)
+    function getAggregatedPrice(bytes32 pairId) external view returns (uint256 price, uint256 confidence) {
         PriceData memory data = prices[pairId];
-        
         if (data.price == 0) revert InvalidPrice();
-        if (block.timestamp - data.timestamp > MAX_PRICE_AGE) {
-            revert PriceStale();
-        }
-        
+        if (block.timestamp - data.timestamp > MAX_PRICE_AGE) revert PriceStale();
         return (data.price, 10000);
     }
     
-    // ============ UTILITIES ============    
-    function getPairId(string calldata base, string calldata quote) 
-        external 
-        pure 
-        returns (bytes32) 
-    {
+    function getPairId(string calldata base, string calldata quote) external pure returns (bytes32) {
         return keccak256(abi.encodePacked(base, "/", quote));
     }
     
-    function _calculateDeviation(uint256 oldPrice, uint256 newPrice) 
-        internal 
-        pure 
-        returns (uint256 deviation) 
-    {
-        if (oldPrice == 0) return 0;
-        
-        uint256 diff = newPrice > oldPrice 
-            ? newPrice - oldPrice 
-            : oldPrice - newPrice;
-        
-        return (diff * 10000) / oldPrice;
-    }
-    
-    function getSystemHealth() 
-        external 
-        view 
-        returns (
-            bool isHealthy,
-            uint256 activeRelayers,
-            uint256 stalePairs
-        ) 
-    {
+    function getSystemHealth() external view returns (bool isHealthy, uint256 activeRelayers, uint256 stalePairs) {
         activeRelayers = totalRelayers;
         isHealthy = activeRelayers >= MIN_RELAYERS && !paused();
-        
         stalePairs = 0;
-        
         return (isHealthy, activeRelayers, stalePairs);
     }
     
-    // ============ EMERGENCY ============    
     function pause() external onlyRole(ADMIN_ROLE) {
         _pause();
     }

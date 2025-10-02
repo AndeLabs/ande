@@ -36,7 +36,7 @@ type AddressConstructorParams =
   | ConstructorParameters<typeof ContractFactory>;
 
 const isSuperArgs = (
-  xs: AddressConstructorParams,
+  xs: AddressConstructorParams
 ): xs is ConstructorParameters<typeof ContractFactory> => xs.length > 1;
 
 export class Address__factory extends ContractFactory {
@@ -49,7 +49,7 @@ export class Address__factory extends ContractFactory {
   }
 
   override getDeployTransaction(
-    overrides?: NonPayableOverrides & { from?: string },
+    overrides?: NonPayableOverrides & { from?: string }
   ): Promise<ContractDeployTransaction> {
     return super.getDeployTransaction(overrides || {});
   }

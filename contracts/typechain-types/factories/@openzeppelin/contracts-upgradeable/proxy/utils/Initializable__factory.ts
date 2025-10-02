@@ -41,7 +41,7 @@ export class Initializable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): Initializable {
     return new Contract(address, _abi, runner) as unknown as Initializable;
   }

@@ -211,7 +211,7 @@ export class IAccessControl__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): IAccessControl {
     return new Contract(address, _abi, runner) as unknown as IAccessControl;
   }

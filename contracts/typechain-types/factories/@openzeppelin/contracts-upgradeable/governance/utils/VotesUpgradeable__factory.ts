@@ -413,7 +413,7 @@ export class VotesUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): VotesUpgradeable {
     return new Contract(address, _abi, runner) as unknown as VotesUpgradeable;
   }

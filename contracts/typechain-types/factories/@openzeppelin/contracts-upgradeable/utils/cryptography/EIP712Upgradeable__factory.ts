@@ -90,7 +90,7 @@ export class EIP712Upgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): EIP712Upgradeable {
     return new Contract(address, _abi, runner) as unknown as EIP712Upgradeable;
   }

@@ -63,7 +63,7 @@ type ERC1967UtilsConstructorParams =
   | ConstructorParameters<typeof ContractFactory>;
 
 const isSuperArgs = (
-  xs: ERC1967UtilsConstructorParams,
+  xs: ERC1967UtilsConstructorParams
 ): xs is ConstructorParameters<typeof ContractFactory> => xs.length > 1;
 
 export class ERC1967Utils__factory extends ContractFactory {
@@ -76,7 +76,7 @@ export class ERC1967Utils__factory extends ContractFactory {
   }
 
   override getDeployTransaction(
-    overrides?: NonPayableOverrides & { from?: string },
+    overrides?: NonPayableOverrides & { from?: string }
   ): Promise<ContractDeployTransaction> {
     return super.getDeployTransaction(overrides || {});
   }
@@ -98,7 +98,7 @@ export class ERC1967Utils__factory extends ContractFactory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): ERC1967Utils {
     return new Contract(address, _abi, runner) as unknown as ERC1967Utils;
   }

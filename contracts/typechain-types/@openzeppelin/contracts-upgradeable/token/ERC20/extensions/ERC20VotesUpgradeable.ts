@@ -58,7 +58,7 @@ export interface ERC20VotesUpgradeableInterface extends Interface {
       | "symbol"
       | "totalSupply"
       | "transfer"
-      | "transferFrom",
+      | "transferFrom"
   ): FunctionFragment;
 
   getEvent(
@@ -68,34 +68,34 @@ export interface ERC20VotesUpgradeableInterface extends Interface {
       | "DelegateVotesChanged"
       | "EIP712DomainChanged"
       | "Initialized"
-      | "Transfer",
+      | "Transfer"
   ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "CLOCK_MODE",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "allowance",
-    values: [AddressLike, AddressLike],
+    values: [AddressLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "approve",
-    values: [AddressLike, BigNumberish],
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "balanceOf",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "checkpoints",
-    values: [AddressLike, BigNumberish],
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "clock", values?: undefined): string;
   encodeFunctionData(functionFragment: "decimals", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "delegate",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "delegateBySig",
@@ -105,47 +105,47 @@ export interface ERC20VotesUpgradeableInterface extends Interface {
       BigNumberish,
       BigNumberish,
       BytesLike,
-      BytesLike,
-    ],
+      BytesLike
+    ]
   ): string;
   encodeFunctionData(
     functionFragment: "delegates",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "eip712Domain",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "getPastTotalSupply",
-    values: [BigNumberish],
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getPastVotes",
-    values: [AddressLike, BigNumberish],
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getVotes",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
   encodeFunctionData(functionFragment: "nonces", values: [AddressLike]): string;
   encodeFunctionData(
     functionFragment: "numCheckpoints",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(functionFragment: "symbol", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "totalSupply",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "transfer",
-    values: [AddressLike, BigNumberish],
+    values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "transferFrom",
-    values: [AddressLike, AddressLike, BigNumberish],
+    values: [AddressLike, AddressLike, BigNumberish]
   ): string;
 
   decodeFunctionResult(functionFragment: "CLOCK_MODE", data: BytesLike): Result;
@@ -154,44 +154,44 @@ export interface ERC20VotesUpgradeableInterface extends Interface {
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "checkpoints",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "clock", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "delegate", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "delegateBySig",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "delegates", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "eip712Domain",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "getPastTotalSupply",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "getPastVotes",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getVotes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "nonces", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "numCheckpoints",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "symbol", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "totalSupply",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "transferFrom",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
 }
 
@@ -199,7 +199,7 @@ export namespace ApprovalEvent {
   export type InputTuple = [
     owner: AddressLike,
     spender: AddressLike,
-    value: BigNumberish,
+    value: BigNumberish
   ];
   export type OutputTuple = [owner: string, spender: string, value: bigint];
   export interface OutputObject {
@@ -217,12 +217,12 @@ export namespace DelegateChangedEvent {
   export type InputTuple = [
     delegator: AddressLike,
     fromDelegate: AddressLike,
-    toDelegate: AddressLike,
+    toDelegate: AddressLike
   ];
   export type OutputTuple = [
     delegator: string,
     fromDelegate: string,
-    toDelegate: string,
+    toDelegate: string
   ];
   export interface OutputObject {
     delegator: string;
@@ -239,12 +239,12 @@ export namespace DelegateVotesChangedEvent {
   export type InputTuple = [
     delegate: AddressLike,
     previousVotes: BigNumberish,
-    newVotes: BigNumberish,
+    newVotes: BigNumberish
   ];
   export type OutputTuple = [
     delegate: string,
     previousVotes: bigint,
-    newVotes: bigint,
+    newVotes: bigint
   ];
   export interface OutputObject {
     delegate: string;
@@ -283,7 +283,7 @@ export namespace TransferEvent {
   export type InputTuple = [
     from: AddressLike,
     to: AddressLike,
-    value: BigNumberish,
+    value: BigNumberish
   ];
   export type OutputTuple = [from: string, to: string, value: bigint];
   export interface OutputObject {
@@ -306,38 +306,38 @@ export interface ERC20VotesUpgradeable extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
   CLOCK_MODE: TypedContractMethod<[], [string], "view">;
@@ -375,7 +375,7 @@ export interface ERC20VotesUpgradeable extends BaseContract {
       expiry: BigNumberish,
       v: BigNumberish,
       r: BytesLike,
-      s: BytesLike,
+      s: BytesLike
     ],
     [void],
     "nonpayable"
@@ -394,7 +394,7 @@ export interface ERC20VotesUpgradeable extends BaseContract {
         verifyingContract: string;
         salt: string;
         extensions: bigint[];
-      },
+      }
     ],
     "view"
   >;
@@ -436,47 +436,47 @@ export interface ERC20VotesUpgradeable extends BaseContract {
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "CLOCK_MODE",
+    nameOrSignature: "CLOCK_MODE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "allowance",
+    nameOrSignature: "allowance"
   ): TypedContractMethod<
     [owner: AddressLike, spender: AddressLike],
     [bigint],
     "view"
   >;
   getFunction(
-    nameOrSignature: "approve",
+    nameOrSignature: "approve"
   ): TypedContractMethod<
     [spender: AddressLike, value: BigNumberish],
     [boolean],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "balanceOf",
+    nameOrSignature: "balanceOf"
   ): TypedContractMethod<[account: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "checkpoints",
+    nameOrSignature: "checkpoints"
   ): TypedContractMethod<
     [account: AddressLike, pos: BigNumberish],
     [Checkpoints.Checkpoint208StructOutput],
     "view"
   >;
   getFunction(
-    nameOrSignature: "clock",
+    nameOrSignature: "clock"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "decimals",
+    nameOrSignature: "decimals"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "delegate",
+    nameOrSignature: "delegate"
   ): TypedContractMethod<[delegatee: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "delegateBySig",
+    nameOrSignature: "delegateBySig"
   ): TypedContractMethod<
     [
       delegatee: AddressLike,
@@ -484,15 +484,17 @@ export interface ERC20VotesUpgradeable extends BaseContract {
       expiry: BigNumberish,
       v: BigNumberish,
       r: BytesLike,
-      s: BytesLike,
+      s: BytesLike
     ],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "delegates",
+    nameOrSignature: "delegates"
   ): TypedContractMethod<[account: AddressLike], [string], "view">;
-  getFunction(nameOrSignature: "eip712Domain"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "eip712Domain"
+  ): TypedContractMethod<
     [],
     [
       [string, string, string, bigint, string, string, bigint[]] & {
@@ -503,47 +505,47 @@ export interface ERC20VotesUpgradeable extends BaseContract {
         verifyingContract: string;
         salt: string;
         extensions: bigint[];
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "getPastTotalSupply",
+    nameOrSignature: "getPastTotalSupply"
   ): TypedContractMethod<[timepoint: BigNumberish], [bigint], "view">;
   getFunction(
-    nameOrSignature: "getPastVotes",
+    nameOrSignature: "getPastVotes"
   ): TypedContractMethod<
     [account: AddressLike, timepoint: BigNumberish],
     [bigint],
     "view"
   >;
   getFunction(
-    nameOrSignature: "getVotes",
+    nameOrSignature: "getVotes"
   ): TypedContractMethod<[account: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "name",
+    nameOrSignature: "name"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "nonces",
+    nameOrSignature: "nonces"
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "numCheckpoints",
+    nameOrSignature: "numCheckpoints"
   ): TypedContractMethod<[account: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "symbol",
+    nameOrSignature: "symbol"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "totalSupply",
+    nameOrSignature: "totalSupply"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "transfer",
+    nameOrSignature: "transfer"
   ): TypedContractMethod<
     [to: AddressLike, value: BigNumberish],
     [boolean],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "transferFrom",
+    nameOrSignature: "transferFrom"
   ): TypedContractMethod<
     [from: AddressLike, to: AddressLike, value: BigNumberish],
     [boolean],
@@ -551,42 +553,42 @@ export interface ERC20VotesUpgradeable extends BaseContract {
   >;
 
   getEvent(
-    key: "Approval",
+    key: "Approval"
   ): TypedContractEvent<
     ApprovalEvent.InputTuple,
     ApprovalEvent.OutputTuple,
     ApprovalEvent.OutputObject
   >;
   getEvent(
-    key: "DelegateChanged",
+    key: "DelegateChanged"
   ): TypedContractEvent<
     DelegateChangedEvent.InputTuple,
     DelegateChangedEvent.OutputTuple,
     DelegateChangedEvent.OutputObject
   >;
   getEvent(
-    key: "DelegateVotesChanged",
+    key: "DelegateVotesChanged"
   ): TypedContractEvent<
     DelegateVotesChangedEvent.InputTuple,
     DelegateVotesChangedEvent.OutputTuple,
     DelegateVotesChangedEvent.OutputObject
   >;
   getEvent(
-    key: "EIP712DomainChanged",
+    key: "EIP712DomainChanged"
   ): TypedContractEvent<
     EIP712DomainChangedEvent.InputTuple,
     EIP712DomainChangedEvent.OutputTuple,
     EIP712DomainChangedEvent.OutputObject
   >;
   getEvent(
-    key: "Initialized",
+    key: "Initialized"
   ): TypedContractEvent<
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: "Transfer",
+    key: "Transfer"
   ): TypedContractEvent<
     TransferEvent.InputTuple,
     TransferEvent.OutputTuple,

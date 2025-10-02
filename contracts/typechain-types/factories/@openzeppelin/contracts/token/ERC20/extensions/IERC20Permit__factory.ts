@@ -93,7 +93,7 @@ export class IERC20Permit__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null,
+    runner?: ContractRunner | null
   ): IERC20Permit {
     return new Contract(address, _abi, runner) as unknown as IERC20Permit;
   }

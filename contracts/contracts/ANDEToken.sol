@@ -9,6 +9,7 @@ import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/
 import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 contract ANDEToken is
     Initializable,
@@ -17,7 +18,8 @@ contract ANDEToken is
     UUPSUpgradeable,
     ERC20PermitUpgradeable,
     ERC20VotesUpgradeable,
-    ERC20BurnableUpgradeable
+    ERC20BurnableUpgradeable,
+    PausableUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -34,12 +36,22 @@ contract ANDEToken is
         __ERC20Permit_init("ANDE Token");
         __ERC20Votes_init();
         __ERC20Burnable_init();
+        __Pausable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
+        _grantRole(PAUSER_ROLE, defaultAdmin);
     }
 
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function pause() public onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
+
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) whenNotPaused {
         _mint(to, amount);
     }
 
@@ -66,6 +78,7 @@ contract ANDEToken is
     function _update(address from, address to, uint256 value)
         internal
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
+        whenNotPaused
     {
         super._update(from, to, value);
     }

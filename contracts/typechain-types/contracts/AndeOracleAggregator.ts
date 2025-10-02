@@ -23,23 +23,47 @@ import type {
   TypedContractMethod,
 } from "../common";
 
+export declare namespace AndeOracleAggregator {
+  export type OracleSourceStruct = {
+    oracle: AddressLike;
+    weight: BigNumberish;
+    isActive: boolean;
+    priority: BigNumberish;
+    name: string;
+  };
+
+  export type OracleSourceStructOutput = [
+    oracle: string,
+    weight: bigint,
+    isActive: boolean,
+    priority: bigint,
+    name: string
+  ] & {
+    oracle: string;
+    weight: bigint;
+    isActive: boolean;
+    priority: bigint;
+    name: string;
+  };
+}
+
 export interface AndeOracleAggregatorInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "CACHE_DURATION"
-      | "MAX_DEVIATION"
       | "MIN_SOURCES"
       | "addSource"
       | "deactivateSource"
       | "getPrice"
       | "getPriceWithConfidence"
+      | "getSourcesForPair"
       | "initialize"
       | "owner"
       | "renounceOwnership"
       | "sources"
       | "transferOwnership"
       | "updateCache"
-      | "updateSourceWeight",
+      | "updateSourceWeight"
   ): FunctionFragment;
 
   getEvent(
@@ -50,100 +74,100 @@ export interface AndeOracleAggregatorInterface extends Interface {
       | "PriceAggregated"
       | "SourceAdded"
       | "SourceRemoved"
-      | "SourceUpdated",
+      | "SourceUpdated"
   ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "CACHE_DURATION",
-    values?: undefined,
-  ): string;
-  encodeFunctionData(
-    functionFragment: "MAX_DEVIATION",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "MIN_SOURCES",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "addSource",
-    values: [BytesLike, AddressLike, BigNumberish, BigNumberish, string],
+    values: [BytesLike, AddressLike, BigNumberish, BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "deactivateSource",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(functionFragment: "getPrice", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "getPriceWithConfidence",
-    values: [BytesLike],
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getSourcesForPair",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "initialize",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "renounceOwnership",
-    values?: undefined,
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "sources",
-    values: [BytesLike, BigNumberish],
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "transferOwnership",
-    values: [AddressLike],
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "updateCache",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "updateSourceWeight",
-    values: [BytesLike, AddressLike, BigNumberish],
+    values: [BytesLike, AddressLike, BigNumberish]
   ): string;
 
   decodeFunctionResult(
     functionFragment: "CACHE_DURATION",
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "MAX_DEVIATION",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "MIN_SOURCES",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "addSource", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "deactivateSource",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getPrice", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getPriceWithConfidence",
-    data: BytesLike,
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getSourcesForPair",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceOwnership",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "sources", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "transferOwnership",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "updateCache",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "updateSourceWeight",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
 }
 
@@ -165,14 +189,14 @@ export namespace OutlierDetectedEvent {
     oracle: AddressLike,
     price: BigNumberish,
     medianPrice: BigNumberish,
-    deviation: BigNumberish,
+    deviation: BigNumberish
   ];
   export type OutputTuple = [
     pairId: string,
     oracle: string,
     price: bigint,
     medianPrice: bigint,
-    deviation: bigint,
+    deviation: bigint
   ];
   export interface OutputObject {
     pairId: string;
@@ -205,13 +229,13 @@ export namespace PriceAggregatedEvent {
     pairId: BytesLike,
     price: BigNumberish,
     confidence: BigNumberish,
-    sourcesUsed: BigNumberish,
+    sourcesUsed: BigNumberish
   ];
   export type OutputTuple = [
     pairId: string,
     price: bigint,
     confidence: bigint,
-    sourcesUsed: bigint,
+    sourcesUsed: bigint
   ];
   export interface OutputObject {
     pairId: string;
@@ -230,13 +254,13 @@ export namespace SourceAddedEvent {
     pairId: BytesLike,
     oracle: AddressLike,
     weight: BigNumberish,
-    name: string,
+    name: string
   ];
   export type OutputTuple = [
     pairId: string,
     oracle: string,
     weight: bigint,
-    name: string,
+    name: string
   ];
   export interface OutputObject {
     pairId: string;
@@ -267,7 +291,7 @@ export namespace SourceUpdatedEvent {
   export type InputTuple = [
     pairId: BytesLike,
     oracle: AddressLike,
-    newWeight: BigNumberish,
+    newWeight: BigNumberish
   ];
   export type OutputTuple = [pairId: string, oracle: string, newWeight: bigint];
   export interface OutputObject {
@@ -290,43 +314,41 @@ export interface AndeOracleAggregator extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
   CACHE_DURATION: TypedContractMethod<[], [bigint], "view">;
-
-  MAX_DEVIATION: TypedContractMethod<[], [bigint], "view">;
 
   MIN_SOURCES: TypedContractMethod<[], [bigint], "view">;
 
@@ -336,7 +358,7 @@ export interface AndeOracleAggregator extends BaseContract {
       oracle: AddressLike,
       weight: BigNumberish,
       priority: BigNumberish,
-      name: string,
+      name: string
     ],
     [void],
     "nonpayable"
@@ -357,8 +379,14 @@ export interface AndeOracleAggregator extends BaseContract {
         price: bigint;
         confidence: bigint;
         sourcesUsed: bigint;
-      },
+      }
     ],
+    "view"
+  >;
+
+  getSourcesForPair: TypedContractMethod<
+    [pairId: BytesLike],
+    [AndeOracleAggregator.OracleSourceStructOutput[]],
     "view"
   >;
 
@@ -377,7 +405,7 @@ export interface AndeOracleAggregator extends BaseContract {
         isActive: boolean;
         priority: bigint;
         name: string;
-      },
+      }
     ],
     "view"
   >;
@@ -397,62 +425,70 @@ export interface AndeOracleAggregator extends BaseContract {
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "CACHE_DURATION",
+    nameOrSignature: "CACHE_DURATION"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "MAX_DEVIATION",
+    nameOrSignature: "MIN_SOURCES"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "MIN_SOURCES",
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "addSource",
+    nameOrSignature: "addSource"
   ): TypedContractMethod<
     [
       pairId: BytesLike,
       oracle: AddressLike,
       weight: BigNumberish,
       priority: BigNumberish,
-      name: string,
+      name: string
     ],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "deactivateSource",
+    nameOrSignature: "deactivateSource"
   ): TypedContractMethod<
     [pairId: BytesLike, oracle: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "getPrice",
+    nameOrSignature: "getPrice"
   ): TypedContractMethod<[pairId: BytesLike], [bigint], "view">;
-  getFunction(nameOrSignature: "getPriceWithConfidence"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "getPriceWithConfidence"
+  ): TypedContractMethod<
     [pairId: BytesLike],
     [
       [bigint, bigint, bigint] & {
         price: bigint;
         confidence: bigint;
         sourcesUsed: bigint;
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "initialize",
+    nameOrSignature: "getSourcesForPair"
+  ): TypedContractMethod<
+    [pairId: BytesLike],
+    [AndeOracleAggregator.OracleSourceStructOutput[]],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "initialize"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "owner",
+    nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "renounceOwnership",
+    nameOrSignature: "renounceOwnership"
   ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(nameOrSignature: "sources"): TypedContractMethod<
+  getFunction(
+    nameOrSignature: "sources"
+  ): TypedContractMethod<
     [arg0: BytesLike, arg1: BigNumberish],
     [
       [string, bigint, boolean, bigint, string] & {
@@ -461,18 +497,18 @@ export interface AndeOracleAggregator extends BaseContract {
         isActive: boolean;
         priority: bigint;
         name: string;
-      },
+      }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "transferOwnership",
+    nameOrSignature: "transferOwnership"
   ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "updateCache",
+    nameOrSignature: "updateCache"
   ): TypedContractMethod<[pairId: BytesLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "updateSourceWeight",
+    nameOrSignature: "updateSourceWeight"
   ): TypedContractMethod<
     [pairId: BytesLike, oracle: AddressLike, newWeight: BigNumberish],
     [void],
@@ -480,49 +516,49 @@ export interface AndeOracleAggregator extends BaseContract {
   >;
 
   getEvent(
-    key: "Initialized",
+    key: "Initialized"
   ): TypedContractEvent<
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: "OutlierDetected",
+    key: "OutlierDetected"
   ): TypedContractEvent<
     OutlierDetectedEvent.InputTuple,
     OutlierDetectedEvent.OutputTuple,
     OutlierDetectedEvent.OutputObject
   >;
   getEvent(
-    key: "OwnershipTransferred",
+    key: "OwnershipTransferred"
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
-    key: "PriceAggregated",
+    key: "PriceAggregated"
   ): TypedContractEvent<
     PriceAggregatedEvent.InputTuple,
     PriceAggregatedEvent.OutputTuple,
     PriceAggregatedEvent.OutputObject
   >;
   getEvent(
-    key: "SourceAdded",
+    key: "SourceAdded"
   ): TypedContractEvent<
     SourceAddedEvent.InputTuple,
     SourceAddedEvent.OutputTuple,
     SourceAddedEvent.OutputObject
   >;
   getEvent(
-    key: "SourceRemoved",
+    key: "SourceRemoved"
   ): TypedContractEvent<
     SourceRemovedEvent.InputTuple,
     SourceRemovedEvent.OutputTuple,
     SourceRemovedEvent.OutputObject
   >;
   getEvent(
-    key: "SourceUpdated",
+    key: "SourceUpdated"
   ): TypedContractEvent<
     SourceUpdatedEvent.InputTuple,
     SourceUpdatedEvent.OutputTuple,

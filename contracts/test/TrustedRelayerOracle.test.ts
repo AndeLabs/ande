@@ -2,48 +2,23 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { TrustedRelayerOracle } from "../typechain-types";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("TrustedRelayerOracle Contract", function () {
   let oracle: TrustedRelayerOracle;
-  let owner: ethers.Wallet, user1: ethers.Wallet, relayer1: ethers.Wallet;
+  let owner: HardhatEthersSigner,
+    user1: HardhatEthersSigner,
+    relayer1: HardhatEthersSigner;
 
   beforeEach(async function () {
-    const provider = ethers.provider;
-    const [fundedSigner] = await ethers.getSigners();
+    [owner, user1, relayer1] = await ethers.getSigners();
 
-    // Crear billeteras desde las llaves privadas del .env
-    owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-    user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
-    relayer1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
-
-    // Fund the owner account from the Hardhat Network's pre-funded account
-    await (
-      await fundedSigner.sendTransaction({
-        to: owner.address,
-        value: ethers.parseEther("100.0"),
-      })
-    ).wait();
-
-    // Fondear cuentas de prueba con gas
-    await (
-      await owner.sendTransaction({
-        to: user1.address,
-        value: ethers.parseEther("1.0"),
-      })
-    ).wait();
-    await (
-      await owner.sendTransaction({
-        to: relayer1.address,
-        value: ethers.parseEther("1.0"),
-      })
-    ).wait();
-
-    // Desplegar el oráculo usando deployProxy para compatibilidad del entorno
     const OracleFactory = await ethers.getContractFactory(
       "TrustedRelayerOracle",
       owner,
     );
     oracle = (await upgrades.deployProxy(OracleFactory, [], {
+      initializer: "initialize",
       kind: "transparent",
     })) as unknown as TrustedRelayerOracle;
     await oracle.waitForDeployment();
@@ -59,20 +34,21 @@ describe("TrustedRelayerOracle Contract", function () {
   describe("Relayer Management", function () {
     it("should allow admin to add a relayer", async function () {
       const relayerRole = await oracle.RELAYER_ROLE();
-      await (
-        await oracle
+      await expect(
+        oracle
           .connect(owner)
-          .addRelayer(relayer1.address, "https://api.example.com/data")
-      ).wait();
+          .addRelayer(relayer1.address, "https://api.example.com/data"),
+      ).to.not.be.reverted;
       expect(await oracle.hasRole(relayerRole, relayer1.address)).to.be.true;
     });
 
     it("should NOT allow a non-admin to add a relayer", async function () {
+      const adminRole = await oracle.ADMIN_ROLE();
       await expect(
         oracle
           .connect(user1)
-          .addRelayer(relayer1.address, "https://api.example.com/data"),
-      ).to.be.reverted;
+  .addRelayer(relayer1.address, "https://api.example.com/data"),
+      ).to.be.revertedWithCustomError(oracle, "AccessControlUnauthorizedAccount").withArgs(user1.address, adminRole);
     });
   });
 
@@ -82,30 +58,46 @@ describe("TrustedRelayerOracle Contract", function () {
 
     beforeEach(async function () {
       // Add relayer1 as a relayer for these tests
-      await (
-        await oracle
-          .connect(owner)
-          .addRelayer(relayer1.address, "https://api.example.com/data")
-      ).wait();
+      await oracle
+        .connect(owner)
+        .addRelayer(relayer1.address, "https://api.example.com/data");
     });
 
     it("should allow a relayer to update a price", async function () {
-      await (await oracle.connect(relayer1).updatePrice(pairId, price)).wait();
+      await expect(oracle.connect(relayer1).updatePrice(pairId, price)).to.not.be
+        .reverted;
       const priceData = await oracle.prices(pairId);
       expect(priceData.price).to.equal(price);
     });
 
     it("should NOT allow a non-relayer to update a price", async function () {
-      await expect(oracle.connect(user1).updatePrice(pairId, price)).to.be
-        .reverted;
+      const relayerRole = await oracle.RELAYER_ROLE();
+      await expect(
+        oracle.connect(user1).updatePrice(pairId, price),
+      ).to.be.revertedWithCustomError(oracle, "AccessControlUnauthorizedAccount").withArgs(user1.address, relayerRole);
     });
 
-    it("should revert if price is stale", async function () {
-      await (await oracle.connect(relayer1).updatePrice(pairId, price)).wait();
 
-      // Advance time (this will require Hardhat Network, not localhost)
-      // For now, we test the principle by checking a fresh price doesn't revert
-      await expect(oracle.getPrice(pairId)).to.not.be.reverted;
+    it("should revert if price is stale", async function () {
+      await oracle.connect(relayer1).updatePrice(pairId, price);
+
+      // Advance time by more than MAX_PRICE_AGE (5 minutes)
+      const MAX_PRICE_AGE = await oracle.MAX_PRICE_AGE();
+      await time.increase(MAX_PRICE_AGE + 1n);
+
+      await expect(oracle.getPrice(pairId)).to.be.revertedWithCustomError(
+        oracle,
+        "PriceStale",
+      );
+    });
+
+    it("should prevent a relayer from updating too frequently", async function () {
+      await oracle.connect(relayer1).updatePrice(pairId, price);
+
+      // Attempt to update again immediately
+      await expect(
+        oracle.connect(relayer1).updatePrice(pairId, price),
+      ).to.be.revertedWith("Action too soon");
     });
   });
 });

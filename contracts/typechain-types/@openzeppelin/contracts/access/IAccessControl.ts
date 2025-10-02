@@ -29,43 +29,43 @@ export interface IAccessControlInterface extends Interface {
       | "grantRole"
       | "hasRole"
       | "renounceRole"
-      | "revokeRole",
+      | "revokeRole"
   ): FunctionFragment;
 
   getEvent(
-    nameOrSignatureOrTopic: "RoleAdminChanged" | "RoleGranted" | "RoleRevoked",
+    nameOrSignatureOrTopic: "RoleAdminChanged" | "RoleGranted" | "RoleRevoked"
   ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
-    values: [BytesLike],
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "grantRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "hasRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "renounceRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
-    values: [BytesLike, AddressLike],
+    values: [BytesLike, AddressLike]
   ): string;
 
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
-    data: BytesLike,
+    data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
 }
@@ -74,12 +74,12 @@ export namespace RoleAdminChangedEvent {
   export type InputTuple = [
     role: BytesLike,
     previousAdminRole: BytesLike,
-    newAdminRole: BytesLike,
+    newAdminRole: BytesLike
   ];
   export type OutputTuple = [
     role: string,
     previousAdminRole: string,
-    newAdminRole: string,
+    newAdminRole: string
   ];
   export interface OutputObject {
     role: string;
@@ -96,7 +96,7 @@ export namespace RoleGrantedEvent {
   export type InputTuple = [
     role: BytesLike,
     account: AddressLike,
-    sender: AddressLike,
+    sender: AddressLike
   ];
   export type OutputTuple = [role: string, account: string, sender: string];
   export interface OutputObject {
@@ -114,7 +114,7 @@ export namespace RoleRevokedEvent {
   export type InputTuple = [
     role: BytesLike,
     account: AddressLike,
-    sender: AddressLike,
+    sender: AddressLike
   ];
   export type OutputTuple = [role: string, account: string, sender: string];
   export interface OutputObject {
@@ -137,38 +137,38 @@ export interface IAccessControl extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
@@ -198,35 +198,35 @@ export interface IAccessControl extends BaseContract {
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "getRoleAdmin",
+    nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
   getFunction(
-    nameOrSignature: "grantRole",
+    nameOrSignature: "grantRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "hasRole",
+    nameOrSignature: "hasRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [boolean],
     "view"
   >;
   getFunction(
-    nameOrSignature: "renounceRole",
+    nameOrSignature: "renounceRole"
   ): TypedContractMethod<
     [role: BytesLike, callerConfirmation: AddressLike],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "revokeRole",
+    nameOrSignature: "revokeRole"
   ): TypedContractMethod<
     [role: BytesLike, account: AddressLike],
     [void],
@@ -234,21 +234,21 @@ export interface IAccessControl extends BaseContract {
   >;
 
   getEvent(
-    key: "RoleAdminChanged",
+    key: "RoleAdminChanged"
   ): TypedContractEvent<
     RoleAdminChangedEvent.InputTuple,
     RoleAdminChangedEvent.OutputTuple,
     RoleAdminChangedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleGranted",
+    key: "RoleGranted"
   ): TypedContractEvent<
     RoleGrantedEvent.InputTuple,
     RoleGrantedEvent.OutputTuple,
     RoleGrantedEvent.OutputObject
   >;
   getEvent(
-    key: "RoleRevoked",
+    key: "RoleRevoked"
   ): TypedContractEvent<
     RoleRevokedEvent.InputTuple,
     RoleRevokedEvent.OutputTuple,
