@@ -112,109 +112,83 @@ describe("VeANDE", function () {
       expect(userLock.end).to.equal(extendedUnlockTime);
     });
 
-    it("Should not allow shortening the lock time", async function () {
-      const initialUnlockTime = (await time.latest()) + 2 * 365 * 24 * 60 * 60; // 2 years
-      await veANDEContract
-        .connect(otherAccount)
-        .createLock(lockAmount, initialUnlockTime);
-
-      const shorterUnlockTime = initialUnlockTime - 365 * 24 * 60 * 60; // 1 year
-      await expect(
-        veANDEContract.connect(otherAccount).createLock(0, shorterUnlockTime),
-      ).to.be.revertedWith("Cannot shorten lock time");
-    });
-
-    it("Should allow increasing amount and extending duration simultaneously", async function () {
-      const initialUnlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
-      await veANDEContract
-        .connect(otherAccount)
-        .createLock(lockAmount, initialUnlockTime);
-
-      const additionalAmount = ethers.parseUnits("500", 18);
-      const extendedUnlockTime = initialUnlockTime + 365 * 24 * 60 * 60;
-
-      await veANDEContract
-        .connect(otherAccount)
-        .createLock(additionalAmount, extendedUnlockTime);
-
-      const userLock = await veANDEContract.lockedBalances(
-        otherAccount.address,
-      );
-      expect(userLock.amount).to.equal(lockAmount + additionalAmount);
-      expect(userLock.end).to.equal(extendedUnlockTime);
-    });
-
-    it("Should not allow locking for more than 4 years", async function () {
-      const fourYears = 4 * 365 * 24 * 60 * 60;
-      const oneDay = 24 * 60 * 60;
-      const invalidUnlockTime = (await time.latest()) + fourYears + oneDay;
-
-      await expect(
-        veANDEContract
-          .connect(otherAccount)
-          .createLock(lockAmount, invalidUnlockTime),
-      ).to.be.revertedWith("Lock duration cannot exceed 4 years");
-    });
-
-    it("Should not allow locking 0 amount if no lock exists", async function () {
-      const unlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
-      await expect(
-        veANDEContract.connect(otherAccount).createLock(0, unlockTime),
-      ).to.be.revertedWith("Amount must be positive for new locks");
-    });
-  });
-
-  describe("Withdrawing", function () {
-    const lockAmount = ethers.parseUnits("1000", 18);
-    let unlockTime: number;
-
-    beforeEach(async function () {
-      unlockTime = (await time.latest()) + 365 * 24 * 60 * 60; // 1 year
-      await andeToken.mint(otherAccount.address, lockAmount);
-      await andeToken
-        .connect(otherAccount)
-        .approve(await veANDEContract.getAddress(), lockAmount);
-      await veANDEContract
-        .connect(otherAccount)
-        .createLock(lockAmount, unlockTime);
-    });
-
-    it("Should not allow withdrawing before lock expires", async function () {
-      await expect(
-        veANDEContract.connect(otherAccount).withdraw(),
-      ).to.be.revertedWith("Lock has not expired");
-    });
-
-    it("Should allow withdrawing after lock expires", async function () {
-      await time.increaseTo(unlockTime);
-
-      await veANDEContract.connect(otherAccount).withdraw();
-
-      expect(await andeToken.balanceOf(otherAccount.address)).to.equal(
-        lockAmount,
-      );
-      expect(
-        await andeToken.balanceOf(await veANDEContract.getAddress()),
-      ).to.equal(0);
-    });
-
-    it("Should reset lock information after withdrawing", async function () {
-      await time.increaseTo(unlockTime);
-      await veANDEContract.connect(otherAccount).withdraw();
-
-      const userLock = await veANDEContract.lockedBalances(
-        otherAccount.address,
-      );
-      expect(userLock.amount).to.equal(0);
-      expect(userLock.end).to.equal(0);
-    });
-
-    it("Should fail if trying to withdraw with no lock", async function () {
-      await expect(veANDEContract.connect(owner).withdraw()).to.be.revertedWith(
-        "No lock found",
-      );
-    });
-  });
+        it("Should not allow shortening the lock time", async function () {
+            const initialUnlockTime = (await time.latest()) + 2 * 365 * 24 * 60 * 60; // 2 years
+            await veANDEContract.connect(otherAccount).createLock(lockAmount, initialUnlockTime);
+    
+            const shorterUnlockTime = initialUnlockTime - 365 * 24 * 60 * 60; // 1 year
+            await expect(veANDEContract.connect(otherAccount).createLock(0, shorterUnlockTime))
+                .to.be.revertedWithCustomError(veANDEContract, "CannotShortenLockTime");
+        });
+    
+        it("Should allow increasing amount and extending duration simultaneously", async function () {
+            const initialUnlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
+            await veANDEContract.connect(otherAccount).createLock(lockAmount, initialUnlockTime);
+    
+            const additionalAmount = ethers.parseUnits("500", 18);
+            const extendedUnlockTime = initialUnlockTime + 365 * 24 * 60 * 60;
+    
+            await veANDEContract.connect(otherAccount).createLock(additionalAmount, extendedUnlockTime);
+    
+            const userLock = await veANDEContract.lockedBalances(otherAccount.address);
+            expect(userLock.amount).to.equal(lockAmount + additionalAmount);
+            expect(userLock.end).to.equal(extendedUnlockTime);
+        });
+    
+        it("Should not allow locking for more than 4 years", async function () {
+            const fourYears = 4 * 365 * 24 * 60 * 60;
+            const oneDay = 24 * 60 * 60;
+            const invalidUnlockTime = (await time.latest()) + fourYears + oneDay;
+    
+            await expect(veANDEContract.connect(otherAccount).createLock(lockAmount, invalidUnlockTime))
+                .to.be.revertedWithCustomError(veANDEContract, "LockDurationExceedsMax");
+        });
+    
+        it("Should not allow locking 0 amount if no lock exists", async function () {
+            const unlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
+            await expect(veANDEContract.connect(otherAccount).createLock(0, unlockTime))
+                .to.be.revertedWithCustomError(veANDEContract, "AmountNotPositive");
+        });
+      });
+    
+      describe("Withdrawing", function () {
+        const lockAmount = ethers.parseUnits("1000", 18);
+        let unlockTime: number;
+    
+        beforeEach(async function () {
+            unlockTime = (await time.latest()) + 365 * 24 * 60 * 60; // 1 year
+            await andeToken.mint(otherAccount.address, lockAmount);
+            await andeToken.connect(otherAccount).approve(await veANDEContract.getAddress(), lockAmount);
+            await veANDEContract.connect(otherAccount).createLock(lockAmount, unlockTime);
+        });
+    
+        it("Should not allow withdrawing before lock expires", async function () {
+            await expect(veANDEContract.connect(otherAccount).withdraw())
+                .to.be.revertedWithCustomError(veANDEContract, "LockNotExpired");
+        });
+    
+        it("Should allow withdrawing after lock expires", async function () {
+            await time.increaseTo(unlockTime);
+    
+            await veANDEContract.connect(otherAccount).withdraw();
+    
+            expect(await andeToken.balanceOf(otherAccount.address)).to.equal(lockAmount);
+            expect(await andeToken.balanceOf(await veANDEContract.getAddress())).to.equal(0);
+        });
+    
+        it("Should reset lock information after withdrawing", async function () {
+            await time.increaseTo(unlockTime);
+            await veANDEContract.connect(otherAccount).withdraw();
+    
+            const userLock = await veANDEContract.lockedBalances(otherAccount.address);
+            expect(userLock.amount).to.equal(0);
+            expect(userLock.end).to.equal(0);
+        });
+    
+        it("Should fail if trying to withdraw with no lock", async function () {
+            await expect(veANDEContract.connect(owner).withdraw())
+                .to.be.revertedWithCustomError(veANDEContract, "NoLockFound");
+        });  });
 
   describe("Voting Power", function () {
     const lockAmount = ethers.parseUnits("1000", 18);

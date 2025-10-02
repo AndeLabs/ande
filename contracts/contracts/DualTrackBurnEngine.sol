@@ -56,6 +56,7 @@ contract DualTrackBurnEngine is Initializable, AccessControlUpgradeable, UUPSUpg
     function _authorizeUpgrade(address newImplementation)
         internal
         onlyRole(DEFAULT_ADMIN_ROLE)
+        view
         override
     {
         newImplementation;
