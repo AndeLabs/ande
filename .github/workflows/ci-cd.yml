@@ -222,6 +222,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env files from examples
+        run: |
+          find infra -name "*.env.example" -exec sh -c 'cp "$1" "${1%.example}"' _ {} \;
+
+
       - name: Validate Docker Compose
         run: |
           cd infra
