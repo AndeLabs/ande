@@ -41,7 +41,7 @@ export class ContextUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): ContextUpgradeable {
     return new Contract(address, _abi, runner) as unknown as ContextUpgradeable;
   }

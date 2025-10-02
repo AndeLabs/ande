@@ -349,7 +349,7 @@ export class ERC20Upgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): ERC20Upgradeable {
     return new Contract(address, _abi, runner) as unknown as ERC20Upgradeable;
   }

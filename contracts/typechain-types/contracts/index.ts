@@ -2,4 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export type { ANDEToken } from "./ANDEToken";
+export type { AndeOracleAggregator } from "./AndeOracleAggregator";
+export type { IOracle } from "./IOracle";
+export type { TrustedRelayerOracle } from "./TrustedRelayerOracle";
 export type { VeANDE } from "./VeANDE";
