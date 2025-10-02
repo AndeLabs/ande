@@ -109,11 +109,15 @@ contract veANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
      * @return The user's current voting power.
      */
     function balanceOf(address _user) public view returns (uint256) {
-        // TODO: Implement linear decay voting power calculation
-        // LockedBalance memory lock = lockedBalances[_user];
-        // if (lock.unlockTime <= block.timestamp) { return 0; }
-        // uint256 timeRemaining = lock.unlockTime - block.timestamp;
-        // return (lock.amount * timeRemaining) / MAX_LOCK_TIME;
-        return 0; // Placeholder
+        LockedBalance memory userLock = lockedBalances[_user];
+
+        if (userLock.unlockTime <= block.timestamp || userLock.amount == 0) {
+            return 0;
+        }
+
+        uint256 timeRemaining = userLock.unlockTime - block.timestamp;
+        
+        // Voting power decays linearly over time
+        return (userLock.amount * timeRemaining) / MAX_LOCK_TIME;
     }
 }

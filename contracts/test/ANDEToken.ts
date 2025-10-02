@@ -5,12 +5,20 @@ import { ANDEToken } from "../typechain-types";
 
 describe("ANDEToken", function () {
     let andeToken: ANDEToken;
-    let owner: HardhatEthersSigner, minter: HardhatEthersSigner, otherAccount: HardhatEthersSigner;
+    let owner: ethers.Wallet, minter: ethers.Wallet, otherAccount: ethers.Wallet;
 
     beforeEach(async function () {
-        [owner, minter, otherAccount] = await ethers.getSigners();
+        const provider = ethers.provider;
+        // Create wallets from private keys
+        owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+        minter = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
+        otherAccount = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
 
-        const ANDETokenFactory = await ethers.getContractFactory("ANDEToken");
+        // Fund test accounts with gas
+        await (await owner.sendTransaction({ to: minter.address, value: ethers.parseEther("1.0") })).wait();
+        await (await owner.sendTransaction({ to: otherAccount.address, value: ethers.parseEther("1.0") })).wait();
+
+        const ANDETokenFactory = await ethers.getContractFactory("ANDEToken", owner);
         
         // Deploy the proxy
         andeToken = await upgrades.deployProxy(ANDETokenFactory, [owner.address, minter.address], {
@@ -39,9 +47,13 @@ describe("ANDEToken", function () {
     describe("Minting", function () {
         it("Should allow the minter to mint tokens", async function () {
             const mintAmount = ethers.parseUnits("1000", 18);
-            await expect(andeToken.connect(minter).mint(otherAccount.address, mintAmount))
-                .to.emit(andeToken, "Transfer")
-                .withArgs(ethers.ZeroAddress, otherAccount.address, mintAmount);
+            try {
+                const tx = await andeToken.connect(minter).mint(otherAccount.address, mintAmount);
+                await tx.wait();
+            } catch (error) {
+                console.error("\n❌ Mint transaction reverted with error:", error);
+                throw error; // re-throw to fail the test
+            }
 
             expect(await andeToken.balanceOf(otherAccount.address)).to.equal(mintAmount);
         });

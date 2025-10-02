@@ -66,19 +66,22 @@ cp .env.example .env
 cp stacks/eth-faucet/.env.example stacks/eth-faucet/.env
 ```
 
-**Paso 3: Añade tu Llave Privada**
+**Paso 3: Añade tus Llaves Privadas**
 
 ⚠️ **ACCIÓN MANUAL REQUERIDA:**
 
-Necesitas una cuenta de Ethereum con su llave privada. Esta cuenta será fondeada en el génesis y la usarás para interactuar con la red.
+Para poder ejecutar las pruebas de forma robusta, necesitas un total de tres cuentas de desarrollo (owner, user1, user2). Abre el archivo `infra/.env` y añade las tres llaves privadas. La primera (`PRIVATE_KEY`) será fondeada en el génesis de la blockchain.
 
-1.  Abre el archivo `infra/.env` que acabas de crear.
-2.  Añade la siguiente línea al final, reemplazando `0x...` con tu llave privada:
-    ```
-    PRIVATE_KEY=0x...
-    ```
+```env
+# Llave para la cuenta principal (owner), fondeada en el génesis.
+PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-**Importante:** Para que las herramientas de Hardhat y Ethers.js funcionen, **DEBES incluir el prefijo `0x`** en tu llave privada.
+# Llaves adicionales para cuentas de prueba (user1, user2).
+PRIVATE_KEY_USER1=0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
+PRIVATE_KEY_USER2=0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
+```
+
+**Importante:** Para que las herramientas de Hardhat y Ethers.js funcionen, **DEBES incluir el prefijo `0x`** en tus llaves privadas.
 
 **Paso 4: Lanza el Stack**
 
@@ -106,11 +109,20 @@ Desde el directorio `andechain/infra`:
 
 ### 3.5. Flujo de Desarrollo de Smart Contracts
 
-La interacción y prueba de los smart contracts se realiza a través de un servicio de Docker controlado desde el directorio `infra`. Esto garantiza un entorno consistente y reproducible para todos los desarrolladores.
+La interacción y prueba de los smart contracts se realiza a través de un servicio de Docker controlado desde el directorio `infra`. Esto garantiza un entorno consistente y reproducible.
+
+#### **Lección Aprendida Crítica: El Entorno de Pruebas**
+
+Tras una extensa depuración, hemos descubierto una **incompatibilidad fundamental** entre el plugin `@openzeppelin/hardhat-upgrades` y nuestro entorno de pruebas (`--network localhost` que corre sobre `ev-reth-sequencer`).
+
+- **El Problema:** El plugin interfiere con la función `ethers.getSigners()`, causando que las pruebas fallen de formas impredecibles al no poder obtener las cuentas del nodo.
+- **La Solución (Estándar del Proyecto):** Para evitar este problema, **TODAS las pruebas deben seguir el patrón de creación manual de billeteras**. En lugar de usar `ethers.getSigners()`, se deben inicializar las billeteras directamente desde las llaves privadas definidas en el archivo `.env`.
+
+Este método es más robusto y nos independiza de la incompatibilidad del plugin.
 
 #### **Paso 1: Preparar el Entorno de Contratos (Solo la primera vez)**
 
-Antes de poder ejecutar pruebas o scripts, necesitas que `npm` instale las dependencias de los contratos. Esto creará el archivo `package-lock.json` necesario para las builds de Docker.
+Este paso no cambia. Asegúrate de tener las dependencias instaladas.
 
 ```bash
 # Navega al directorio de los contratos
@@ -123,72 +135,79 @@ npm install
 cd ../infra
 ```
 
-#### **Paso 2: Interactuar con los Contratos desde la Carpeta `infra`**
+#### **Paso 2: Escribir Pruebas (El Método Correcto)**
 
-Todos los comandos para compilar, probar o interactuar con los contratos se ejecutan desde el directorio `andechain/infra`.
+Todas las nuevas suites de pruebas (`*.test.ts`) deben usar el siguiente bloque de configuración en su `beforeEach` para ser compatibles con nuestro entorno.
 
--   **Ejecutar todas las pruebas:**
-    El comando más común. Reconstruye el entorno si es necesario y corre toda la suite de tests.
+**Ejemplo de `beforeEach` Estándar:**
+```typescript
+    let owner: ethers.Wallet, user1: ethers.Wallet, user2: ethers.Wallet;
+
+    beforeEach(async function() {
+        const provider = ethers.provider;
+        // Crear billeteras desde las llaves privadas del .env
+        owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+        user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
+        user2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
+
+        // Fondear cuentas de prueba con gas desde la cuenta owner (fondeada en génesis)
+        await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("1.0") })).wait();
+        await (await owner.sendTransaction({ to: user2.address, value: ethers.parseEther("1.0") })).wait();
+
+        // ... Aquí va la lógica de despliegue de tus contratos ...
+        // const MyContractFactory = await ethers.getContractFactory("MyContract", owner);
+        // const myContract = await upgrades.deployProxy(MyContractFactory, [/* args */]);
+        // await myContract.waitForDeployment();
+    });
+```
+
+#### **Paso 3: Interactuar con los Contratos desde la Carpeta `infra`**
+
+Para asegurar que las pruebas se ejecuten en un entorno estable, hemos modificado `docker-compose.yml` para que el servicio `contracts` dependa explícitamente de `ev-reth-sequencer`. Asimismo, el `hardhat.config.ts` ha sido simplificado.
+
+-   **Ejecutar TODAS las pruebas (Recomendado):**
+    Este comando ejecuta todas las suites de pruebas contra nuestra red de desarrollo local.
     ```bash
-    docker compose run --build contracts npm test
+    docker compose run --build contracts npm test -- --network localhost
     ```
 
 -   **Ejecutar un archivo de prueba específico:**
-    Útil para centrarse en un solo test.
     ```bash
-    docker compose run --build contracts npm exec -- hardhat test test/mi-prueba.ts --network localhost
+    docker compose run --build contracts npm exec -- hardhat test test/veANDE.test.ts --network localhost
     ```
 
--   **Compilar los contratos:**
+-   **Compilar y otros comandos:**
+    Estos comandos no cambian.
     ```bash
     docker compose run --build contracts npm run compile
-    ```
-
--   **Abrir una terminal dentro del contenedor:**
-    Para ejecutar comandos ad-hoc o depurar.
-    ```bash
     docker compose run contracts /bin/sh
-    ```
-
--   **Desplegar a la red local (usando Hardhat Ignition):**
-    *Nota: El plugin de Ignition fue deshabilitado temporalmente. Se debe resolver el conflicto de dependencias antes de usar este comando.*
-    ```bash
-    docker compose run --build contracts npm exec -- hardhat ignition deploy ignition/modules/MiModulo.ts --network localhost
     ```
 
 ### 3.5.2. Flujo de Desarrollo Avanzado: Contratos Actualizables
 
-A medida que el proyecto madura, utilizamos patrones de contratos actualizables (upgradeable) para permitir la mejora de la lógica de negocio sin migrar datos. Esto introduce dependencias y consideraciones específicas.
-
-**Dependencias Clave:**
-
-Para trabajar con contratos actualizables, el entorno de `contracts` necesita dos paquetes principales de OpenZeppelin:
-
-1.  `@openzeppelin/contracts-upgradeable`: Proporciona las implementaciones base de contratos como `ERC20Upgradeable` que están diseñadas para ser usadas detrás de un proxy.
-2.  `@openzeppelin/hardhat-upgrades`: Es el plugin de Hardhat que nos da las herramientas para desplegar y gestionar los proxies (ej. `upgrades.deployProxy`).
-
-Estas dependencias ya están incluidas en `andechain/contracts/package.json`.
+A medida que el proyecto madura, utilizamos patrones de contratos actualizables (upgradeable) para permitir la mejora de la lógica de negocio sin migrar datos. Esto se gestiona con el plugin `@openzeppelin/hardhat-upgrades`.
 
 **Lecciones Aprendidas en la Configuración:**
 
 -   **Conflicto de Herencia con `nonces`:** Al combinar `ERC20PermitUpgradeable` y `ERC20VotesUpgradeable`, ambos contratos definen una función `nonces`. Solidity requiere que anulemos (override) explícitamente esta función en nuestro contrato final (`ANDEToken.sol`) para resolver la ambigüedad.
--   **Pruebas con Proxies:** Las pruebas para contratos actualizables son ligeramente diferentes. En lugar de desplegar el contrato directamente, se utiliza `upgrades.deployProxy()` para simular el entorno de producción real, que incluye el contrato de implementación y el proxy.
+-   **Incompatibilidad con el Entorno de Pruebas `localhost`:** Como se detalló en la sección anterior, el uso de `upgrades.deployProxy()` junto con nuestro nodo de desarrollo `ev-reth-sequencer` rompe la funcionalidad de `ethers.getSigners()`. Por esta razón, **es mandatorio usar el patrón de creación manual de billeteras** para todas las pruebas que involucren contratos actualizables.
 
 ### 3.6. Verificación del Entorno (Health Check)
 
-Después de levantar el stack de Docker por primera vez y preparar el entorno de los contratos, es una excelente práctica realizar una verificación completa para asegurar que todos los componentes se comunican correctamente.
+Después de levantar el stack de Docker, es una excelente práctica realizar una verificación para asegurar que todos los componentes se comunican correctamente.
 
-Hemos preparado un test específico para este propósito: `verify-gas-token.ts`. Este test no solo verifica el token de gas, sino que su ejecución exitosa confirma que:
+El test `verify-gas-token.ts` es perfecto para esto, ya que utiliza el método de conexión directa (creando un `provider` y `wallet` manualmente) que hemos establecido como el estándar. Su ejecución exitosa confirma que:
 - La conexión entre el entorno de pruebas y el nodo RPC es correcta.
 - Las variables de entorno (como tu `PRIVATE_KEY`) se están cargando adecuadamente.
 - El fondeo de cuentas en el génesis funciona.
-- El despliegue de contratos básicos es exitoso.
 
-Para ejecutar esta verificación, navega al directorio `andechain/infra` y corre el siguiente comando:
+Para ejecutar esta verificación, navega al directorio `andechain/infra` y corre:
 
 ```bash
-docker compose run contracts npm exec -- hardhat test test/verify-gas-token.ts --network localhost
+docker compose run --build contracts npm exec -- hardhat test test/verify-gas-token.ts --network localhost
 ```
+
+Si este test pasa, tu entorno de desarrollo local está 100% operativo para empezar a construir, teniendo en cuenta las consideraciones sobre la estrategia de pruebas ya mencionadas.
 
 Si este test pasa, tu entorno de desarrollo local está 100% operativo y listo para que empieces a construir.
 
