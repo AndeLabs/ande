@@ -870,7 +870,7 @@ type TrustedRelayerOracleConstructorParams =
   | ConstructorParameters<typeof ContractFactory>;
 
 const isSuperArgs = (
-  xs: TrustedRelayerOracleConstructorParams
+  xs: TrustedRelayerOracleConstructorParams,
 ): xs is ConstructorParameters<typeof ContractFactory> => xs.length > 1;
 
 export class TrustedRelayerOracle__factory extends ContractFactory {
@@ -883,7 +883,7 @@ export class TrustedRelayerOracle__factory extends ContractFactory {
   }
 
   override getDeployTransaction(
-    overrides?: NonPayableOverrides & { from?: string }
+    overrides?: NonPayableOverrides & { from?: string },
   ): Promise<ContractDeployTransaction> {
     return super.getDeployTransaction(overrides || {});
   }
@@ -895,7 +895,7 @@ export class TrustedRelayerOracle__factory extends ContractFactory {
     >;
   }
   override connect(
-    runner: ContractRunner | null
+    runner: ContractRunner | null,
   ): TrustedRelayerOracle__factory {
     return super.connect(runner) as TrustedRelayerOracle__factory;
   }
@@ -907,12 +907,12 @@ export class TrustedRelayerOracle__factory extends ContractFactory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): TrustedRelayerOracle {
     return new Contract(
       address,
       _abi,
-      runner
+      runner,
     ) as unknown as TrustedRelayerOracle;
   }
 }

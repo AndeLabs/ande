@@ -21,19 +21,19 @@ import type {
 
 export interface IOracleInterface extends Interface {
   getFunction(
-    nameOrSignature: "getPrice" | "getPriceWithMetadata"
+    nameOrSignature: "getPrice" | "getPriceWithMetadata",
   ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "getPrice", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "getPriceWithMetadata",
-    values: [BytesLike]
+    values: [BytesLike],
   ): string;
 
   decodeFunctionResult(functionFragment: "getPrice", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getPriceWithMetadata",
-    data: BytesLike
+    data: BytesLike,
   ): Result;
 }
 
@@ -46,38 +46,38 @@ export interface IOracle extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
+    event: TCEvent,
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
+    event?: TCEvent,
   ): Promise<this>;
 
   getPrice: TypedContractMethod<[pairId: BytesLike], [bigint], "view">;
@@ -90,21 +90,19 @@ export interface IOracle extends BaseContract {
         timestamp: bigint;
         isStale: boolean;
         source: string;
-      }
+      },
     ],
     "view"
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
+    key: string | FunctionFragment,
   ): T;
 
   getFunction(
-    nameOrSignature: "getPrice"
+    nameOrSignature: "getPrice",
   ): TypedContractMethod<[pairId: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getPriceWithMetadata"
-  ): TypedContractMethod<
+  getFunction(nameOrSignature: "getPriceWithMetadata"): TypedContractMethod<
     [pairId: BytesLike],
     [
       [bigint, bigint, boolean, string] & {
@@ -112,7 +110,7 @@ export interface IOracle extends BaseContract {
         timestamp: bigint;
         isStale: boolean;
         source: string;
-      }
+      },
     ],
     "view"
   >;

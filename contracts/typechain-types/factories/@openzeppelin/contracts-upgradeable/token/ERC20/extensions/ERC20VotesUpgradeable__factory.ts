@@ -792,12 +792,12 @@ export class ERC20VotesUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): ERC20VotesUpgradeable {
     return new Contract(
       address,
       _abi,
-      runner
+      runner,
     ) as unknown as ERC20VotesUpgradeable;
   }
 }

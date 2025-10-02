@@ -90,12 +90,12 @@ export class PausableUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): PausableUpgradeable {
     return new Contract(
       address,
       _abi,
-      runner
+      runner,
     ) as unknown as PausableUpgradeable;
   }
 }

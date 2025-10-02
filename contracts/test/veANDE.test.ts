@@ -4,106 +4,154 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { ANDEToken, veANDE } from "../typechain-types";
 
 describe("veANDE Contract", function () {
-    let andeToken: ANDEToken;
-    let veANDEContract: veANDE;
-    let owner: ethers.Wallet, user1: ethers.Wallet, user2: ethers.Wallet;
+  let andeToken: ANDEToken;
+  let veANDEContract: veANDE;
+  let owner: ethers.Wallet, user1: ethers.Wallet, user2: ethers.Wallet;
 
-    const LOCK_AMOUNT = ethers.parseEther("1000");
+  const LOCK_AMOUNT = ethers.parseEther("1000");
 
-    beforeEach(async function() {
-        const provider = ethers.provider;
-        const [fundedSigner] = await ethers.getSigners();
+  beforeEach(async function () {
+    const provider = ethers.provider;
+    const [fundedSigner] = await ethers.getSigners();
 
-        // Create wallets from private keys
-        owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-        user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
-        user2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
+    // Create wallets from private keys
+    owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+    user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
+    user2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
 
-        // Fund the owner account from the Hardhat Network's pre-funded account
-        await (await fundedSigner.sendTransaction({ to: owner.address, value: ethers.parseEther("100.0") })).wait();
+    // Fund the owner account from the Hardhat Network's pre-funded account
+    await (
+      await fundedSigner.sendTransaction({
+        to: owner.address,
+        value: ethers.parseEther("100.0"),
+      })
+    ).wait();
 
-        // Fund test accounts with gas
-        await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("1.0") })).wait();
-        await (await owner.sendTransaction({ to: user2.address, value: ethers.parseEther("1.0") })).wait();
+    // Fund test accounts with gas
+    await (
+      await owner.sendTransaction({
+        to: user1.address,
+        value: ethers.parseEther("1.0"),
+      })
+    ).wait();
+    await (
+      await owner.sendTransaction({
+        to: user2.address,
+        value: ethers.parseEther("1.0"),
+      })
+    ).wait();
 
-        // Deploy ANDEToken
-        const ANDETokenFactory = await ethers.getContractFactory("ANDEToken", owner);
-        andeToken = (await upgrades.deployProxy(ANDETokenFactory, [owner.address, owner.address], {
-            kind: "uups",
-        })) as unknown as ANDEToken;
-        await andeToken.waitForDeployment();
+    // Deploy ANDEToken
+    const ANDETokenFactory = await ethers.getContractFactory(
+      "ANDEToken",
+      owner,
+    );
+    andeToken = (await upgrades.deployProxy(
+      ANDETokenFactory,
+      [owner.address, owner.address],
+      {
+        kind: "uups",
+      },
+    )) as unknown as ANDEToken;
+    await andeToken.waitForDeployment();
 
-        // Deploy veANDEContract
-        const veANDEFactory = await ethers.getContractFactory("veANDE", owner);
-        veANDEContract = (await upgrades.deployProxy(veANDEFactory, [await andeToken.getAddress(), owner.address], {
-            kind: "uups",
-        })) as unknown as veANDE;
-        await veANDEContract.waitForDeployment();
+    // Deploy veANDEContract
+    const veANDEFactory = await ethers.getContractFactory("veANDE", owner);
+    veANDEContract = (await upgrades.deployProxy(
+      veANDEFactory,
+      [await andeToken.getAddress(), owner.address],
+      {
+        kind: "uups",
+      },
+    )) as unknown as veANDE;
+    await veANDEContract.waitForDeployment();
 
-        // Mint tokens to user1 and approve veANDE contract
-        await (await andeToken.connect(owner).mint(user1.address, LOCK_AMOUNT)).wait();
-        await (await andeToken.connect(user1).approve(await veANDEContract.getAddress(), LOCK_AMOUNT)).wait();
+    // Mint tokens to user1 and approve veANDE contract
+    await (
+      await andeToken.connect(owner).mint(user1.address, LOCK_AMOUNT)
+    ).wait();
+    await (
+      await andeToken
+        .connect(user1)
+        .approve(await veANDEContract.getAddress(), LOCK_AMOUNT)
+    ).wait();
+  });
+
+  describe("createLock", function () {
+    it("should allow a user to lock tokens", async function () {
+      const provider = ethers.provider;
+      const lockDuration = 365 * 24 * 60 * 60; // 1 year
+      const block = await provider.getBlock("latest");
+      const unlockTimestamp = block!.timestamp + lockDuration;
+
+      await (
+        await veANDEContract
+          .connect(user1)
+          .createLock(LOCK_AMOUNT, unlockTimestamp)
+      ).wait();
+
+      expect(await andeToken.balanceOf(user1.address)).to.equal(0);
+      expect(
+        await andeToken.balanceOf(await veANDEContract.getAddress()),
+      ).to.equal(LOCK_AMOUNT);
+    });
+  });
+
+  describe("Withdrawal Logic", function () {
+    it("should NOT allow a user to withdraw before the lock has expired", async function () {
+      const provider = ethers.provider;
+      const lockDuration = 30 * 24 * 60 * 60; // 30 days
+      const block = await provider.getBlock("latest");
+      const unlockTimestamp = block!.timestamp + lockDuration;
+
+      await (
+        await veANDEContract
+          .connect(user1)
+          .createLock(LOCK_AMOUNT, unlockTimestamp)
+      ).wait();
+
+      await expect(veANDEContract.connect(user1).withdraw()).to.be.revertedWith(
+        "veANDE: Lock has not expired yet",
+      );
     });
 
-    describe("createLock", function () {
-        it("should allow a user to lock tokens", async function () {
-            const provider = ethers.provider;
-            const lockDuration = 365 * 24 * 60 * 60; // 1 year
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + lockDuration;
+    it("should NOT allow a user with no lock to withdraw", async function () {
+      await expect(veANDEContract.connect(user2).withdraw()).to.be.revertedWith(
+        "veANDE: No tokens to withdraw",
+      );
+    });
+  });
 
-            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
-
-            expect(await andeToken.balanceOf(user1.address)).to.equal(0);
-            expect(await andeToken.balanceOf(await veANDEContract.getAddress())).to.equal(LOCK_AMOUNT);
-        });
+  describe("balanceOf Logic", function () {
+    it("should return 0 for a user with no lock", async function () {
+      const balance = await veANDEContract.balanceOf(user2.address);
+      expect(balance).to.equal(0);
     });
 
-    describe("Withdrawal Logic", function () {
-        it("should NOT allow a user to withdraw before the lock has expired", async function () {
-            const provider = ethers.provider;
-            const lockDuration = 30 * 24 * 60 * 60; // 30 days
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + lockDuration;
+    it("should return a balance close to the locked amount for a fresh lock", async function () {
+      const provider = ethers.provider;
+      const maxLockTime = 4 * 365 * 24 * 60 * 60; // 4 years
+      const block = await provider.getBlock("latest");
+      const unlockTimestamp = block!.timestamp + maxLockTime;
 
-            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
+      await (
+        await veANDEContract
+          .connect(user1)
+          .createLock(LOCK_AMOUNT, unlockTimestamp)
+      ).wait();
 
-            await expect(veANDEContract.connect(user1).withdraw())
-                .to.be.revertedWith("veANDE: Lock has not expired yet");
-        });
+      const balance = await veANDEContract.balanceOf(user1.address);
 
-        it("should NOT allow a user with no lock to withdraw", async function () {
-            await expect(veANDEContract.connect(user2).withdraw())
-                .to.be.revertedWith("veANDE: No tokens to withdraw");
-        });
+      // The balance should be very close to the initial lock amount,
+      // accounting for a few seconds of decay since the lock was created.
+      const tolerance = ethers.parseEther("5"); // Allow a tolerance of 5 veANDE
+      expect(balance).to.be.closeTo(LOCK_AMOUNT, tolerance);
+      expect(balance).to.be.lt(LOCK_AMOUNT); // Should be slightly less
     });
 
-    describe("balanceOf Logic", function() {
-        it("should return 0 for a user with no lock", async function() {
-            const balance = await veANDEContract.balanceOf(user2.address);
-            expect(balance).to.equal(0);
-        });
-
-        it("should return a balance close to the locked amount for a fresh lock", async function() {
-            const provider = ethers.provider;
-            const maxLockTime = 4 * 365 * 24 * 60 * 60; // 4 years
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + maxLockTime;
-
-            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
-
-            const balance = await veANDEContract.balanceOf(user1.address);
-            
-            // The balance should be very close to the initial lock amount,
-            // accounting for a few seconds of decay since the lock was created.
-            const tolerance = ethers.parseEther("5"); // Allow a tolerance of 5 veANDE
-            expect(balance).to.be.closeTo(LOCK_AMOUNT, tolerance);
-            expect(balance).to.be.lt(LOCK_AMOUNT); // Should be slightly less
-        });
-
-        // TODO: Testing the decay over time requires time manipulation, which is not
-        // possible on the 'localhost' network. This test can be run on the in-memory Hardhat Network.
-        /*
+    // TODO: Testing the decay over time requires time manipulation, which is not
+    // possible on the 'localhost' network. This test can be run on the in-memory Hardhat Network.
+    /*
         it("should return a decayed balance after time has passed", async function() {
             const provider = ethers.provider;
             const maxLockTime = 4 * 365 * 24 * 60 * 60; // 4 years
@@ -124,5 +172,5 @@ describe("veANDE Contract", function () {
             expect(balance).to.be.closeTo(expectedBalance, tolerance);
         });
         */
-    });
+  });
 });
