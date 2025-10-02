@@ -15,6 +15,14 @@ contract VeANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
         uint256 end;
     }
 
+    error InvalidAndeTokenAddress();
+    error AmountNotPositive();
+    error UnlockTimeNotInFuture();
+    error CannotShortenLockTime();
+    error LockDurationExceedsMax();
+    error NoLockFound();
+    error LockNotExpired();
+
     IERC20 public andeToken;
     mapping(address => LockedBalance) public lockedBalances;
 
@@ -31,7 +39,7 @@ contract VeANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
 
-        require(andeTokenAddress != address(0), "ANDE token address cannot be zero");
+        if (andeTokenAddress == address(0)) revert InvalidAndeTokenAddress();
         andeToken = IERC20(andeTokenAddress);
     }
 
@@ -39,17 +47,17 @@ contract VeANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
         LockedBalance storage userLock = lockedBalances[msg.sender];
 
         if (userLock.amount == 0) {
-            require(amount > 0, "Amount must be positive for new locks");
+            if (amount == 0) revert AmountNotPositive();
         }
 
-        require(unlockTime > block.timestamp, "Unlock time must be in the future");
+        if (unlockTime <= block.timestamp) revert UnlockTimeNotInFuture();
 
         if (userLock.amount > 0) {
-            require(unlockTime >= userLock.end, "Cannot shorten lock time");
+            if (unlockTime < userLock.end) revert CannotShortenLockTime();
         }
 
         uint256 lockDuration = unlockTime - block.timestamp;
-        require(lockDuration <= MAX_LOCK_TIME, "Lock duration cannot exceed 4 years");
+        if (lockDuration > MAX_LOCK_TIME) revert LockDurationExceedsMax();
 
         if (amount > 0) {
             andeToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -61,8 +69,8 @@ contract VeANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
 
     function withdraw() external {
         LockedBalance storage userLock = lockedBalances[msg.sender];
-        require(userLock.amount > 0, "No lock found");
-        require(block.timestamp >= userLock.end, "Lock has not expired");
+        if (userLock.amount == 0) revert NoLockFound();
+        if (block.timestamp < userLock.end) revert LockNotExpired();
 
         uint256 amount = userLock.amount;
         delete lockedBalances[msg.sender];
@@ -83,6 +91,7 @@ contract VeANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     function _authorizeUpgrade(address newImplementation)
         internal
         onlyRole(DEFAULT_ADMIN_ROLE)
+        view
         override
     {
         newImplementation;

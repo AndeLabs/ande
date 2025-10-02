@@ -47,6 +47,7 @@ contract ANDEToken is
     function _authorizeUpgrade(address newImplementation)
         internal
         onlyRole(DEFAULT_ADMIN_ROLE)
+        view
         override
     {
         newImplementation;
