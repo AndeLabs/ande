@@ -3,6 +3,7 @@
 /* eslint-disable */
 export { ANDEToken__factory } from "./ANDEToken__factory";
 export { AndeOracleAggregator__factory } from "./AndeOracleAggregator__factory";
+export { DualTrackBurnEngine__factory } from "./DualTrackBurnEngine__factory";
 export { IOracle__factory } from "./IOracle__factory";
 export { TrustedRelayerOracle__factory } from "./TrustedRelayerOracle__factory";
 export { VeANDE__factory } from "./VeANDE__factory";

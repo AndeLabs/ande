@@ -47,6 +47,8 @@ export interface ANDETokenInterface extends Interface {
       | "allowance"
       | "approve"
       | "balanceOf"
+      | "burn"
+      | "burnFrom"
       | "checkpoints"
       | "clock"
       | "decimals"
@@ -126,6 +128,11 @@ export interface ANDETokenInterface extends Interface {
   encodeFunctionData(
     functionFragment: "balanceOf",
     values: [AddressLike],
+  ): string;
+  encodeFunctionData(functionFragment: "burn", values: [BigNumberish]): string;
+  encodeFunctionData(
+    functionFragment: "burnFrom",
+    values: [AddressLike, BigNumberish],
   ): string;
   encodeFunctionData(
     functionFragment: "checkpoints",
@@ -264,6 +271,8 @@ export interface ANDETokenInterface extends Interface {
   decodeFunctionResult(functionFragment: "allowance", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "burnFrom", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "checkpoints",
     data: BytesLike,
@@ -574,6 +583,14 @@ export interface ANDEToken extends BaseContract {
 
   balanceOf: TypedContractMethod<[account: AddressLike], [bigint], "view">;
 
+  burn: TypedContractMethod<[value: BigNumberish], [void], "nonpayable">;
+
+  burnFrom: TypedContractMethod<
+    [account: AddressLike, value: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   checkpoints: TypedContractMethod<
     [account: AddressLike, pos: BigNumberish],
     [Checkpoints.Checkpoint208StructOutput],
@@ -758,6 +775,16 @@ export interface ANDEToken extends BaseContract {
   getFunction(
     nameOrSignature: "balanceOf",
   ): TypedContractMethod<[account: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "burn",
+  ): TypedContractMethod<[value: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "burnFrom",
+  ): TypedContractMethod<
+    [account: AddressLike, value: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "checkpoints",
   ): TypedContractMethod<

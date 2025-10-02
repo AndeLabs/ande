@@ -48,7 +48,9 @@ contract ANDEToken is
         internal
         onlyRole(DEFAULT_ADMIN_ROLE)
         override
-    {}
+    {
+        newImplementation;
+    }
 
     // The following functions are required by ERC20Votes.
     function nonces(address owner)
