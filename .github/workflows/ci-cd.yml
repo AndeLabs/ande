@@ -31,31 +31,26 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+          cache: 'npm'
+          cache-dependency-path: 'contracts/package-lock.json'
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Lint & Format Check
-        run: pnpm lint
+        run: npm run lint
 
       - name: Check TypeScript
-        run: pnpm tsc --noEmit
+        run: npm run typechain
 
   # ============================================
   # 2. SMART CONTRACT TESTS
@@ -65,38 +60,33 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+          cache: 'npm'
+          cache-dependency-path: 'contracts/package-lock.json'
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Run Hardhat tests
-        run: pnpm hardhat test
+        run: npm test
 
       - name: Generate coverage report
-        run: pnpm hardhat coverage
+        run: npm run coverage
         continue-on-error: true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         if: always()
         with:
-          files: ./andechain/contracts/coverage/lcov.info
+          files: ./contracts/coverage/lcov.info
           flags: smart-contracts
         continue-on-error: true
 
@@ -109,41 +99,30 @@ jobs:
     needs: [lint, test]
     defaults:
       run:
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+          cache: 'npm'
+          cache-dependency-path: 'contracts/package-lock.json'
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Compile contracts
-        run: pnpm hardhat compile
+        run: npm run compile
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: hardhat-artifacts
-          path: andechain/contracts/artifacts/
+          path: contracts/artifacts/
           retention-days: 30
-
-      - name: Generate ABI exports
-        run: |
-          if [ -f scripts/export-abis.ts ]; then
-            pnpm hardhat run scripts/export-abis.ts
-          fi
 
   # ============================================
   # 4. GAS ANALYSIS
@@ -154,29 +133,24 @@ jobs:
     needs: [test]
     defaults:
       run:
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          cache-dependency-path: 'andechain/contracts/pnpm-lock.yaml'
+          cache: 'npm'
+          cache-dependency-path: 'contracts/package-lock.json'
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Run gas reporter
         run: |
-          REPORT_GAS=true pnpm hardhat test
+          REPORT_GAS=true npm test
         continue-on-error: true
 
       - name: Upload gas report
@@ -184,7 +158,7 @@ jobs:
         if: always()
         with:
           name: gas-report
-          path: andechain/contracts/gas-report.txt
+          path: contracts/gas-report.txt
         continue-on-error: true
 
   # ============================================
@@ -226,8 +200,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./andechain/infra
-          file: ./andechain/infra/Dockerfile.${{ matrix.component }}
+          context: ./infra
+          file: ./infra/Dockerfile.${{ matrix.component }}
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -246,19 +220,19 @@ jobs:
 
       - name: Validate Docker Compose
         run: |
-          cd andechain/infra
+          cd infra
           docker compose config
 
       - name: Check .env.example
         run: |
-          if [ ! -f andechain/infra/.env.example ]; then
+          if [ ! -f infra/.env.example ]; then
             echo "Error: .env.example not found"
             exit 1
           fi
 
       - name: Validate network configuration
         run: |
-          cd andechain/infra
+          cd infra
           # Verificar puertos no conflictivos
           grep -E "ports:" docker-compose.yml || true
 
@@ -373,9 +347,9 @@ jobs:
 
       - name: Generate contract documentation
         run: |
-          cd andechain/contracts
+          cd contracts
           if command -v solidity-docgen &> /dev/null; then
-            pnpm exec solidity-docgen --solc-module solc
+            npm exec solidity-docgen --solc-module solc
           fi
         continue-on-error: true
 
@@ -418,7 +392,7 @@ jobs:
       - name: Mythril Smart Contract Analysis
         run: |
           docker pull mythril/myth
-          cd andechain/contracts/contracts
+          cd contracts/contracts
           for contract in *.sol; do
             echo "Analyzing $contract..."
             docker run -v $(pwd):/contracts mythril/myth analyze /contracts/$contract || true
@@ -464,7 +438,7 @@ jobs:
         with:
           body_path: RELEASE_NOTES.md
           files: |
-            andechain/contracts/artifacts/**/*.json
+            contracts/artifacts/**/*.json
 
   # ============================================
   # 11. DEPLOYMENT TO TESTNET (STAGING)
@@ -481,34 +455,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'contracts/package-lock.json'
 
       - name: Install dependencies
-        working-directory: ./andechain/contracts
-        run: pnpm install
+        working-directory: ./contracts
+        run: npm ci
 
       - name: Deploy contracts to testnet
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         env:
           PRIVATE_KEY: ${{ secrets.TESTNET_DEPLOYER_KEY }}
           RPC_URL: ${{ secrets.TESTNET_RPC_URL }}
         run: |
-          pnpm hardhat run scripts/deploy.ts --network celestia-testnet
+          npm exec -- hardhat run scripts/deploy.ts --network celestia-testnet
 
       - name: Verify contracts
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         env:
           ETHERSCAN_API_KEY: ${{ secrets.BLOCKSCOUT_API_KEY }}
         run: |
-          pnpm hardhat verify --network celestia-testnet
+          npm exec -- hardhat verify --network celestia-testnet
         continue-on-error: true
 
   # ============================================
