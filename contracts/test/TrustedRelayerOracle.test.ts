@@ -9,10 +9,15 @@ describe("TrustedRelayerOracle Contract", function () {
 
     beforeEach(async function() {
         const provider = ethers.provider;
+        const [fundedSigner] = await ethers.getSigners();
+
         // Crear billeteras desde las llaves privadas del .env
         owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
         user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
         relayer1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
+
+        // Fund the owner account from the Hardhat Network's pre-funded account
+        await (await fundedSigner.sendTransaction({ to: owner.address, value: ethers.parseEther("100.0") })).wait();
 
         // Fondear cuentas de prueba con gas
         await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("1.0") })).wait();

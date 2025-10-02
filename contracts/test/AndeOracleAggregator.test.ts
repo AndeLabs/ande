@@ -13,17 +13,20 @@ describe("AndeOracleAggregator Contract", function () {
 
     beforeEach(async function() {
         const provider = ethers.provider;
+        const [fundedSigner] = await ethers.getSigners();
+
         // Crear billeteras
         owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
         user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
-        relayer1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
-        // Re-using the same private key for a different wallet object for simplicity in this test
-        relayer2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider); 
+        relayer1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider); // user1 and relayer1 are the same account
+        relayer2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
+
+        // Fund the owner account from the Hardhat Network's pre-funded account
+        await (await fundedSigner.sendTransaction({ to: owner.address, value: ethers.parseEther("100.0") })).wait();
 
         // Fondear cuentas
-        await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("1.0") })).wait();
-        await (await owner.sendTransaction({ to: relayer1.address, value: ethers.parseEther("1.0") })).wait();
-        await (await owner.sendTransaction({ to: relayer2.address, value: ethers.parseEther("1.0") })).wait();
+        await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("2.0") })).wait(); // Funds user1/relayer1
+        await (await owner.sendTransaction({ to: relayer2.address, value: ethers.parseEther("2.0") })).wait();
 
         // Desplegar Aggregator usando deployProxy para compatibilidad
         const AggregatorFactory = await ethers.getContractFactory("AndeOracleAggregator", owner);

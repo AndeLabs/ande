@@ -9,12 +9,17 @@ describe("ANDEToken", function () {
 
     beforeEach(async function () {
         const provider = ethers.provider;
+        const [fundedSigner] = await ethers.getSigners();
+
         // Create wallets from private keys
         owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
         minter = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
         otherAccount = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
 
-        // Fund test accounts with gas
+        // Fund the owner account from the Hardhat Network's pre-funded account
+        await (await fundedSigner.sendTransaction({ to: owner.address, value: ethers.parseEther("100.0") })).wait();
+
+        // Fund other test accounts from the now-funded owner account
         await (await owner.sendTransaction({ to: minter.address, value: ethers.parseEther("1.0") })).wait();
         await (await owner.sendTransaction({ to: otherAccount.address, value: ethers.parseEther("1.0") })).wait();
 
@@ -79,7 +84,7 @@ describe("ANDEToken", function () {
 
     describe("Votes and Governance", function () {
         it("Should allow a user to delegate their votes", async function () {
-            await andeToken.connect(owner).delegate(otherAccount.address);
+            await (await andeToken.connect(owner).delegate(otherAccount.address)).wait();
             expect(await andeToken.delegates(owner.address)).to.equal(otherAccount.address);
         });
     });

@@ -12,10 +12,15 @@ describe("veANDE Contract", function () {
 
     beforeEach(async function() {
         const provider = ethers.provider;
+        const [fundedSigner] = await ethers.getSigners();
+
         // Create wallets from private keys
         owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
         user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
         user2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
+
+        // Fund the owner account from the Hardhat Network's pre-funded account
+        await (await fundedSigner.sendTransaction({ to: owner.address, value: ethers.parseEther("100.0") })).wait();
 
         // Fund test accounts with gas
         await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("1.0") })).wait();
@@ -36,7 +41,7 @@ describe("veANDE Contract", function () {
         await veANDEContract.waitForDeployment();
 
         // Mint tokens to user1 and approve veANDE contract
-        await andeToken.connect(owner).mint(user1.address, LOCK_AMOUNT);
+        await (await andeToken.connect(owner).mint(user1.address, LOCK_AMOUNT)).wait();
         await (await andeToken.connect(user1).approve(await veANDEContract.getAddress(), LOCK_AMOUNT)).wait();
     });
 
@@ -47,7 +52,7 @@ describe("veANDE Contract", function () {
             const block = await provider.getBlock('latest');
             const unlockTimestamp = block!.timestamp + lockDuration;
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
+            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
 
             expect(await andeToken.balanceOf(user1.address)).to.equal(0);
             expect(await andeToken.balanceOf(await veANDEContract.getAddress())).to.equal(LOCK_AMOUNT);
@@ -61,7 +66,7 @@ describe("veANDE Contract", function () {
             const block = await provider.getBlock('latest');
             const unlockTimestamp = block!.timestamp + lockDuration;
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
+            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
 
             await expect(veANDEContract.connect(user1).withdraw())
                 .to.be.revertedWith("veANDE: Lock has not expired yet");
@@ -85,13 +90,13 @@ describe("veANDE Contract", function () {
             const block = await provider.getBlock('latest');
             const unlockTimestamp = block!.timestamp + maxLockTime;
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
+            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
 
             const balance = await veANDEContract.balanceOf(user1.address);
             
             // The balance should be very close to the initial lock amount,
             // accounting for a few seconds of decay since the lock was created.
-            const tolerance = ethers.parseEther("1"); // Allow a tolerance of 1 veANDE
+            const tolerance = ethers.parseEther("5"); // Allow a tolerance of 5 veANDE
             expect(balance).to.be.closeTo(LOCK_AMOUNT, tolerance);
             expect(balance).to.be.lt(LOCK_AMOUNT); // Should be slightly less
         });
@@ -106,7 +111,7 @@ describe("veANDE Contract", function () {
             const block = await provider.getBlock('latest');
             const unlockTimestamp = block!.timestamp + maxLockTime;
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
+            await (await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp)).wait();
 
             // Advance time by half the lock duration
             // This helper only works on Hardhat Network

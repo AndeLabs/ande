@@ -85,12 +85,18 @@ contract veANDE is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
      * @notice Withdraw locked ANDE tokens after the lock has expired.
      */
     function withdraw() external {
-        // TODO: Implement withdrawal logic
-        // 1. Check that the lock has expired (block.timestamp >= unlockTime)
-        // 2. Get the locked amount
-        // 3. Delete the user's lock
-        // 4. Transfer the ANDE back to the user
-        // 5. Emit Withdrawn event
+        LockedBalance storage userLock = lockedBalances[msg.sender];
+        
+        require(userLock.amount > 0, "veANDE: No tokens to withdraw");
+        require(block.timestamp >= userLock.unlockTime, "veANDE: Lock has not expired yet");
+
+        uint256 amount = userLock.amount;
+
+        delete lockedBalances[msg.sender];
+
+        andeToken.safeTransfer(msg.sender, amount);
+
+        emit Withdrawn(msg.sender, amount);
     }
 
     // --- UUPS Upgrade Function ---
