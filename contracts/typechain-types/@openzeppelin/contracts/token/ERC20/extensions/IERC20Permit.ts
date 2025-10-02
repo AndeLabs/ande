@@ -23,12 +23,12 @@ import type {
 
 export interface IERC20PermitInterface extends Interface {
   getFunction(
-    nameOrSignature: "DOMAIN_SEPARATOR" | "nonces" | "permit"
+    nameOrSignature: "DOMAIN_SEPARATOR" | "nonces" | "permit",
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "DOMAIN_SEPARATOR",
-    values?: undefined
+    values?: undefined,
   ): string;
   encodeFunctionData(functionFragment: "nonces", values: [AddressLike]): string;
   encodeFunctionData(
@@ -40,13 +40,13 @@ export interface IERC20PermitInterface extends Interface {
       BigNumberish,
       BigNumberish,
       BytesLike,
-      BytesLike
-    ]
+      BytesLike,
+    ],
   ): string;
 
   decodeFunctionResult(
     functionFragment: "DOMAIN_SEPARATOR",
-    data: BytesLike
+    data: BytesLike,
   ): Result;
   decodeFunctionResult(functionFragment: "nonces", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "permit", data: BytesLike): Result;
@@ -61,38 +61,38 @@ export interface IERC20Permit extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
+    toBlock?: string | number | undefined,
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
+    listener: TypedListener<TCEvent>,
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
+    event: TCEvent,
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
+    event?: TCEvent,
   ): Promise<this>;
 
   DOMAIN_SEPARATOR: TypedContractMethod<[], [string], "view">;
@@ -107,24 +107,24 @@ export interface IERC20Permit extends BaseContract {
       deadline: BigNumberish,
       v: BigNumberish,
       r: BytesLike,
-      s: BytesLike
+      s: BytesLike,
     ],
     [void],
     "nonpayable"
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
+    key: string | FunctionFragment,
   ): T;
 
   getFunction(
-    nameOrSignature: "DOMAIN_SEPARATOR"
+    nameOrSignature: "DOMAIN_SEPARATOR",
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "nonces"
+    nameOrSignature: "nonces",
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "permit"
+    nameOrSignature: "permit",
   ): TypedContractMethod<
     [
       owner: AddressLike,
@@ -133,7 +133,7 @@ export interface IERC20Permit extends BaseContract {
       deadline: BigNumberish,
       v: BigNumberish,
       r: BytesLike,
-      s: BytesLike
+      s: BytesLike,
     ],
     [void],
     "nonpayable"
