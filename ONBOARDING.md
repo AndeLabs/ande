@@ -120,6 +120,38 @@ Tras una extensa depuración, hemos descubierto una **incompatibilidad fundament
 
 Este método es más robusto y nos independiza de la incompatibilidad del plugin.
 
+#### **Lección Aprendida Crítica #2: El Entorno de Pruebas Correcto**
+
+Inicialmente, se intentó ejecutar las pruebas unitarias y de integración directamente contra el stack de Docker de nuestra red soberana (`--network localhost`). Sin embargo, este enfoque demostró ser **frágil e inestable**, resultando en errores esporádicos y fallos difíciles de depurar relacionados con la finalización de transacciones y la compatibilidad del entorno.
+
+- **El Problema:** La red `ev-reth-sequencer` tiene su propio tiempo de bloque y particularidades que no son ideales para la ejecución rápida y determinista de cientos de pruebas unitarias.
+- **La Solución (Nuevo Estándar del Proyecto):**
+    1.  **Pruebas Unitarias y de Integración:** Se deben ejecutar utilizando la **red en memoria de Hardhat**. Es el estándar de la industria, es increíblemente rápida y proporciona un entorno limpio y predecible para cada ejecución de prueba. Para forzar este comportamiento, hemos comentado la configuración de `localhost` en `hardhat.config.ts`.
+    2.  **Pruebas End-to-End (E2E):** Las pruebas contra la red soberana real (`localhost`) se deben reservar para un conjunto separado de pruebas E2E, que se enfocarán en verificar la integración completa del sistema, no la lógica de un solo contrato.
+
+Este enfoque nos da lo mejor de ambos mundos: velocidad y fiabilidad para el desarrollo diario, y una verificación completa del sistema antes de un despliegue.
+
+#### **Lección Aprendida Crítica #3: Rutas de Importación en OpenZeppelin v5+**
+
+Durante la implementación del `DualTrackBurnEngine`, nos encontramos con errores de compilación `HH404: File not found` a pesar de que las rutas de importación parecían correctas. La investigación reveló un cambio importante en la estructura de los paquetes de OpenZeppelin a partir de la versión 5.
+
+- **El Problema:** Las versiones anteriores de OpenZeppelin proporcionaban variantes "actualizables" de las interfaces y librerías (ej. `IERC20Upgradeable.sol`, `SafeERC20Upgradeable.sol`) dentro del paquete `@openzeppelin/contracts-upgradeable`.
+- **La Solución (Estándar v5+):** A partir de la v5, esta duplicación se ha eliminado. Al interactuar con contratos actualizables, se deben importar las interfaces y librerías estándar directamente desde el paquete `@openzeppelin/contracts`. El sistema de Hardhat y OpenZeppelin se encarga de enlazar correctamente la implementación actualizable.
+
+**Ejemplo Práctico:**
+
+```solidity
+// INCORRECTO (para v5+)
+// import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
+// CORRECTO (para v5+)
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+```
+
+Este conocimiento es crucial para evitar errores de compilación y entender la estructura moderna de los contratos de OpenZeppelin.
+
 #### **Paso 1: Preparar el Entorno de Contratos (Solo la primera vez)**
 
 Este paso no cambia. Asegúrate de tener las dependencias instaladas.
