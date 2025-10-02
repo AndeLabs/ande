@@ -2,3 +2,4 @@
 /* tslint:disable */
 /* eslint-disable */
 export { ANDEToken__factory } from "./ANDEToken__factory";
+export { VeANDE__factory } from "./VeANDE__factory";

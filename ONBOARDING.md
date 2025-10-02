@@ -174,6 +174,24 @@ Estas dependencias ya están incluidas en `andechain/contracts/package.json`.
 -   **Conflicto de Herencia con `nonces`:** Al combinar `ERC20PermitUpgradeable` y `ERC20VotesUpgradeable`, ambos contratos definen una función `nonces`. Solidity requiere que anulemos (override) explícitamente esta función en nuestro contrato final (`ANDEToken.sol`) para resolver la ambigüedad.
 -   **Pruebas con Proxies:** Las pruebas para contratos actualizables son ligeramente diferentes. En lugar de desplegar el contrato directamente, se utiliza `upgrades.deployProxy()` para simular el entorno de producción real, que incluye el contrato de implementación y el proxy.
 
+### 3.6. Verificación del Entorno (Health Check)
+
+Después de levantar el stack de Docker por primera vez y preparar el entorno de los contratos, es una excelente práctica realizar una verificación completa para asegurar que todos los componentes se comunican correctamente.
+
+Hemos preparado un test específico para este propósito: `verify-gas-token.ts`. Este test no solo verifica el token de gas, sino que su ejecución exitosa confirma que:
+- La conexión entre el entorno de pruebas y el nodo RPC es correcta.
+- Las variables de entorno (como tu `PRIVATE_KEY`) se están cargando adecuadamente.
+- El fondeo de cuentas en el génesis funciona.
+- El despliegue de contratos básicos es exitoso.
+
+Para ejecutar esta verificación, navega al directorio `andechain/infra` y corre el siguiente comando:
+
+```bash
+docker compose run contracts npm exec -- hardhat test test/verify-gas-token.ts --network localhost
+```
+
+Si este test pasa, tu entorno de desarrollo local está 100% operativo y listo para que empieces a construir.
+
 ## 4. Automatización con GitHub Actions (El "Guardián de la Calidad")
 
 (La sección de CI/CD permanece igual que en la versión anterior del ONBOARDING.md)
