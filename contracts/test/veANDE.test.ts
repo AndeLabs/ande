@@ -1,123 +1,209 @@
-import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
+import { ethers, upgrades } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { ANDEToken, veANDE } from "../typechain-types";
+import { veANDE, ANDEToken } from "../typechain-types";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
-describe("veANDE Contract", function () {
-    let andeToken: ANDEToken;
-    let veANDEContract: veANDE;
-    let owner: ethers.Wallet, user1: ethers.Wallet, user2: ethers.Wallet;
+describe("veANDE", function () {
+  let veANDEContract: veANDE;
+  let andeToken: ANDEToken;
+  let owner: HardhatEthersSigner, otherAccount: HardhatEthersSigner;
 
-    const LOCK_AMOUNT = ethers.parseEther("1000");
+  beforeEach(async function () {
+    [owner, otherAccount] = await ethers.getSigners();
 
-    beforeEach(async function() {
-        const provider = ethers.provider;
-        // Create wallets from private keys
-        owner = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-        user1 = new ethers.Wallet(process.env.PRIVATE_KEY_USER1!, provider);
-        user2 = new ethers.Wallet(process.env.PRIVATE_KEY_USER2!, provider);
+    // Deploy ANDEToken
+    const ANDETokenFactory = await ethers.getContractFactory("ANDEToken", owner);
+    andeToken = (await upgrades.deployProxy(
+      ANDETokenFactory,
+      [owner.address, owner.address], // admin and minter
+      { initializer: "initialize", kind: "uups" }
+    )) as unknown as ANDEToken;
+    await andeToken.waitForDeployment();
 
-        // Fund test accounts with gas
-        await (await owner.sendTransaction({ to: user1.address, value: ethers.parseEther("1.0") })).wait();
-        await (await owner.sendTransaction({ to: user2.address, value: ethers.parseEther("1.0") })).wait();
+    const veANDEFactory = await ethers.getContractFactory("veANDE", owner);
 
-        // Deploy ANDEToken
-        const ANDETokenFactory = await ethers.getContractFactory("ANDEToken", owner);
-        andeToken = (await upgrades.deployProxy(ANDETokenFactory, [owner.address, owner.address], {
-            kind: "uups",
-        })) as unknown as ANDEToken;
-        await andeToken.waitForDeployment();
+    veANDEContract = (await upgrades.deployProxy(
+      veANDEFactory,
+      [owner.address, await andeToken.getAddress()],
+      {
+        initializer: "initialize",
+        kind: "uups",
+      },
+    )) as unknown as veANDE;
 
-        // Deploy veANDEContract
-        const veANDEFactory = await ethers.getContractFactory("veANDE", owner);
-        veANDEContract = (await upgrades.deployProxy(veANDEFactory, [await andeToken.getAddress(), owner.address], {
-            kind: "uups",
-        })) as unknown as veANDE;
-        await veANDEContract.waitForDeployment();
+    await veANDEContract.waitForDeployment();
+  });
 
-        // Mint tokens to user1 and approve veANDE contract
-        await andeToken.connect(owner).mint(user1.address, LOCK_AMOUNT);
-        await (await andeToken.connect(user1).approve(await veANDEContract.getAddress(), LOCK_AMOUNT)).wait();
+  describe("Deployment", function () {
+    it("Should set the right admin and token address", async function () {
+      const ADMIN_ROLE = await veANDEContract.DEFAULT_ADMIN_ROLE();
+      expect(await veANDEContract.hasRole(ADMIN_ROLE, owner.address)).to.be.true;
+      expect(await veANDEContract.andeToken()).to.equal(await andeToken.getAddress());
+    });
+  });
+
+  describe("Locking", function () {
+    const lockAmount = ethers.parseUnits("1000", 18);
+
+    beforeEach(async function () {
+        // Mint and approve tokens for otherAccount
+        await andeToken.mint(otherAccount.address, lockAmount * 2n); // Mint more for increase tests
+        await andeToken.connect(otherAccount).approve(await veANDEContract.getAddress(), lockAmount * 2n);
     });
 
-    describe("createLock", function () {
-        it("should allow a user to lock tokens", async function () {
-            const provider = ethers.provider;
-            const lockDuration = 365 * 24 * 60 * 60; // 1 year
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + lockDuration;
+    it("Should allow a user to create a lock", async function () {
+        const unlockTime = (await time.latest()) + 365 * 24 * 60 * 60; // 1 year
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, unlockTime);
 
-            expect(await andeToken.balanceOf(user1.address)).to.equal(0);
-            expect(await andeToken.balanceOf(await veANDEContract.getAddress())).to.equal(LOCK_AMOUNT);
-        });
+        const userLock = await veANDEContract.locked_balances(otherAccount.address);
+        expect(userLock.amount).to.equal(lockAmount);
+        expect(userLock.end).to.equal(unlockTime);
+
+        expect(await andeToken.balanceOf(await veANDEContract.getAddress())).to.equal(lockAmount);
     });
 
-    describe("Withdrawal Logic", function () {
-        it("should NOT allow a user to withdraw before the lock has expired", async function () {
-            const provider = ethers.provider;
-            const lockDuration = 30 * 24 * 60 * 60; // 30 days
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + lockDuration;
+    it("Should allow a user to increase their lock amount", async function () {
+        const unlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, unlockTime);
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
+        const additionalAmount = ethers.parseUnits("500", 18);
+        await veANDEContract.connect(otherAccount).create_lock(additionalAmount, unlockTime);
 
-            await expect(veANDEContract.connect(user1).withdraw())
-                .to.be.revertedWith("veANDE: Lock has not expired yet");
-        });
-
-        it("should NOT allow a user with no lock to withdraw", async function () {
-            await expect(veANDEContract.connect(user2).withdraw())
-                .to.be.revertedWith("veANDE: No tokens to withdraw");
-        });
+        const userLock = await veANDEContract.locked_balances(otherAccount.address);
+        expect(userLock.amount).to.equal(lockAmount + additionalAmount);
     });
 
-    describe("balanceOf Logic", function() {
-        it("should return 0 for a user with no lock", async function() {
-            const balance = await veANDEContract.balanceOf(user2.address);
-            expect(balance).to.equal(0);
-        });
+    it("Should allow a user to extend their lock time", async function () {
+        const initialUnlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, initialUnlockTime);
 
-        it("should return a balance close to the locked amount for a fresh lock", async function() {
-            const provider = ethers.provider;
-            const maxLockTime = 4 * 365 * 24 * 60 * 60; // 4 years
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + maxLockTime;
+        const extendedUnlockTime = initialUnlockTime + 365 * 24 * 60 * 60; // Extend by 1 year
+        await veANDEContract.connect(otherAccount).create_lock(0, extendedUnlockTime); // Increase amount by 0
 
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
-
-            const balance = await veANDEContract.balanceOf(user1.address);
-            
-            // The balance should be very close to the initial lock amount,
-            // accounting for a few seconds of decay since the lock was created.
-            const tolerance = ethers.parseEther("1"); // Allow a tolerance of 1 veANDE
-            expect(balance).to.be.closeTo(LOCK_AMOUNT, tolerance);
-            expect(balance).to.be.lt(LOCK_AMOUNT); // Should be slightly less
-        });
-
-        // TODO: Testing the decay over time requires time manipulation, which is not
-        // possible on the 'localhost' network. This test can be run on the in-memory Hardhat Network.
-        /*
-        it("should return a decayed balance after time has passed", async function() {
-            const provider = ethers.provider;
-            const maxLockTime = 4 * 365 * 24 * 60 * 60; // 4 years
-            const halfLockTime = maxLockTime / 2;
-            const block = await provider.getBlock('latest');
-            const unlockTimestamp = block!.timestamp + maxLockTime;
-
-            await veANDEContract.connect(user1).createLock(LOCK_AMOUNT, unlockTimestamp);
-
-            // Advance time by half the lock duration
-            // This helper only works on Hardhat Network
-            // await time.increase(halfLockTime);
-
-            const balance = await veANDEContract.balanceOf(user1.address);
-            const expectedBalance = LOCK_AMOUNT / 2n; // Using BigInt division
-            const tolerance = ethers.parseEther("1");
-
-            expect(balance).to.be.closeTo(expectedBalance, tolerance);
-        });
-        */
+        const userLock = await veANDEContract.locked_balances(otherAccount.address);
+        expect(userLock.end).to.equal(extendedUnlockTime);
     });
+
+    it("Should not allow shortening the lock time", async function () {
+        const initialUnlockTime = (await time.latest()) + 2 * 365 * 24 * 60 * 60; // 2 years
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, initialUnlockTime);
+
+        const shorterUnlockTime = initialUnlockTime - 365 * 24 * 60 * 60; // 1 year
+        await expect(veANDEContract.connect(otherAccount).create_lock(0, shorterUnlockTime))
+            .to.be.revertedWith("Cannot shorten lock time");
+    });
+
+    it("Should allow increasing amount and extending duration simultaneously", async function () {
+        const initialUnlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, initialUnlockTime);
+
+        const additionalAmount = ethers.parseUnits("500", 18);
+        const extendedUnlockTime = initialUnlockTime + 365 * 24 * 60 * 60;
+
+        await veANDEContract.connect(otherAccount).create_lock(additionalAmount, extendedUnlockTime);
+
+        const userLock = await veANDEContract.locked_balances(otherAccount.address);
+        expect(userLock.amount).to.equal(lockAmount + additionalAmount);
+        expect(userLock.end).to.equal(extendedUnlockTime);
+    });
+
+    it("Should not allow locking for more than 4 years", async function () {
+        const fourYears = 4 * 365 * 24 * 60 * 60;
+        const oneDay = 24 * 60 * 60;
+        const invalidUnlockTime = (await time.latest()) + fourYears + oneDay;
+
+        await expect(veANDEContract.connect(otherAccount).create_lock(lockAmount, invalidUnlockTime))
+            .to.be.revertedWith("Lock duration cannot exceed 4 years");
+    });
+
+    it("Should not allow locking 0 amount if no lock exists", async function () {
+        const unlockTime = (await time.latest()) + 365 * 24 * 60 * 60;
+        await expect(veANDEContract.connect(otherAccount).create_lock(0, unlockTime))
+            .to.be.revertedWith("Amount must be positive for new locks");
+    });
+  });
+
+  describe("Withdrawing", function () {
+    const lockAmount = ethers.parseUnits("1000", 18);
+    let unlockTime: number;
+
+    beforeEach(async function () {
+        unlockTime = (await time.latest()) + 365 * 24 * 60 * 60; // 1 year
+        await andeToken.mint(otherAccount.address, lockAmount);
+        await andeToken.connect(otherAccount).approve(await veANDEContract.getAddress(), lockAmount);
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, unlockTime);
+    });
+
+    it("Should not allow withdrawing before lock expires", async function () {
+        await expect(veANDEContract.connect(otherAccount).withdraw())
+            .to.be.revertedWith("Lock has not expired");
+    });
+
+    it("Should allow withdrawing after lock expires", async function () {
+        await time.increaseTo(unlockTime);
+
+        await veANDEContract.connect(otherAccount).withdraw();
+
+        expect(await andeToken.balanceOf(otherAccount.address)).to.equal(lockAmount);
+        expect(await andeToken.balanceOf(await veANDEContract.getAddress())).to.equal(0);
+    });
+
+    it("Should reset lock information after withdrawing", async function () {
+        await time.increaseTo(unlockTime);
+        await veANDEContract.connect(otherAccount).withdraw();
+
+        const userLock = await veANDEContract.locked_balances(otherAccount.address);
+        expect(userLock.amount).to.equal(0);
+        expect(userLock.end).to.equal(0);
+    });
+
+    it("Should fail if trying to withdraw with no lock", async function () {
+        await expect(veANDEContract.connect(owner).withdraw())
+            .to.be.revertedWith("No lock found");
+    });
+  });
+
+  describe("Voting Power", function () {
+    const lockAmount = ethers.parseUnits("1000", 18);
+    const fourYears = 4 * 365 * 24 * 60 * 60;
+
+    it("Should have max voting power for a max-time lock", async function () {
+        const unlockTime = (await time.latest()) + fourYears;
+        await andeToken.mint(otherAccount.address, lockAmount);
+        await andeToken.connect(otherAccount).approve(await veANDEContract.getAddress(), lockAmount);
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, unlockTime);
+
+        const votingPower = await veANDEContract.balanceOf(otherAccount.address);
+        // Due to block timestamp progression, voting power will be slightly less than lockAmount
+        expect(votingPower).to.be.closeTo(lockAmount, ethers.parseUnits("1", 18)); 
+    });
+
+    it("Should have zero voting power when lock expires", async function () {
+        const unlockTime = (await time.latest()) + 365 * 24 * 60 * 60; // 1 year
+        await andeToken.mint(otherAccount.address, lockAmount);
+        await andeToken.connect(otherAccount).approve(await veANDEContract.getAddress(), lockAmount);
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, unlockTime);
+
+        await time.increaseTo(unlockTime);
+
+        const votingPower = await veANDEContract.balanceOf(otherAccount.address);
+        expect(votingPower).to.equal(0);
+    });
+
+    it("Should have about half voting power at the halfway point", async function () {
+        const unlockTime = (await time.latest()) + fourYears;
+        await andeToken.mint(otherAccount.address, lockAmount);
+        await andeToken.connect(otherAccount).approve(await veANDEContract.getAddress(), lockAmount);
+        await veANDEContract.connect(otherAccount).create_lock(lockAmount, unlockTime);
+
+        await time.increase(fourYears / 2);
+
+        const votingPower = await veANDEContract.balanceOf(otherAccount.address);
+        const expectedPower = lockAmount / 2n;
+
+        expect(votingPower).to.be.closeTo(expectedPower, ethers.parseUnits("1", 18));
+    });
+  });
 });
