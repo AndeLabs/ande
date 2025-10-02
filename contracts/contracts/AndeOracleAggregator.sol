@@ -69,7 +69,7 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         if (weight == 0 || weight > 10000) revert InvalidWeight();
         
         OracleSource[] storage pairSources = sources[pairId];
-        for (uint i = 0; i < pairSources.length; i++) {
+        for (uint256 i = 0; i < pairSources.length; i++) {
             if (pairSources[i].oracle == oracle) revert SourceAlreadyExists();
         }
         
@@ -92,7 +92,7 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         if (newWeight == 0 || newWeight > 10000) revert InvalidWeight();
         
         OracleSource[] storage pairSources = sources[pairId];
-        for (uint i = 0; i < pairSources.length; i++) {
+        for (uint256 i = 0; i < pairSources.length; i++) {
             if (pairSources[i].oracle == oracle) {
                 pairSources[i].weight = newWeight;
                 emit SourceUpdated(pairId, oracle, newWeight);
@@ -103,7 +103,7 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
     
     function deactivateSource(bytes32 pairId, address oracle) external onlyOwner {
         OracleSource[] storage pairSources = sources[pairId];
-        for (uint i = 0; i < pairSources.length; i++) {
+        for (uint256 i = 0; i < pairSources.length; i++) {
             if (pairSources[i].oracle == oracle) {
                 pairSources[i].isActive = false;
                 emit SourceRemoved(pairId, oracle);
@@ -153,7 +153,7 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         uint256 validCount = 0;
         uint256 totalWeight = 0;
         
-        for (uint i = 0; i < pairSources.length; i++) {
+        for (uint256 i = 0; i < pairSources.length; i++) {
             if (!pairSources[i].isActive) continue;
             
             try IOracle(pairSources[i].oracle).getPrice(pairId) returns (uint256 price) {
@@ -176,7 +176,7 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         uint256 validWeight = 0;
         uint256 finalSourceCount = 0;
         
-        for (uint i = 0; i < validCount; i++) {
+        for (uint256 i = 0; i < validCount; i++) {
             uint256 deviation = _calculateDeviation(medianPrice, prices[i]);
             
             if (deviation > MAX_DEVIATION) {
@@ -221,8 +221,8 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         if (length == 0) return 0;
         if (length == 1) return data[0];
         
-        for (uint i = 0; i < length - 1; i++) {
-            for (uint j = 0; j < length - i - 1; j++) {
+        for (uint256 i = 0; i < length - 1; i++) {
+            for (uint256 j = 0; j < length - i - 1; j++) {
                 if (data[j] > data[j + 1]) {
                     uint256 temp = data[j];
                     data[j] = data[j + 1];
