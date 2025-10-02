@@ -7,3 +7,4 @@ import type * as introspection from "./introspection";
 export type { introspection };
 export type { ContextUpgradeable } from "./ContextUpgradeable";
 export type { NoncesUpgradeable } from "./NoncesUpgradeable";
+export type { PausableUpgradeable } from "./PausableUpgradeable";

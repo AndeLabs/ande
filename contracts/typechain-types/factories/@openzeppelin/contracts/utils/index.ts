@@ -7,4 +7,5 @@ export * as math from "./math";
 export * as structs from "./structs";
 export { Address__factory } from "./Address__factory";
 export { Errors__factory } from "./Errors__factory";
+export { Pausable__factory } from "./Pausable__factory";
 export { Strings__factory } from "./Strings__factory";

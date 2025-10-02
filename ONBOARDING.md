@@ -111,14 +111,25 @@ Desde el directorio `andechain/infra`:
 
 La interacción y prueba de los smart contracts se realiza a través de un servicio de Docker controlado desde el directorio `infra`. Esto garantiza un entorno consistente y reproducible.
 
-#### **Lección Aprendida Crítica: El Entorno de Pruebas**
+#### **Lección Aprendida Crítica #1: Creación de Billeteras para Pruebas**
 
-Tras una extensa depuración, hemos descubierto una **incompatibilidad fundamental** entre el plugin `@openzeppelin/hardhat-upgrades` y nuestro entorno de pruebas (`--network localhost` que corre sobre `ev-reth-sequencer`).
+Tras una extensa depuración, hemos descubierto una **incompatibilidad fundamental** entre el plugin `@openzeppelin/hardhat-upgrades` y nuestro entorno de pruebas personalizado (`ev-reth-sequencer`).
 
 - **El Problema:** El plugin interfiere con la función `ethers.getSigners()`, causando que las pruebas fallen de formas impredecibles al no poder obtener las cuentas del nodo.
 - **La Solución (Estándar del Proyecto):** Para evitar este problema, **TODAS las pruebas deben seguir el patrón de creación manual de billeteras**. En lugar de usar `ethers.getSigners()`, se deben inicializar las billeteras directamente desde las llaves privadas definidas en el archivo `.env`.
 
 Este método es más robusto y nos independiza de la incompatibilidad del plugin.
+
+#### **Lección Aprendida Crítica #2: El Entorno de Pruebas Correcto**
+
+Inicialmente, se intentó ejecutar las pruebas unitarias y de integración directamente contra el stack de Docker de nuestra red soberana (`--network localhost`). Sin embargo, este enfoque demostró ser **frágil e inestable**, resultando en errores esporádicos y fallos difíciles de depurar relacionados con la finalización de transacciones y la compatibilidad del entorno.
+
+- **El Problema:** La red `ev-reth-sequencer` tiene su propio tiempo de bloque y particularidades que no son ideales para la ejecución rápida y determinista de cientos de pruebas unitarias.
+- **La Solución (Nuevo Estándar del Proyecto):**
+    1.  **Pruebas Unitarias y de Integración:** Se deben ejecutar utilizando la **red en memoria de Hardhat**. Es el estándar de la industria, es increíblemente rápida y proporciona un entorno limpio y predecible para cada ejecución de prueba. Para forzar este comportamiento, hemos comentado la configuración de `localhost` en `hardhat.config.ts`.
+    2.  **Pruebas End-to-End (E2E):** Las pruebas contra la red soberana real (`localhost`) se deben reservar para un conjunto separado de pruebas E2E, que se enfocarán en verificar la integración completa del sistema, no la lógica de un solo contrato.
+
+Este enfoque nos da lo mejor de ambos mundos: velocidad y fiabilidad para el desarrollo diario, y una verificación completa del sistema antes de un despliegue.
 
 #### **Paso 1: Preparar el Entorno de Contratos (Solo la primera vez)**
 
@@ -163,17 +174,15 @@ Todas las nuevas suites de pruebas (`*.test.ts`) deben usar el siguiente bloque 
 
 #### **Paso 3: Interactuar con los Contratos desde la Carpeta `infra`**
 
-Para asegurar que las pruebas se ejecuten en un entorno estable, hemos modificado `docker-compose.yml` para que el servicio `contracts` dependa explícitamente de `ev-reth-sequencer`. Asimismo, el `hardhat.config.ts` ha sido simplificado.
-
 -   **Ejecutar TODAS las pruebas (Recomendado):**
-    Este comando ejecuta todas las suites de pruebas contra nuestra red de desarrollo local.
+    Este comando ejecuta todas las suites de pruebas contra la red en memoria de Hardhat.
     ```bash
-    docker compose run --build contracts npm test -- --network localhost
+    docker compose run --build contracts npm test
     ```
 
 -   **Ejecutar un archivo de prueba específico:**
     ```bash
-    docker compose run --build contracts npm exec -- hardhat test test/veANDE.test.ts --network localhost
+    docker compose run --build contracts npm exec -- hardhat test test/veANDE.test.ts
     ```
 
 -   **Compilar y otros comandos:**
@@ -194,22 +203,18 @@ A medida que el proyecto madura, utilizamos patrones de contratos actualizables 
 
 ### 3.6. Verificación del Entorno (Health Check)
 
-Después de levantar el stack de Docker, es una excelente práctica realizar una verificación para asegurar que todos los componentes se comunican correctamente.
+Después de levantar el stack de Docker, es una excelente práctica realizar una verificación para asegurar que todos los componentes se comunican correctamente. Para ello, se puede ejecutar una prueba específica contra la red **localhost**.
 
-El test `verify-gas-token.ts` es perfecto para esto, ya que utiliza el método de conexión directa (creando un `provider` y `wallet` manualmente) que hemos establecido como el estándar. Su ejecución exitosa confirma que:
-- La conexión entre el entorno de pruebas y el nodo RPC es correcta.
-- Las variables de entorno (como tu `PRIVATE_KEY`) se están cargando adecuadamente.
-- El fondeo de cuentas en el génesis funciona.
+El test `verify-gas-token.ts` es perfecto para esto. Su ejecución exitosa confirma que la conexión con el stack de Docker (RPC, fondeo, etc.) funciona correctamente.
 
 Para ejecutar esta verificación, navega al directorio `andechain/infra` y corre:
 
 ```bash
-docker compose run --build contracts npm exec -- hardhat test test/verify-gas-token.ts --network localhost
+docker compose run --build contracts npm exec -- hardhat test test/verify-gas-token.ts -- --network localhost
 ```
 
-Si este test pasa, tu entorno de desarrollo local está 100% operativo para empezar a construir, teniendo en cuenta las consideraciones sobre la estrategia de pruebas ya mencionadas.
+Si este test pasa, tu entorno de desarrollo local está 100% operativo para empezar a construir.
 
-Si este test pasa, tu entorno de desarrollo local está 100% operativo y listo para que empieces a construir.
 
 ## 4. Automatización con GitHub Actions (El "Guardián de la Calidad")
 

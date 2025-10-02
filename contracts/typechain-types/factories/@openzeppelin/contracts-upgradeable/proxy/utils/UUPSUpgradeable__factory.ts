@@ -146,7 +146,7 @@ export class UUPSUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): UUPSUpgradeable {
     return new Contract(address, _abi, runner) as unknown as UUPSUpgradeable;
   }

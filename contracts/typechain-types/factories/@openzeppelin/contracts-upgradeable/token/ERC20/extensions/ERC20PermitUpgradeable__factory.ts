@@ -543,12 +543,12 @@ export class ERC20PermitUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): ERC20PermitUpgradeable {
     return new Contract(
       address,
       _abi,
-      runner
+      runner,
     ) as unknown as ERC20PermitUpgradeable;
   }
 }

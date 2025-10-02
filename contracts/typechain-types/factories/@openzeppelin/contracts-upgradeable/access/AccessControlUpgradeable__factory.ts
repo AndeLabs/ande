@@ -266,12 +266,12 @@ export class AccessControlUpgradeable__factory {
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    runner?: ContractRunner | null,
   ): AccessControlUpgradeable {
     return new Contract(
       address,
       _abi,
-      runner
+      runner,
     ) as unknown as AccessControlUpgradeable;
   }
 }
