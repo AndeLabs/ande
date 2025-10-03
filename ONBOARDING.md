@@ -102,6 +102,15 @@ TODAS las suites de tests unitarios (`*.test.ts`) deben usar `ethers.getSigners(
 
 4.  **Manejo de Errores de Acceso**: Las versiones recientes de OpenZeppelin emiten `Custom Errors` (ej. `AccessControlUnauthorizedAccount`) en lugar de `reason strings`. Los tests deben esperar estos errores específicos con `revertedWithCustomError`.
 
+5.  **El Entorno es Frágil (La "Solución Nuclear")**: Si te encuentras con errores extraños que no tienen sentido (como `function selector not recognized` a pesar de que la función existe), es muy probable que la caché de Hardhat esté corrupta. La solución más rápida y fiable es purgar el entorno y reinstalar.
+    *   **Comando Mágico**: `rm -rf artifacts cache typechain-types node_modules/.cache && npm install`
+
+6.  **La Brecha entre Desarrollo y Producción**: Un prototipo funcional no es un producto final. Nuestro `P2POracleV2` es el ejemplo perfecto:
+    *   **Para Desarrollo**: Lo hicimos funcionar devolviendo el último precio reportado para agilizar las pruebas.
+    *   **Para Producción**: Lo robustecimos para que solo devuelva un precio finalizado tras un consenso de mediana ponderada por stake. Esta distinción es **crítica** para la seguridad.
+
+7.  **Los Decimales No Mienten**: El bug más difícil de rastrear que encontramos se debió a un manejo incorrecto de decimales entre el `MockOracle` (8 decimales) y el `AusdToken` (que esperaba 18). En DeFi, un error de decimales es un error de millones de dólares. Siempre valida y normaliza.
+
 #### **Comandos de Desarrollo**
 
 Siempre desde la carpeta `andechain/infra`:
