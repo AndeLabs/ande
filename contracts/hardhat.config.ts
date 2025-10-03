@@ -16,8 +16,8 @@ const config: HardhatUserConfig = {
   },
   networks: {
     localhost: {
-      url: "http://ev-reth-sequencer:8545",
-      chainId: 1234,
+      url: "http://127.0.0.1:8545",
+      chainId: 31337,
     },
   },
 };

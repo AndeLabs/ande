@@ -128,17 +128,24 @@ contract AusdToken is
         CollateralInfo storage collateral = collateralTypes[_collateral];
         if (!collateral.isSupported) revert CollateralNotSupported();
 
-        uint256 collateralPrice = collateral.priceFeed.getPrice(keccak256(abi.encodePacked("USD")));
-        if (collateralPrice == 0) revert OraclePriceInvalid();
+        // --- Lógica de Oráculo Corregida ---
+        // 1. Obtener precio y decimales del oráculo
+        (, int256 price_signed, , , ) = collateral.priceFeed.latestRoundData();
+        if (price_signed <= 0) revert OraclePriceInvalid();
+        uint256 collateralPrice = uint256(price_signed);
+        uint8 oracleDecimals = collateral.priceFeed.decimals();
 
-        uint256 collateralDecimals = IERC20withDecimals(_collateral).decimals();
-        uint256 valueInUsd_scaled = (_collateralAmount * collateralPrice) / (10 ** collateralDecimals);
+        // 2. Obtener decimales del token de colateral
+        uint8 collateralDecimals = IERC20withDecimals(_collateral).decimals();
 
-        uint256 amountToMint_scaled = (valueInUsd_scaled * 10000) / collateral.overCollateralizationRatio;
+        // 3. Calcular el valor del colateral en USD, normalizado a 18 decimales (como AUSD)
+        // Formula: (collateralAmount * price) / 10^oracleDecimals
+        // Para evitar pérdida de precisión, escalamos el precio a 18 decimales antes de dividir
+        uint256 scaledPrice = collateralPrice * (10**(18 - oracleDecimals));
+        uint256 valueInUsd = (_collateralAmount * scaledPrice) / (10**collateralDecimals);
 
-        uint256 ausdDecimals = decimals();
-        uint256 oracleDecimals = 8; // As defined in our test oracle
-        uint256 amountToMint = amountToMint_scaled * (10 ** (ausdDecimals - oracleDecimals));
+        // 4. Calcular la cantidad de AUSD a acuñar
+        uint256 amountToMint = (valueInUsd * 10000) / collateral.overCollateralizationRatio;
 
         IERC20(_collateral).safeTransferFrom(msg.sender, address(this), _collateralAmount);
         collateral.totalDeposited += _collateralAmount;
@@ -156,17 +163,20 @@ contract AusdToken is
         CollateralInfo storage collateral = collateralTypes[_collateral];
         if (!collateral.isSupported) revert CollateralNotSupported();
 
-        uint256 collateralPrice = collateral.priceFeed.getPrice(keccak256(abi.encodePacked("USD")));
-        if (collateralPrice == 0) revert OraclePriceInvalid();
+        // --- Lógica de Oráculo Corregida ---
+        // 1. Obtener precio y decimales del oráculo
+        (, int256 price_signed, , , ) = collateral.priceFeed.latestRoundData();
+        if (price_signed <= 0) revert OraclePriceInvalid();
+        uint256 collateralPrice = uint256(price_signed);
+        uint8 oracleDecimals = collateral.priceFeed.decimals();
 
-        uint256 ausdDecimals = decimals();
-        uint256 oracleDecimals = 8;
-        uint256 ausdValueInUsd_scaled = _ausdAmount / (10 ** (ausdDecimals - oracleDecimals));
+        // 2. Calcular el valor del AUSD a quemar en USD (es 1:1, pero normalizado)
+        uint256 valueInUsd = _ausdAmount;
 
-        uint256 collateralValueInUsd_scaled = (ausdValueInUsd_scaled * collateral.overCollateralizationRatio) / 10000;
-
-        uint256 collateralDecimals = IERC20withDecimals(_collateral).decimals();
-        uint256 collateralToWithdraw = (collateralValueInUsd_scaled * (10 ** collateralDecimals)) / collateralPrice;
+        // 3. Calcular la cantidad de colateral a retirar
+        uint8 collateralDecimals = IERC20withDecimals(_collateral).decimals();
+        uint256 scaledPrice = collateralPrice * (10**(18 - oracleDecimals));
+        uint256 collateralToWithdraw = (valueInUsd * (10**collateralDecimals)) / scaledPrice;
 
         if (collateralToWithdraw > collateral.totalDeposited) revert InsufficientCollateral();
 
