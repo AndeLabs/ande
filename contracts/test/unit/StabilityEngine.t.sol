@@ -9,7 +9,7 @@ import {ANDEToken} from "../../src/ANDEToken.sol";
 import {P2POracleV2} from "../../src/P2POracleV2.sol";
 import {MockERC20} from "../../src/mocks/MockERC20.sol";
 import {MockOracle} from "../../src/mocks/MockOracle.sol";
-import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract StabilityEngineTest is Test {
     StabilityEngine public engine;

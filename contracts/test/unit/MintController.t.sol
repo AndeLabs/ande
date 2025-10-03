@@ -5,9 +5,9 @@ import {Test, console2} from "forge-std/Test.sol";
 import {MintController} from "../../src/MintController.sol";
 import {ANDEToken} from "../../src/ANDEToken.sol";
 import {VeANDE} from "../../src/VeANDE.sol";
-import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
-import {Pausable} from "openzeppelin-contracts/contracts/utils/Pausable.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract MintControllerTest is Test {
     MintController public controller;

@@ -5,8 +5,8 @@ import {Test, console2} from "forge-std/Test.sol";
 import {AusdToken} from "../../src/AusdToken.sol";
 import {MockERC20} from "../../src/mocks/MockERC20.sol";
 import {MockOracle} from "../../src/mocks/MockOracle.sol";
-import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract AusdTokenTest is Test {
     AusdToken public ausdToken;

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {VeANDE} from "../../src/VeANDE.sol";
 import {ANDEToken} from "../../src/ANDEToken.sol";
-import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract VeANDETest is Test {
     VeANDE public veANDE;
