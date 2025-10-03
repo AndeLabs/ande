@@ -49,6 +49,7 @@ contract VeANDE is
     mapping(address => LockedBalance) public lockedBalances;
 
     mapping(address => Checkpoint[]) private _checkpoints;
+    Checkpoint[] private _totalCheckpoints;
     mapping(address => address) private _delegates;
 
     uint256 public constant MAX_LOCK_TIME = 4 * 365 days;
@@ -100,18 +101,12 @@ contract VeANDE is
 
         uint256 newVotingPower = balanceOf(msg.sender);
 
-        // Update delegation
         address delegatee = _delegates[msg.sender];
         if (delegatee == address(0)) {
             delegatee = msg.sender;
-            _delegates[msg.sender] = msg.sender;
         }
 
-        if (newVotingPower > oldVotingPower) {
-            _writeCheckpoint(delegatee, newVotingPower - oldVotingPower, true);
-        } else if (oldVotingPower > newVotingPower) {
-            _writeCheckpoint(delegatee, oldVotingPower - newVotingPower, false);
-        }
+        _moveVotes(delegatee, oldVotingPower, newVotingPower);
 
         if (amount > 0 && userLock.amount == amount) {
             emit LockCreated(msg.sender, amount, unlockTime);
@@ -132,10 +127,9 @@ contract VeANDE is
 
         delete lockedBalances[msg.sender];
 
-        // Update delegation
         address delegatee = _delegates[msg.sender];
-        if (delegatee != address(0) && oldVotingPower > 0) {
-            _writeCheckpoint(delegatee, oldVotingPower, false);
+        if (delegatee != address(0)) {
+            _moveVotes(delegatee, oldVotingPower, 0);
         }
 
         andeToken.safeTransfer(msg.sender, amount);
@@ -173,14 +167,13 @@ contract VeANDE is
     function getPastVotes(address account, uint256 timepoint) public view override returns (uint256) {
         uint48 currentClock = clock();
         if (timepoint >= currentClock) revert BlockNotYetMined();
-        return _checkpointsLookup(account, uint48(timepoint));
+        return _checkpointsLookup(_checkpoints[account], uint48(timepoint));
     }
 
-    function getPastTotalSupply(uint256 timepoint) public view virtual returns (uint256) {
-        // veANDE doesn't track total supply in checkpoints
-        // Return 0 as individual voting power is what matters
-        timepoint; // silence warning
-        return 0;
+    function getPastTotalSupply(uint256 timepoint) public view virtual override returns (uint256) {
+        uint48 currentClock = clock();
+        if (timepoint >= currentClock) revert BlockNotYetMined();
+        return _checkpointsLookup(_totalCheckpoints, uint48(timepoint));
     }
 
     function delegates(address account) public view override returns (address) {
@@ -226,71 +219,66 @@ contract VeANDE is
     // ============ Internal Functions ============
 
     function _delegate(address delegator, address delegatee) internal virtual {
-        address currentDelegate = _delegates[delegator];
-        if (currentDelegate == address(0)) {
-            currentDelegate = delegator;
-        }
-
+        address currentDelegate = delegates(delegator);
         uint256 delegatorBalance = balanceOf(delegator);
         _delegates[delegator] = delegatee;
 
         emit DelegateChanged(delegator, currentDelegate, delegatee);
 
-        // Move votes from old delegate to new delegate
-        if (currentDelegate != delegatee && delegatorBalance > 0) {
-            if (currentDelegate != address(0)) {
-                _writeCheckpoint(currentDelegate, delegatorBalance, false);
-            }
-            if (delegatee != address(0)) {
-                _writeCheckpoint(delegatee, delegatorBalance, true);
-            }
+        _moveVotes(currentDelegate, delegatorBalance, 0);
+        _moveVotes(delegatee, 0, delegatorBalance);
+    }
+
+    function _moveVotes(address account, uint256 from, uint256 to) internal {
+        if (from > 0) {
+            _writeCheckpoint(_checkpoints[account], from, false);
+            _writeCheckpoint(_totalCheckpoints, from, false);
         }
+        if (to > 0) {
+            _writeCheckpoint(_checkpoints[account], to, true);
+            _writeCheckpoint(_totalCheckpoints, to, true);
+        }
+        emit DelegateVotesChanged(account, from, to);
     }
 
     function _writeCheckpoint(
-        address account,
+        Checkpoint[] storage ckpts,
         uint256 delta,
         bool increase
     ) internal {
-        uint256 pos = _checkpoints[account].length;
+        uint256 pos = ckpts.length;
         uint48 currentBlock = clock();
 
-        uint208 oldVotes = pos == 0 ? 0 : _checkpoints[account][pos - 1].votes;
+        uint208 oldVotes = pos == 0 ? 0 : ckpts[pos - 1].votes;
         uint208 newVotes = increase 
             ? oldVotes + uint208(delta)
             : oldVotes - uint208(delta);
 
-        if (pos > 0 && _checkpoints[account][pos - 1].fromBlock == currentBlock) {
-            _checkpoints[account][pos - 1].votes = newVotes;
+        if (pos > 0 && ckpts[pos - 1].fromBlock == currentBlock) {
+            ckpts[pos - 1].votes = newVotes;
         } else {
-            _checkpoints[account].push(Checkpoint({
+            ckpts.push(Checkpoint({
                 fromBlock: currentBlock,
                 votes: newVotes
             }));
         }
-
-        emit DelegateVotesChanged(account, oldVotes, newVotes);
     }
 
-    function _checkpointsLookup(address account, uint48 timepoint) internal view returns (uint256) {
-        Checkpoint[] storage ckpts = _checkpoints[account];
+    function _checkpointsLookup(Checkpoint[] storage ckpts, uint48 timepoint) internal view returns (uint256) {
         uint256 length = ckpts.length;
 
         if (length == 0) {
             return 0;
         }
 
-        // Check most recent checkpoint
         if (ckpts[length - 1].fromBlock <= timepoint) {
             return ckpts[length - 1].votes;
         }
 
-        // Check oldest checkpoint
         if (ckpts[0].fromBlock > timepoint) {
             return 0;
         }
 
-        // Binary search
         uint256 low = 0;
         uint256 high = length - 1;
 
@@ -308,11 +296,10 @@ contract VeANDE is
 
     function _authorizeUpgrade(address newImplementation)
         internal
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        view
         override
-    {
-        newImplementation; // silence warning
-    }
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {}
 
     // ============ View Functions ============
 
