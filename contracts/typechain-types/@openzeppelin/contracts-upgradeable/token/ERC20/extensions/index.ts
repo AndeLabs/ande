@@ -4,3 +4,4 @@
 export type { ERC20BurnableUpgradeable } from "./ERC20BurnableUpgradeable";
 export type { ERC20PermitUpgradeable } from "./ERC20PermitUpgradeable";
 export type { ERC20VotesUpgradeable } from "./ERC20VotesUpgradeable";
+export type { ERC4626Upgradeable } from "./ERC4626Upgradeable";

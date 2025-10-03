@@ -4,3 +4,4 @@
 export { ERC20BurnableUpgradeable__factory } from "./ERC20BurnableUpgradeable__factory";
 export { ERC20PermitUpgradeable__factory } from "./ERC20PermitUpgradeable__factory";
 export { ERC20VotesUpgradeable__factory } from "./ERC20VotesUpgradeable__factory";
+export { ERC4626Upgradeable__factory } from "./ERC4626Upgradeable__factory";

@@ -50,6 +50,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ERC20VotesUpgradeable__factory>;
     getContractFactory(
+      name: "ERC4626Upgradeable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ERC4626Upgradeable__factory>;
+    getContractFactory(
       name: "ContextUpgradeable",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ContextUpgradeable__factory>;
@@ -105,6 +109,10 @@ declare module "hardhat/types/runtime" {
       name: "IERC1967",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC1967__factory>;
+    getContractFactory(
+      name: "IERC4626",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC4626__factory>;
     getContractFactory(
       name: "IERC5267",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -174,6 +182,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Checkpoints__factory>;
     getContractFactory(
+      name: "AbobToken",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.AbobToken__factory>;
+    getContractFactory(
       name: "AndeOracleAggregator",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.AndeOracleAggregator__factory>;
@@ -214,6 +226,14 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.MockOracle__factory>;
     getContractFactory(
+      name: "P2POracleV2",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.P2POracleV2__factory>;
+    getContractFactory(
+      name: "SAbobToken",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.SAbobToken__factory>;
+    getContractFactory(
       name: "CappedSupply",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.CappedSupply__factory>;
@@ -233,6 +253,10 @@ declare module "hardhat/types/runtime" {
       name: "WithdrawalPattern",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.WithdrawalPattern__factory>;
+    getContractFactory(
+      name: "StabilityEngine",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.StabilityEngine__factory>;
     getContractFactory(
       name: "TrustedRelayerOracle",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -288,6 +312,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.ERC20VotesUpgradeable>;
     getContractAt(
+      name: "ERC4626Upgradeable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ERC4626Upgradeable>;
+    getContractAt(
       name: "ContextUpgradeable",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -357,6 +386,11 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.IERC1967>;
+    getContractAt(
+      name: "IERC4626",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IERC4626>;
     getContractAt(
       name: "IERC5267",
       address: string | ethers.Addressable,
@@ -443,6 +477,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.Checkpoints>;
     getContractAt(
+      name: "AbobToken",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.AbobToken>;
+    getContractAt(
       name: "AndeOracleAggregator",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -493,6 +532,16 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.MockOracle>;
     getContractAt(
+      name: "P2POracleV2",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.P2POracleV2>;
+    getContractAt(
+      name: "SAbobToken",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.SAbobToken>;
+    getContractAt(
       name: "CappedSupply",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -517,6 +566,11 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.WithdrawalPattern>;
+    getContractAt(
+      name: "StabilityEngine",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.StabilityEngine>;
     getContractAt(
       name: "TrustedRelayerOracle",
       address: string | ethers.Addressable,
@@ -565,6 +619,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ERC20VotesUpgradeable>;
     deployContract(
+      name: "ERC4626Upgradeable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ERC4626Upgradeable>;
+    deployContract(
       name: "ContextUpgradeable",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ContextUpgradeable>;
@@ -620,6 +678,10 @@ declare module "hardhat/types/runtime" {
       name: "IERC1967",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC1967>;
+    deployContract(
+      name: "IERC4626",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC4626>;
     deployContract(
       name: "IERC5267",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -689,6 +751,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Checkpoints>;
     deployContract(
+      name: "AbobToken",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AbobToken>;
+    deployContract(
       name: "AndeOracleAggregator",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.AndeOracleAggregator>;
@@ -729,6 +795,14 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.MockOracle>;
     deployContract(
+      name: "P2POracleV2",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.P2POracleV2>;
+    deployContract(
+      name: "SAbobToken",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.SAbobToken>;
+    deployContract(
       name: "CappedSupply",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.CappedSupply>;
@@ -748,6 +822,10 @@ declare module "hardhat/types/runtime" {
       name: "WithdrawalPattern",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.WithdrawalPattern>;
+    deployContract(
+      name: "StabilityEngine",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.StabilityEngine>;
     deployContract(
       name: "TrustedRelayerOracle",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -803,6 +881,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ERC20VotesUpgradeable>;
     deployContract(
+      name: "ERC4626Upgradeable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ERC4626Upgradeable>;
+    deployContract(
       name: "ContextUpgradeable",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -872,6 +955,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC1967>;
+    deployContract(
+      name: "IERC4626",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC4626>;
     deployContract(
       name: "IERC5267",
       args: any[],
@@ -958,6 +1046,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Checkpoints>;
     deployContract(
+      name: "AbobToken",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AbobToken>;
+    deployContract(
       name: "AndeOracleAggregator",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -1008,6 +1101,16 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.MockOracle>;
     deployContract(
+      name: "P2POracleV2",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.P2POracleV2>;
+    deployContract(
+      name: "SAbobToken",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.SAbobToken>;
+    deployContract(
       name: "CappedSupply",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -1032,6 +1135,11 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.WithdrawalPattern>;
+    deployContract(
+      name: "StabilityEngine",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.StabilityEngine>;
     deployContract(
       name: "TrustedRelayerOracle",
       args: any[],
