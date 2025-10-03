@@ -126,6 +126,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ERC1967Utils__factory>;
     getContractFactory(
+      name: "ERC20",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ERC20__factory>;
+    getContractFactory(
       name: "IERC20Metadata",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC20Metadata__factory>;
@@ -178,6 +182,14 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ANDEToken__factory>;
     getContractFactory(
+      name: "AusdToken",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.AusdToken__factory>;
+    getContractFactory(
+      name: "IERC20withDecimals",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC20withDecimals__factory>;
+    getContractFactory(
       name: "DualTrackBurnEngine",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.DualTrackBurnEngine__factory>;
@@ -185,6 +197,22 @@ declare module "hardhat/types/runtime" {
       name: "IOracle",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IOracle__factory>;
+    getContractFactory(
+      name: "IMintable",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IMintable__factory>;
+    getContractFactory(
+      name: "MintController",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MintController__factory>;
+    getContractFactory(
+      name: "MockERC20",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MockERC20__factory>;
+    getContractFactory(
+      name: "MockOracle",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MockOracle__factory>;
     getContractFactory(
       name: "CappedSupply",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -355,6 +383,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.ERC1967Utils>;
     getContractAt(
+      name: "ERC20",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ERC20>;
+    getContractAt(
       name: "IERC20Metadata",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -420,6 +453,16 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.ANDEToken>;
     getContractAt(
+      name: "AusdToken",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.AusdToken>;
+    getContractAt(
+      name: "IERC20withDecimals",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IERC20withDecimals>;
+    getContractAt(
       name: "DualTrackBurnEngine",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -429,6 +472,26 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.IOracle>;
+    getContractAt(
+      name: "IMintable",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IMintable>;
+    getContractAt(
+      name: "MintController",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MintController>;
+    getContractAt(
+      name: "MockERC20",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MockERC20>;
+    getContractAt(
+      name: "MockOracle",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MockOracle>;
     getContractAt(
       name: "CappedSupply",
       address: string | ethers.Addressable,
@@ -578,6 +641,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ERC1967Utils>;
     deployContract(
+      name: "ERC20",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ERC20>;
+    deployContract(
       name: "IERC20Metadata",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC20Metadata>;
@@ -630,6 +697,14 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ANDEToken>;
     deployContract(
+      name: "AusdToken",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AusdToken>;
+    deployContract(
+      name: "IERC20withDecimals",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC20withDecimals>;
+    deployContract(
       name: "DualTrackBurnEngine",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.DualTrackBurnEngine>;
@@ -637,6 +712,22 @@ declare module "hardhat/types/runtime" {
       name: "IOracle",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IOracle>;
+    deployContract(
+      name: "IMintable",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IMintable>;
+    deployContract(
+      name: "MintController",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MintController>;
+    deployContract(
+      name: "MockERC20",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockERC20>;
+    deployContract(
+      name: "MockOracle",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockOracle>;
     deployContract(
       name: "CappedSupply",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -807,6 +898,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ERC1967Utils>;
     deployContract(
+      name: "ERC20",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ERC20>;
+    deployContract(
       name: "IERC20Metadata",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -872,6 +968,16 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ANDEToken>;
     deployContract(
+      name: "AusdToken",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.AusdToken>;
+    deployContract(
+      name: "IERC20withDecimals",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC20withDecimals>;
+    deployContract(
       name: "DualTrackBurnEngine",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -881,6 +987,26 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IOracle>;
+    deployContract(
+      name: "IMintable",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IMintable>;
+    deployContract(
+      name: "MintController",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MintController>;
+    deployContract(
+      name: "MockERC20",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockERC20>;
+    deployContract(
+      name: "MockOracle",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockOracle>;
     deployContract(
       name: "CappedSupply",
       args: any[],
