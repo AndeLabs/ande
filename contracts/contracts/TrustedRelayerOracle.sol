@@ -12,7 +12,7 @@ import "./security/Utils.sol";
  * @notice Oracle simple con relayers de confianza para bootstrap de Ande Chain
  * @dev Refactorizado para ser "upgrade-safe". Lógica de Circuit Breaker desactivada temporalmente.
  */
-contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, PausableUpgradeable, IOracle, RateLimiter { // CircuitBreaker removed
+contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, PausableUpgradeable, RateLimiter { // IOracle, CircuitBreaker removed
     
     using PriceValidator for PriceValidator.PriceData;
 
@@ -125,14 +125,14 @@ contract TrustedRelayerOracle is Initializable, AccessControlUpgradeable, Pausab
         }
     }
     
-    function getPrice(bytes32 pairId) external view override returns (uint256 price) {
+    function getPrice(bytes32 pairId) external view returns (uint256 price) {
         PriceData memory data = prices[pairId];
         if (data.price == 0) revert InvalidPrice();
         if (block.timestamp - data.timestamp > MAX_PRICE_AGE) revert PriceStale();
         return data.price;
     }
     
-    function getPriceWithMetadata(bytes32 pairId) external view override returns (uint256 price, uint256 timestamp, bool isStale, address source) {
+    function getPriceWithMetadata(bytes32 pairId) external view returns (uint256 price, uint256 timestamp, bool isStale, address source) {
         PriceData memory data = prices[pairId];
         isStale = block.timestamp - data.timestamp > MAX_PRICE_AGE;
         return (data.price, data.timestamp, isStale, data.relayer);

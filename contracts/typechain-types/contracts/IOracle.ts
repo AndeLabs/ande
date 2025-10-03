@@ -21,18 +21,18 @@ import type {
 
 export interface IOracleInterface extends Interface {
   getFunction(
-    nameOrSignature: "getPrice" | "getPriceWithMetadata"
+    nameOrSignature: "decimals" | "latestRoundData"
   ): FunctionFragment;
 
-  encodeFunctionData(functionFragment: "getPrice", values: [BytesLike]): string;
+  encodeFunctionData(functionFragment: "decimals", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "getPriceWithMetadata",
-    values: [BytesLike]
+    functionFragment: "latestRoundData",
+    values?: undefined
   ): string;
 
-  decodeFunctionResult(functionFragment: "getPrice", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "getPriceWithMetadata",
+    functionFragment: "latestRoundData",
     data: BytesLike
   ): Result;
 }
@@ -80,16 +80,17 @@ export interface IOracle extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  getPrice: TypedContractMethod<[pairId: BytesLike], [bigint], "view">;
+  decimals: TypedContractMethod<[], [bigint], "view">;
 
-  getPriceWithMetadata: TypedContractMethod<
-    [pairId: BytesLike],
+  latestRoundData: TypedContractMethod<
+    [],
     [
-      [bigint, bigint, boolean, string] & {
-        price: bigint;
-        timestamp: bigint;
-        isStale: boolean;
-        source: string;
+      [bigint, bigint, bigint, bigint, bigint] & {
+        roundId: bigint;
+        answer: bigint;
+        startedAt: bigint;
+        updatedAt: bigint;
+        answeredInRound: bigint;
       }
     ],
     "view"
@@ -100,18 +101,19 @@ export interface IOracle extends BaseContract {
   ): T;
 
   getFunction(
-    nameOrSignature: "getPrice"
-  ): TypedContractMethod<[pairId: BytesLike], [bigint], "view">;
+    nameOrSignature: "decimals"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "getPriceWithMetadata"
+    nameOrSignature: "latestRoundData"
   ): TypedContractMethod<
-    [pairId: BytesLike],
+    [],
     [
-      [bigint, bigint, boolean, string] & {
-        price: bigint;
-        timestamp: bigint;
-        isStale: boolean;
-        source: string;
+      [bigint, bigint, bigint, bigint, bigint] & {
+        roundId: bigint;
+        answer: bigint;
+        startedAt: bigint;
+        updatedAt: bigint;
+        answeredInRound: bigint;
       }
     ],
     "view"

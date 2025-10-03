@@ -7,53 +7,46 @@ import type { IOracle, IOracleInterface } from "../../contracts/IOracle";
 
 const _abi = [
   {
-    inputs: [
-      {
-        internalType: "bytes32",
-        name: "pairId",
-        type: "bytes32",
-      },
-    ],
-    name: "getPrice",
+    inputs: [],
+    name: "decimals",
     outputs: [
       {
-        internalType: "uint256",
+        internalType: "uint8",
         name: "",
-        type: "uint256",
+        type: "uint8",
       },
     ],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "bytes32",
-        name: "pairId",
-        type: "bytes32",
-      },
-    ],
-    name: "getPriceWithMetadata",
+    inputs: [],
+    name: "latestRoundData",
     outputs: [
       {
+        internalType: "uint80",
+        name: "roundId",
+        type: "uint80",
+      },
+      {
+        internalType: "int256",
+        name: "answer",
+        type: "int256",
+      },
+      {
         internalType: "uint256",
-        name: "price",
+        name: "startedAt",
         type: "uint256",
       },
       {
         internalType: "uint256",
-        name: "timestamp",
+        name: "updatedAt",
         type: "uint256",
       },
       {
-        internalType: "bool",
-        name: "isStale",
-        type: "bool",
-      },
-      {
-        internalType: "address",
-        name: "source",
-        type: "address",
+        internalType: "uint80",
+        name: "answeredInRound",
+        type: "uint80",
       },
     ],
     stateMutability: "view",
