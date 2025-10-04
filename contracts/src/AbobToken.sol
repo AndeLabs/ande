@@ -158,7 +158,7 @@ contract AbobToken is
     }
 
     // --- Hook Interno y Actualización ---
-    function _update(address from, address to, uint256 value) internal override(ERC20Upgradeable, PausableUpgradeable) {
+    function _update(address from, address to, uint256 value) internal override(ERC20Upgradeable) {
         super._update(from, to, value);
     }
 
