@@ -34,11 +34,11 @@ El sistema se compone de las siguientes capas que corren en contenedores Docker:
 1.  **Docker Desktop**: La base que corre toda nuestra infraestructura.
 2.  **Foundry**: El kit de herramientas para compilar, probar y desplegar nuestros contratos de Solidity.
 
-### 3.2. Entorno Local
+### 3.2. Gestión del Entorno Local
 
 La gestión del stack se realiza desde `andechain/infra`. Los comandos principales son:
 
--   **Levantar el stack:**
+-   **Levantar el stack (desde cero):**
     ```bash
     cd andechain/infra
     docker compose up -d --build
@@ -47,58 +47,82 @@ La gestión del stack se realiza desde `andechain/infra`. Los comandos principal
     ```bash
     docker compose ps
     ```
--   **Detener el stack:**
+-   **Resetear COMPLETAMENTE el stack (La "Solución Nuclear"):**
+    Para borrar la base de datos de la blockchain y empezar de cero, usa el flag `-v`. Este es el comando que usarás el 99% del tiempo para asegurar un estado limpio.
     ```bash
-    docker compose down
+    docker compose down -v
     ```
 
 ### 3.3. Puntos de Acceso
 
 *   **RPC Endpoint:** `http://localhost:8545`
 *   **Explorador de Bloques:** `http://localhost:4000`
-*   **Faucet:** `http://localhost:8081`
 
 ### 3.4. Flujo de Desarrollo de Smart Contracts (Foundry)
 
 El ciclo de vida del desarrollo de contratos se centra en el directorio `andechain/contracts`.
 
-**1. Instalar Dependencias:**
-Foundry gestiona las dependencias (ej. OpenZeppelin) como submódulos de Git.
+**1. Compilar y Probar:**
 ```bash
 cd andechain/contracts
-forge install
-```
-
-**2. Compilar:**
-```bash
 forge build
-```
-
-**3. Probar:**
-Las pruebas se escriben en Solidity (`*.t.sol`) y son extremadamente rápidas.
-```bash
 forge test
 ```
 
-**4. Desplegar:**
-Los despliegues se realizan mediante scripts de Solidity.
-```bash
-forge script script/MiScript.s.sol --rpc-url http://localhost:8545 --broadcast
-```
+**2. Desplegar en la Red Local:**
 
-### 3.5. Lecciones Críticas de Nuestro Viaje de Desarrollo
+*   **Paso A: Obtén la Clave Privada.**
+    Nuestra configuración actual **fondea automáticamente** la cuenta de desarrollo estándar de Foundry/Anvil. No necesitas buscarla en los logs ni usar el faucet.
+    *   **Cuenta:** `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+    *   **Clave Privada:** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 
-1.  **Dependencias de OpenZeppelin v5+**: La estructura de los paquetes cambió. Las **Interfaces** (`IVotes`) y **Librerías** (`SafeERC20`) se importan desde `@openzeppelin/contracts`, mientras que las **Implementaciones Actualizables** (`ERC20Upgradeable`) vienen de `@openzeppelin/contracts-upgradeable`.
+*   **Paso B: Ejecuta el Script de Despliegue.**
+    Usa la clave privada en una variable de entorno y especifica el contrato a ejecutar con `--tc`.
+    ```bash
+    cd andechain/contracts
+    export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
+    ```
 
-2.  **Contratos Actualizables y `constructors`**: Los contratos que usan el patrón de proxy actualizable **NO DEBEN tener un `constructor`**. Toda la lógica de inicialización debe ir en una función `initializer`.
+### 3.5. Flujo de Desarrollo del Relayer
 
-3.  **Herencia en Solidity (`virtual` / `override`)**: Para sobreescribir una función de un contrato padre, la función original **DEBE** estar marcada como `virtual`. La función hija debe usar `override`.
+El relayer es un servicio off-chain que conecta los puentes. Se gestiona desde `andechain/relayer`.
 
-4.  **Manejo de Errores de Acceso**: Las versiones recientes de OpenZeppelin emiten `Custom Errors` (ej. `AccessControlUnauthorizedAccount`) en lugar de `reason strings`. Los tests en Foundry deben esperar estos errores específicos con `vm.expectRevert(abi.encodeWithSelector(MyContract.MyCustomError.selector, ...))`.
+1.  **Instalar dependencias:**
+    ```bash
+    cd andechain/relayer
+    npm install
+    ```
+2.  **Configurar:**
+    Copia la plantilla de entorno y asegúrate de que las URLs y direcciones son correctas.
+    ```bash
+    cp .env.example .env
+    ```
+3.  **Ejecutar el relayer:**
+    ```bash
+    npm start
+    ```
 
-5.  **El Entorno es Frágil (La "Solución Nuclear")**: Si te encuentras con errores extraños, es probable que la caché de Foundry esté corrupta. La solución más rápida es purgarla: `forge clean` seguido de `forge build`.
+### 3.6. Troubleshooting y Lecciones Críticas de Nuestro Viaje
 
-6.  **Los Decimales No Mienten**: Un bug muy difícil de rastrear que encontramos se debió a un manejo incorrecto de decimales entre un oráculo y un token. En DeFi, un error de decimales es un error de millones de dólares. Siempre valida y normaliza.
+1.  **CRÍTICO - Error: `insufficient funds` al desplegar:**
+    *   **Causa Definitiva:** El nodo `reth` por defecto no fondea ninguna cuenta y el `genesis.json` original es incorrecto.
+    *   **Solución Implementada:**
+        1.  El archivo `infra/stacks/single-sequencer/docker-compose.da.local.yml` ahora pasa el flag `--dev` al contenedor `ev-reth-sequencer`.
+        2.  Se utiliza un `genesis.final.json` que monta directamente en `reth`, asignando un saldo inicial en `aande` a la cuenta de desarrollo `0xf39...`.
+    *   **Acción:** Si vuelves a ver este error, la solución es siempre `docker compose down -v` para forzar al sistema a usar la configuración de génesis correcta desde cero.
+
+2.  **Error: `method '...' not found` al llamar a `local-da`:**
+    *   **Causa:** El simulador `local-da` tiene una API JSON-RPC no estándar.
+    *   **Solución:** El método correcto es `da.Submit` y los parámetros deben ser `[ [array de blobs en base64], gasPrice, namespaceEnBase64 ]`.
+
+3.  **Error: `namespace must be exactly 29 bytes`:**
+    *   **Causa:** El namespace de Celestia debe tener una longitud fija de 29 bytes.
+    *   **Solución:** Usamos un namespace válido como `0x0000000000000000000000000000000000000000000000000000000001`.
+
+4.  **Error: `Cannot read properties of undefined (reading 'then')` en `ethers`:**
+    *   **Causa:** Se está pasando un argumento `undefined` a una función de contrato. Nuestro bug específico fue no extraer los parámetros `indexed` de un evento desde `event.topics`.
+    *   **Solución:** Los parámetros de eventos `indexed` se deben leer de `event.topics`, mientras que los no indexados se leen de `event.args`.
 
 ## 4. Estructura del Proyecto
 

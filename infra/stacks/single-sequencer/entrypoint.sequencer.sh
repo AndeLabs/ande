@@ -60,11 +60,13 @@ if [ ! -f "$CONFIG_HOME/config/node_key.json" ]; then
 	log "SUCCESS" "Sequencer initialization completed"
 
 	# --- BEGIN ANDE TOKEN PATCH ---
-	# Modify genesis to use 'aande' as the native gas token
-	log "INIT" "Patching genesis.json to set 'aande' as the native gas token"
-	sed -i 's/"evm_denom": "eth"/"evm_denom": "aande"/g' "$CONFIG_HOME/config/genesis.json"
-	sed -i 's/"fee_denom": "eth"/"fee_denom": "aande"/g' "$CONFIG_HOME/config/genesis.json"
-	log "SUCCESS" "Genesis patched successfully. 'aande' is now the fee token."
+	# Modify genesis to use 'aande' as the native gas token and pre-fund the dev account
+	log "INIT" "Patching genesis.json to set 'aande' as the native gas token and fund dev account"
+	
+	# Use jq to perform a more robust modification
+	jq '.app_state.evm.accounts["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"].balance = "0x21E19E0C9BAB2400000" | .app_state.staking.params.bond_denom = "aande" | .app_state.crisis.constant_fee.denom = "aande" | .app_state.gov.params.min_deposit[0].denom = "aande" | .app_state.mint.params.mint_denom = "aande"' "$CONFIG_HOME/config/genesis.json" > "$CONFIG_HOME/config/genesis.tmp.json" && mv "$CONFIG_HOME/config/genesis.tmp.json" "$CONFIG_HOME/config/genesis.json"
+
+	log "SUCCESS" "Genesis patched successfully. 'aande' is now the fee token and dev account is funded."
 	# --- END ANDE TOKEN PATCH ---
 
 else

@@ -1,10 +1,12 @@
 services:
   local-da:
+    build:
+      context: ./ev-node
+      dockerfile: ./da/cmd/local-da/Dockerfile
     container_name: local-da
-    image: ghcr.io/evstack/local-da:${LOCAL_DA_TAG}
-    env_file: .env
-    restart: always
-    command: ["-listen-all"]
+    restart: unless-stopped
+    ports:
+      - "7980:7980"
     networks:
       - evstack_shared
 
