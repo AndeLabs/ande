@@ -6,58 +6,75 @@ import { completeBridgeOnEthereum } from './submitters/ethereum';
 
 console.log("Iniciando Relayer...");
 
-async function handleBridgeEvent(event: BridgeInitiatedEvent) {
-    const {
-        from,
-        to,
-        amount,
-        sourceChainId,
-        commitment,
-        blockNumber
-    } = event;
+// --- Cola y Configuración del Lote ---
+const BATCH_INTERVAL_MS = 15000; // Procesar la cola cada 15 segundos
+const eventQueue: BridgeInitiatedEvent[] = [];
+let isProcessing = false;
 
-    console.log("--- Nuevo Evento de Bridge Recibido ---");
-    console.log(`  Desde (AndeChain): ${from}`);
-    console.log(`  Hacia (Ethereum):    ${to}`);
-    console.log(`  Monto:               ${ethers.formatEther(amount)} ABOB`);
-    console.log(`  Commitment:          ${commitment}`);
-    console.log("-----------------------------------------");
+// --- Manejador de Eventos ---
+// Ahora solo añade eventos a la cola.
+function handleBridgeEvent(event: BridgeInitiatedEvent) {
+    console.log(`[Queue] Evento con commitment ${event.commitment} añadido a la cola.`);
+    eventQueue.push(event);
+}
+
+// --- Procesador Principal del Lote ---
+async function processQueue() {
+    if (isProcessing || eventQueue.length === 0) {
+        return; // No hacer nada si ya está procesando o si la cola está vacía
+    }
+
+    isProcessing = true;
+    console.log(`
+[Processor] Iniciando procesamiento de un lote de ${eventQueue.length} evento(s)...`);
+
+    // Copiamos la cola actual y la vaciamos para que nuevos eventos puedan llegar mientras procesamos.
+    const batchToProcess = [...eventQueue];
+    eventQueue.length = 0;
 
     try {
-        // --- PASO 1: Publicar en Celestia ---
-        const celestiaResult = await publishToCelestia([commitment]);
+        const commitments = batchToProcess.map(event => event.commitment);
+
+        // --- PASO 1: Publicar Lote en Celestia ---
+        const celestiaResult = await publishToCelestia(commitments);
         const celestiaBlockHeight = celestiaResult.height;
 
-        // --- PASO 2: Generar Prueba de Merkle ---
-        const batch = [commitment];
-        const tree = buildMerkleTree(batch);
+        // --- PASO 2: Generar Árbol de Merkle para el Lote ---
+        const tree = buildMerkleTree(commitments);
         const merkleRoot = getMerkleRoot(tree);
-        const merkleProof = getMerkleProof(tree, commitment);
-        console.log(`[Merkle Processor] Raíz de Merkle generada: ${merkleRoot}`);
+        console.log(`[Merkle Processor] Raíz de Merkle para el lote generada: ${merkleRoot}`);
 
-        // --- PASO 3: Completar en Ethereum ---
-        const bridgeData = {
-            recipient: to,
-            amount: amount,
-            sourceChainId: sourceChainId,
-            sourceBlockNumber: blockNumber, // <-- LA LÍNEA CLAVE
-            sourceAddress: from,
-            celestiaBlockHeight: celestiaBlockHeight,
-            merkleProof: merkleProof,
-            merkleRoot: merkleRoot,
-        };
+        // --- PASO 3: Completar cada transacción en Ethereum ---
+        for (const event of batchToProcess) {
+            const merkleProof = getMerkleProof(tree, event.commitment);
+            
+            await completeBridgeOnEthereum({
+                recipient: event.to,
+                amount: event.amount,
+                sourceChainId: event.sourceChainId,
+                sourceBlockNumber: event.blockNumber,
+                sourceAddress: event.from,
+                celestiaBlockHeight: celestiaBlockHeight,
+                merkleProof: merkleProof,
+                merkleRoot: merkleRoot,
+            });
+            console.log(`  -> Bridge para commitment ${event.commitment} completado.`);
+        }
 
-        // Log de depuración para verificar los datos
-        const replacer = (key: any, value: any) =>
-            typeof value === 'bigint' ? value.toString() : value;
-        console.log("\n[DEBUG] Datos para completar el bridge:", JSON.stringify(bridgeData, replacer, 2));
-
-        await completeBridgeOnEthereum(bridgeData);
+        console.log(`[Processor] Lote de ${batchToProcess.length} evento(s) procesado exitosamente.`);
 
     } catch (error) {
-        console.error("Fallo en el procesamiento del evento de bridge.", error);
+        console.error("Fallo en el procesamiento del lote.", error);
+        // En un sistema de producción, aquí se devolverían los eventos a la cola para reintentar.
+    } finally {
+        isProcessing = false;
     }
 }
 
-// Iniciar el listener y pasarle nuestro manejador de eventos
+// --- Inicio del Servicio ---
+
+// Iniciar el listener que alimenta la cola.
 initializeAndeChainListener(handleBridgeEvent);
+
+// Iniciar el ciclo que procesa la cola cada X segundos.
+setInterval(processQueue, BATCH_INTERVAL_MS);
