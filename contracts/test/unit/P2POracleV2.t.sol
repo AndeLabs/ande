@@ -13,6 +13,7 @@ contract P2POracleV2Test is Test {
 
     address public owner;
     address public finalizer;
+    address public slasher;
     address public reporter1;
     address public reporter2;
     address public reporter3;
@@ -23,6 +24,7 @@ contract P2POracleV2Test is Test {
     function setUp() public {
         owner = makeAddr("owner");
         finalizer = makeAddr("finalizer");
+        slasher = makeAddr("slasher");
         reporter1 = makeAddr("reporter1");
         reporter2 = makeAddr("reporter2");
         reporter3 = makeAddr("reporter3");
@@ -42,6 +44,7 @@ contract P2POracleV2Test is Test {
 
         vm.startPrank(owner);
         oracle.grantRole(oracle.FINALIZER_ROLE(), finalizer);
+        oracle.grantRole(oracle.SLASHER_ROLE(), slasher);
         andeToken.mint(reporter1, MIN_STAKE * 10);
         andeToken.mint(reporter2, MIN_STAKE * 10);
         andeToken.mint(reporter3, MIN_STAKE * 10);
@@ -122,5 +125,50 @@ contract P2POracleV2Test is Test {
         oracle.finalizeCurrentEpoch();
 
         assertEq(oracle.finalizedPrices(epochToFinalize), 200 * 1e16);
+    }
+
+    // ==================== Unregister Tests ====================
+
+    function test_Unregister_Success() public reporter1Registered {
+        uint256 balanceBefore = andeToken.balanceOf(reporter1);
+
+        vm.prank(reporter1);
+        oracle.unregister();
+
+        (bool isRegistered, uint256 stake,,) = oracle.reporters(reporter1);
+        assertFalse(isRegistered, "Reporter should be unregistered");
+        assertEq(stake, 0, "Stake should be zero");
+        assertEq(andeToken.balanceOf(reporter1), balanceBefore + MIN_STAKE, "Stake should be returned");
+    }
+
+    function test_Unregister_Fail_NotRegistered() public {
+        vm.prank(reporter2); // An address that is not registered
+        vm.expectRevert("Not a registered reporter");
+        oracle.unregister();
+    }
+
+    // ==================== Slash Tests ====================
+
+    function test_Slash_Success() public reporter1Registered {
+        vm.prank(slasher);
+        oracle.slash(reporter1);
+
+        (bool isRegistered, uint256 stake,,) = oracle.reporters(reporter1);
+        assertFalse(isRegistered, "Reporter should be unregistered after slash");
+        assertEq(stake, 0, "Stake should be zero after slash");
+    }
+
+    function test_Slash_Fail_NotSlasher() public reporter1Registered {
+        vm.startPrank(reporter2);
+        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", reporter2, oracle.SLASHER_ROLE()));
+        oracle.slash(reporter1);
+        vm.stopPrank();
+    }
+
+    function test_Slash_Fail_NotRegistered() public {
+        address nonExistentReporter = makeAddr("nonExistentReporter");
+        vm.prank(slasher);
+        vm.expectRevert("Not a registered reporter");
+        oracle.slash(nonExistentReporter);
     }
 }
