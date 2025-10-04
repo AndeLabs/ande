@@ -12,7 +12,6 @@ const eventQueue: BridgeInitiatedEvent[] = [];
 let isProcessing = false;
 
 // --- Manejador de Eventos ---
-// Ahora solo añade eventos a la cola.
 function handleBridgeEvent(event: BridgeInitiatedEvent) {
     console.log(`[Queue] Evento con commitment ${event.commitment} añadido a la cola.`);
     eventQueue.push(event);
@@ -21,14 +20,13 @@ function handleBridgeEvent(event: BridgeInitiatedEvent) {
 // --- Procesador Principal del Lote ---
 async function processQueue() {
     if (isProcessing || eventQueue.length === 0) {
-        return; // No hacer nada si ya está procesando o si la cola está vacía
+        return;
     }
 
     isProcessing = true;
     console.log(`
 [Processor] Iniciando procesamiento de un lote de ${eventQueue.length} evento(s)...`);
 
-    // Copiamos la cola actual y la vaciamos para que nuevos eventos puedan llegar mientras procesamos.
     const batchToProcess = [...eventQueue];
     eventQueue.length = 0;
 
@@ -48,16 +46,20 @@ async function processQueue() {
         for (const event of batchToProcess) {
             const merkleProof = getMerkleProof(tree, event.commitment);
             
-            await completeBridgeOnEthereum({
+            const bridgeData = {
                 recipient: event.to,
                 amount: event.amount,
                 sourceChainId: event.sourceChainId,
-                sourceBlockNumber: event.blockNumber,
+                sourceBlockNumber: event.blockNumber, // <-- LA LÍNEA CLAVE Y CORRECTA
                 sourceAddress: event.from,
                 celestiaBlockHeight: celestiaBlockHeight,
                 merkleProof: merkleProof,
                 merkleRoot: merkleRoot,
-            });
+            };
+
+            console.log(`
+[DEBUG] Enviando datos para ${event.commitment}:`, JSON.stringify(bridgeData, (k,v) => typeof v === 'bigint' ? v.toString() : v, 2));
+            await completeBridgeOnEthereum(bridgeData);
             console.log(`  -> Bridge para commitment ${event.commitment} completado.`);
         }
 
@@ -65,16 +67,11 @@ async function processQueue() {
 
     } catch (error) {
         console.error("Fallo en el procesamiento del lote.", error);
-        // En un sistema de producción, aquí se devolverían los eventos a la cola para reintentar.
     } finally {
         isProcessing = false;
     }
 }
 
 // --- Inicio del Servicio ---
-
-// Iniciar el listener que alimenta la cola.
 initializeAndeChainListener(handleBridgeEvent);
-
-// Iniciar el ciclo que procesa la cola cada X segundos.
 setInterval(processQueue, BATCH_INTERVAL_MS);
