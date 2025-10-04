@@ -1,4 +1,13 @@
+<div align="center">
+
 # 🏔️ AndeChain - Un Rollup Soberano para LATAM
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI Contracts](https://github.com/[GITHUB_USER]/[GITHUB_REPO]/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/[GITHUB_USER]/[GITHUB_REPO]/actions/workflows/ci-cd.yml)
+[![CI Infra](https://github.com/[GITHUB_USER]/[GITHUB_REPO]/actions/workflows/infra-ci-cd.yml/badge.svg)](https://github.com/[GITHUB_USER]/[GITHUB_REPO]/actions/workflows/infra-ci-cd.yml)
+
+</div>
+
 
 ## 🌟 Visión
 
@@ -8,22 +17,41 @@ Para una inmersión profunda en la visión y el modelo económico, consulta el d
 
 ## 🏗️ Arquitectura Técnica
 
-Nuestro stack tecnológico está completamente contenedorizado con Docker y se gestiona desde el directorio `/infra`. Se compone de las siguientes capas principales:
+Nuestro stack tecnológico está completamente contenedorizado con Docker y se gestiona desde el directorio `/infra`.
 
-1.  **Capa de Ejecución (El "Motor"):**
-    *   **Servicio Docker:** `ev-reth-sequencer`
-    *   **Tecnología:** `Reth` (Cliente de ejecución de Ethereum de alto rendimiento).
-    *   **Función:** Ejecuta la lógica de nuestros Smart Contracts escritos en Solidity.
+```mermaid
+graph TD
+    subgraph Usuario
+        direction LR
+        A[DApp / Herramientas] --> B{RPC a localhost:8545};
+    end
 
-2.  **Capa de Secuenciación (El "Director de Orquesta"):**
-    *   **Servicio Docker:** `single-sequencer`
-    *   **Tecnología:** `Evolve / ev-node` (basado en Rollkit).
-    *   **Función:** Ordena las transacciones, crea los bloques y los publica.
+    subgraph "Infraestructura Docker"
+        direction TB
+        B --> C[ev-reth-sequencer];
+        C -- Engine API (localhost:8551) --> D[single-sequencer];
+        D -- Publica Bloques --> E[local-da];
+    end
 
-3.  **Capa de Disponibilidad de Datos (El "Notario Público"):**
-    *   **Servicio Docker:** `local-da`
-    *   **Tecnología:** Simulador de Celestia para desarrollo local.
-    *   **Función:** Garantiza que los datos de las transacciones sean públicos y verificables.
+    subgraph "Servicios de Soporte"
+        F[Explorador de Bloques] --> B
+        G[Faucet] --> B
+    end
+```
+
+**Descripción de Componentes:**
+
+1.  **`ev-reth-sequencer` (Motor de Ejecución):**
+    *   **Tecnología:** `Reth`.
+    *   **Función:** Ejecuta la lógica de los Smart Contracts y expone el RPC principal en el puerto `8545`.
+
+2.  **`single-sequencer` (Director de Orquesta):**
+    *   **Tecnología:** `Evolve / ev-node`.
+    *   **Función:** Se comunica con el motor de ejecución para ordenar transacciones, crear bloques y publicarlos en la capa de DA.
+
+3.  **`local-da` (Notario Público):**
+    *   **Tecnología:** Simulador de Celestia.
+    *   **Función:** Almacena los datos de los bloques, garantizando su disponibilidad.
 
 El stack también incluye un **Explorador de Bloques** (`http://localhost:4000`) y un **Faucet** (`http://localhost:8081`) para un ciclo de desarrollo completo.
 
@@ -81,6 +109,14 @@ Todo el desarrollo de smart contracts se realiza en el directorio `andechain/con
     ```bash
     forge script script/Counter.s.sol --rpc-url http://localhost:8545 --broadcast
     ```
+
+## 📜 Contratos Desplegados
+
+| Contrato | Red Local (localhost) | Testnet | Mainnet |
+| :---------------- | :-------------------- | :------ | :------ |
+| `P2POracleV2` | `0x...` | `0x...` | `0x...` |
+| `ANDEToken` | `0x...` | `0x...` | `0x...` |
+| *y otros...* | `...` | `...` | `...` |
 
 ## 📚 Documentación Adicional
 
