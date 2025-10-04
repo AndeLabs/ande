@@ -112,7 +112,7 @@ contract ANDEToken is
      */
     function _update(address from, address to, uint256 value)
         internal
-        override(ERC20Upgradeable, ERC20VotesUpgradeable, PausableUpgradeable)
+        override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._update(from, to, value);
     }

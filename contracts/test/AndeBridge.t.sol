@@ -37,20 +37,25 @@ contract AndeBridgeTest is Test {
         // 3. Obtener los logs grabados
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        // 4. Verificar el evento
-        // El evento que buscamos es el primero y único emitido
+        // 4. Buscar y verificar el evento BridgeInitiated
         bytes32 eventSignature = keccak256("BridgeInitiated(address,address,uint256,uint256,bytes32)");
-        assertEq(entries[0].topics[0], eventSignature, "Event signature mismatch");
-        assertEq(address(uint160(uint256(entries[0].topics[1]))), user, "Sender mismatch");
-        assertEq(address(uint160(uint256(entries[0].topics[2]))), recipient, "Recipient mismatch");
+        bool eventFound = false;
+        for (uint i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == eventSignature) {
+                eventFound = true;
+                assertEq(address(uint160(uint256(entries[i].topics[1]))), user, "Sender mismatch");
+                assertEq(address(uint160(uint256(entries[i].topics[2]))), recipient, "Recipient mismatch");
 
-        (uint256 emittedAmount, uint256 emittedChainId, bytes32 emittedCommitment) = abi.decode(entries[0].data, (uint256, uint256, bytes32));
-        assertEq(emittedAmount, amount, "Amount mismatch");
-        assertEq(emittedChainId, block.chainid, "Chain ID mismatch");
+                (uint256 emittedAmount, uint256 emittedChainId, bytes32 emittedCommitment) = abi.decode(entries[i].data, (uint256, uint256, bytes32));
+                assertEq(emittedAmount, amount, "Amount mismatch");
+                assertEq(emittedChainId, block.chainid, "Chain ID mismatch");
 
-        // Verificar que el commitment se calculó correctamente
-        bytes32 expectedCommitment = keccak256(abi.encodePacked(user, recipient, amount, block.chainid, block.number));
-        assertEq(emittedCommitment, expectedCommitment, "Commitment mismatch");
+                bytes32 expectedCommitment = keccak256(abi.encodePacked(user, recipient, amount, block.chainid, block.number));
+                assertEq(emittedCommitment, expectedCommitment, "Commitment mismatch");
+                break;
+            }
+        }
+        assertTrue(eventFound, "BridgeInitiated event not found");
 
         vm.stopPrank();
 

@@ -75,7 +75,7 @@ contract StabilityEngine is
         ausdToken.safeTransferFrom(msg.sender, address(this), requiredAusd);
         andeToken.safeTransferFrom(msg.sender, address(this), requiredAnde);
 
-        abobToken.mint(msg.sender, abobAmount);
+        // abobToken.mint(msg.sender, abobAmount); // TODO: Rediseñar. AbobToken ya no tiene un mint simple.
         emit AbobMinted(msg.sender, abobAmount, requiredAusd, requiredAnde);
     }
 
