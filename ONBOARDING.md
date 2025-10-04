@@ -1,146 +1,159 @@
-# Manual de Incorporación para Ingenieros de AndeChain
+# Manual de Operaciones de AndeChain
 
-## 1. Visión y Potencial del Proyecto (El "Porqué")
+## 1. Visión del Proyecto (El "Porqué")
 
-Bienvenido a AndeChain. No estamos construyendo una blockchain más; estamos construyendo una solución soberana para la fragmentación financiera de América Latina.
+Bienvenido a AndeChain. No estamos construyendo una blockchain más; estamos construyendo una solución soberana para la fragmentación financiera de América Latina. Nuestra visión es crear un ecosistema económico regional que resuelva problemas del mundo real, implementado sobre una infraestructura tecnológica de vanguardia.
 
-Nuestra visión es crear un ecosistema económico regional que resuelva problemas del mundo real. Para lograrlo, hemos diseñado un sofisticado motor económico implementado sobre una infraestructura tecnológica de vanguardia.
+## 2. Anatomía del Proyecto (El "Qué")
 
-## 2. Arquitectura Técnica (El "Qué")
+Esta sección detalla la estructura de directorios y el propósito de cada componente clave.
 
-Hemos construido un **Rollup Soberano EVM sobre Celestia**. Esta arquitectura, centralizada en la carpeta `infra`, nos da soberanía, escalabilidad y acceso al ecosistema de herramientas de Ethereum.
+```
+andechain/
+├── infra/                # <-- GESTIÓN DEL ENTORNO BLOCKCHAIN
+│   ├── docker-compose.yml  # Orquesta todos los servicios (DA, Sequencer, EVM).
+│   ├── stacks/             # Definiciones de cada servicio individual.
+│   │   ├── da-local/       # Contiene la configuración del Data Availability local.
+│   │   ├── single-sequencer/ # Contiene la lógica del Sequencer y el nodo EVM.
+│   │   │   ├── genesis.final.json # ¡CLAVE! Nuestro génesis modificado que pre-funda cuentas.
+│   │   │   └── entrypoint.sequencer.sh # Script que inicia y parchea el génesis.
+│   │   └── ...
+│   └── .env                # Variables de entorno para el stack.
+│
+├── contracts/            # <-- DESARROLLO DE SMART CONTRACTS (FOUNDRY)
+│   ├── src/                # Código fuente de los contratos (.sol).
+│   ├── test/               # Pruebas unitarias de los contratos (.t.sol).
+│   ├── script/             # Scripts de despliegue (.s.sol).
+│   ├── foundry.toml        # Archivo de configuración principal de Foundry.
+│   └── lib/                # Dependencias (ej. OpenZeppelin).
+│
+├── relayer/              # <-- SERVICIO OFF-CHAIN PARA EL BRIDGE
+│   ├── src/                # Código fuente del relayer en TypeScript.
+│   │   ├── listeners/      # Escucha eventos on-chain.
+│   │   ├── processors/     # Procesa datos y genera pruebas.
+│   │   └── submitters/     # Envía transacciones a Celestia y Ethereum.
+│   ├── package.json        # Dependencias de Node.js.
+│   ├── .env.example        # Plantilla de variables de entorno para el relayer.
+│   └── tsconfig.json       # Configuración de TypeScript.
+│
+└── ONBOARDING.md         # Este documento.
+```
 
-El sistema se compone de las siguientes capas que corren en contenedores Docker:
+---
 
-1.  **Capa de Ejecución (El "Motor"):**
-    *   **Servicio Docker:** `ev-reth-sequencer`
-    *   **Tecnología:** `Reth` (Cliente de ejecución de Ethereum).
-    *   **Función:** Ejecuta la lógica de nuestros Smart Contracts.
+## 3. Guías por Rol
 
-2.  **Capa de Secuenciación (El "Director de Orquesta"):**
-    *   **Servicio Docker:** `single-sequencer`
-    *   **Tecnología:** `Evolve / ev-node`.
-    *   **Función:** Ordena las transacciones y crea los bloques.
+A continuación se presentan guías específicas según tu rol en el proyecto.
 
-3.  **Capa de Disponibilidad de Datos (El "Notario Público"):**
-    *   **Servicio Docker:** `local-da`
-    *   **Tecnología:** Simulador de Celestia.
-    *   **Función:** Garantiza que los datos de las transacciones sean públicos y verificables.
+### 📜 Guía para el Desarrollador de Smart Contracts
 
-## 3. Guía Práctica de Despliegue y Desarrollo (El "Cómo")
+Tu trabajo se centra en el directorio `contracts/`.
 
-### 3.1. Requisitos Previos
+**1. Configuración Inicial (Solo una vez):**
+Instala las dependencias de Foundry.
+```bash
+cd andechain/contracts
+forge install
+```
 
-1.  **Docker Desktop**: La base que corre toda nuestra infraestructura.
-2.  **Foundry**: El kit de herramientas para compilar, probar y desplegar nuestros contratos de Solidity.
+**2. Ciclo de Desarrollo Típico:**
 
-### 3.2. Gestión del Entorno Local
-
-La gestión del stack se realiza desde `andechain/infra`. Los comandos principales son:
-
--   **Levantar el stack (desde cero):**
+*   **Compilar:** Verifica que no haya errores de sintaxis.
     ```bash
-    cd andechain/infra
-    docker compose up -d --build
+    forge build
     ```
--   **Verificar el estado:**
+*   **Probar:** Ejecuta todas las pruebas unitarias.
+    ```bash
+    forge test
+    ```
+
+**3. Desplegar y Probar en la Red Local:**
+
+*   **Asegúrate de que el entorno esté corriendo.** (Ver la guía del Operador de Nodo).
+
+*   **Obtén la Clave Privada de Desarrollo:** Nuestra red local pre-funda la siguiente cuenta con `aande` para pagar el gas. No necesitas un faucet.
+    *   **Clave Privada:** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+
+*   **Ejecuta tu Script de Despliegue:**
+    ```bash
+    # Navega al directorio de contratos
+    cd andechain/contracts
+
+    # Exporta la clave privada
+    export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+    # Ejecuta el script especificando el contrato con --tc
+    forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
+    ```
+
+### 🌐 Guía para el Operador de Nodo y Relayer
+
+Tu trabajo se centra en los directorios `infra/` y `relayer/`.
+
+**1. Levantar el Entorno Blockchain Completo:**
+Este comando construye las imágenes de Docker si no existen y levanta todos los servicios (DA, Sequencer, EVM, Explorador, etc.).
+```bash
+cd andechain/infra
+docker compose up -d --build
+```
+
+**2. Gestionar el Ciclo de Vida del Entorno:**
+
+*   **Verificar Servicios Activos:**
     ```bash
     docker compose ps
     ```
--   **Resetear COMPLETAMENTE el stack (La "Solución Nuclear"):**
-    Para borrar la base de datos de la blockchain y empezar de cero, usa el flag `-v`. Este es el comando que usarás el 99% del tiempo para asegurar un estado limpio.
+*   **Resetear la Blockchain (Comando más común):**
+    Para empezar desde cero, borrando todos los datos de la cadena, usa el flag `-v`. Esto es esencial para aplicar cambios en el `genesis.json`.
     ```bash
     docker compose down -v
     ```
 
-### 3.3. Puntos de Acceso
+**3. Ejecutar el Servicio de Relayer:**
 
-*   **RPC Endpoint:** `http://localhost:8545`
-*   **Explorador de Bloques:** `http://localhost:4000`
-
-### 3.4. Flujo de Desarrollo de Smart Contracts (Foundry)
-
-El ciclo de vida del desarrollo de contratos se centra en el directorio `andechain/contracts`.
-
-**1. Compilar y Probar:**
-```bash
-cd andechain/contracts
-forge build
-forge test
-```
-
-**2. Desplegar en la Red Local:**
-
-*   **Paso A: Obtén la Clave Privada.**
-    Nuestra configuración actual **fondea automáticamente** la cuenta de desarrollo estándar de Foundry/Anvil. No necesitas buscarla en los logs ni usar el faucet.
-    *   **Cuenta:** `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
-    *   **Clave Privada:** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
-
-*   **Paso B: Ejecuta el Script de Despliegue.**
-    Usa la clave privada en una variable de entorno y especifica el contrato a ejecutar con `--tc`.
-    ```bash
-    cd andechain/contracts
-    export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-    forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
-    ```
-
-### 3.5. Flujo de Desarrollo del Relayer
-
-El relayer es un servicio off-chain que conecta los puentes. Se gestiona desde `andechain/relayer`.
-
-1.  **Instalar dependencias:**
+*   **Instalación (Solo una vez):**
     ```bash
     cd andechain/relayer
     npm install
     ```
-2.  **Configurar:**
-    Copia la plantilla de entorno y asegúrate de que las URLs y direcciones son correctas.
+*   **Configuración (Solo una vez):**
+    Crea tu archivo de configuración local a partir de la plantilla.
     ```bash
     cp .env.example .env
     ```
-3.  **Ejecutar el relayer:**
+    *Nota: Asegúrate de que las variables en `.env` (especialmente las direcciones de los contratos) coincidan con las desplegadas en tu red local.*
+
+*   **Iniciar el Relayer:**
+    Este comando inicia el servicio, que se quedará escuchando eventos de la blockchain en la misma terminal.
     ```bash
     npm start
     ```
 
-### 3.6. Troubleshooting y Lecciones Críticas de Nuestro Viaje
+### 🔍 Guía para el Auditor o Explorador
 
-1.  **CRÍTICO - Error: `insufficient funds` al desplegar:**
-    *   **Causa Definitiva:** El nodo `reth` por defecto no fondea ninguna cuenta y el `genesis.json` original es incorrecto.
-    *   **Solución Implementada:**
-        1.  El archivo `infra/stacks/single-sequencer/docker-compose.da.local.yml` ahora pasa el flag `--dev` al contenedor `ev-reth-sequencer`.
-        2.  Se utiliza un `genesis.final.json` que monta directamente en `reth`, asignando un saldo inicial en `aande` a la cuenta de desarrollo `0xf39...`.
-    *   **Acción:** Si vuelves a ver este error, la solución es siempre `docker compose down -v` para forzar al sistema a usar la configuración de génesis correcta desde cero.
+Tu rol es interactuar con la red desplegada para verificar su estado y comportamiento.
 
-2.  **Error: `method '...' not found` al llamar a `local-da`:**
-    *   **Causa:** El simulador `local-da` tiene una API JSON-RPC no estándar.
-    *   **Solución:** El método correcto es `da.Submit` y los parámetros deben ser `[ [array de blobs en base64], gasPrice, namespaceEnBase64 ]`.
+**1. Puntos de Acceso:**
 
-3.  **Error: `namespace must be exactly 29 bytes`:**
-    *   **Causa:** El namespace de Celestia debe tener una longitud fija de 29 bytes.
-    *   **Solución:** Usamos un namespace válido como `0x0000000000000000000000000000000000000000000000000000000001`.
+*   **RPC Endpoint (para `cast` o dApps):** `http://localhost:8545`
+*   **Explorador de Bloques:** Abre `http://localhost:4000` en tu navegador para ver transacciones y bloques en tiempo real.
 
-4.  **Error: `Cannot read properties of undefined (reading 'then')` en `ethers`:**
-    *   **Causa:** Se está pasando un argumento `undefined` a una función de contrato. Nuestro bug específico fue no extraer los parámetros `indexed` de un evento desde `event.topics`.
-    *   **Solución:** Los parámetros de eventos `indexed` se deben leer de `event.topics`, mientras que los no indexados se leen de `event.args`.
+**2. Comandos Útiles con `cast` (de Foundry):**
+Estos comandos se ejecutan desde cualquier terminal, ya que `cast` suele estar en tu PATH.
 
-## 4. Estructura del Proyecto
+*   **Verificar el Saldo de una Cuenta:**
+    ```bash
+    cast balance --rpc-url http://localhost:8545 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+    ```
 
-```
-andechain/
-├── infra/                # <-- PUNTO DE ENTRADA PRINCIPAL (Docker)
-│   ├── docker-compose.yml  # Orquesta todos los servicios.
-│   └── stacks/             # Definiciones de cada servicio.
-│
-├── contracts/            # Contiene todos los Smart Contracts.
-│   ├── src/                # Código fuente de los contratos (.sol).
-│   ├── test/               # Pruebas de los contratos (.t.sol).
-│   ├── script/             # Scripts de despliegue (.s.sol).
-│   ├── foundry.toml        # Configuración de Foundry.
-│   └── lib/                # Dependencias (submódulos de Git).
-│
-├── README.md             # Este documento.
-└── ...
-```
+*   **Llamar a una Función de Solo Lectura (`view`):**
+    Por ejemplo, para ver la aprobación de un token ERC20.
+    ```bash
+    # cast call <DIRECCION_CONTRATO> "<FIRMA_FUNCION>" <ARGUMENTOS...>
+    cast call 0x5FbDB2315678afecb367f032d93F642f64180aa3 "allowance(address,address)" 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+    ```
 
-Este documento debe servir como tu mapa y brújula. ¡Bienvenido a bordo!
+*   **Enviar una Transacción (como la de `approve`):**
+    ```bash
+    cast send <DIRECCION_CONTRATO> "<FIRMA_FUNCION>" <ARGUMENTOS...> --rpc-url local --private-key <TU_CLAVE>
+    ```

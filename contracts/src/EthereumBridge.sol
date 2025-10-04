@@ -13,30 +13,46 @@ interface IBlobstreamX {
 
 /**
  * @title EthereumBridge
- * @notice Contrato en Ethereum para completar el bridge desde AndeChain.
- * Verifica una prueba de inclusión en Celestia y libera los fondos.
+ * @author Ande Labs
+ * @notice Este contrato es el punto de salida del bridge en la red de destino (ej. Ethereum).
+ * Verifica una prueba de disponibilidad de datos de Celestia y libera los fondos al destinatario.
  */
 contract EthereumBridge is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    /// @notice La dirección del contrato BlobstreamX en esta cadena, usado para verificar las raíces de datos de Celestia.
     IBlobstreamX public immutable BLOBSTREAM;
-    IERC20 public immutable USDC_TOKEN; // El token a liberar (ej. USDC)
+    /// @notice La dirección del token que se liberará a los usuarios (ej. USDC).
+    IERC20 public immutable USDC_TOKEN;
 
+    /// @dev Mapeo para prevenir que un mismo bridge se procese más de una vez.
     mapping(bytes32 => bool) public processedCommitments;
 
+    /**
+     * @notice Se emite cuando un bridge se ha completado exitosamente y los fondos han sido transferidos.
+     * @param recipient La dirección del destinatario que ha recibido los fondos.
+     * @param amount La cantidad de tokens transferidos.
+     * @param commitment El hash único de la transacción de bridge original.
+     */
     event BridgeCompleted(
         address indexed recipient,
         uint256 amount,
         bytes32 indexed commitment
     );
 
+    /**
+     * @dev Configura las direcciones inmutables del contrato Blobstream y del token a liberar.
+     * @param _blobstreamAddress La dirección del contrato BlobstreamX.
+     * @param _usdcTokenAddress La dirección del token ERC20 (ej. USDC).
+     */
     constructor(address _blobstreamAddress, address _usdcTokenAddress) {
         BLOBSTREAM = IBlobstreamX(_blobstreamAddress);
         USDC_TOKEN = IERC20(_usdcTokenAddress);
     }
 
     /**
-     * @notice Completa el bridge, llamado por un relayer.
+     * @notice Completa el proceso de bridge. Es llamado por un relayer después de verificar la publicación en Celestia.
+     * @dev Reconstruye el commitment, lo verifica contra la prueba de Merkle y la raíz de Celestia, y luego transfiere los tokens.
      * @param _recipient La dirección que finalmente recibirá los fondos en Ethereum.
      * @param _amount La cantidad de tokens a liberar.
      * @param _sourceChainId El ID de la cadena de origen (AndeChain).
