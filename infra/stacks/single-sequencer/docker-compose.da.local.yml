@@ -1,5 +1,7 @@
 ---
 services:
+  # Este servicio se ejecuta una sola vez para crear un secreto JWT compartido.
+  # Esencial para la comunicación segura entre el secuenciador y el motor de ejecución.
   jwt-init-sequencer:
     container_name: jwt-init-sequencer
     image: alpine:3.22.0
@@ -17,6 +19,8 @@ services:
         openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex;
       fi"
 
+  # Este es el MOTOR DE EJECUCIÓN (EVM).
+  # Utiliza Reth, un cliente de Ethereum de alto rendimiento.
   ev-reth-sequencer:
     container_name: ev-reth-sequencer
     image: ghcr.io/evstack/ev-reth:latest
@@ -26,11 +30,14 @@ services:
     env_file: .env
     ports:
       - $SEQUENCER_EV_RETH_PROMETHEUS_PORT:9001
-      - "8545:8545"
+      - "8545:8545" # Expone el puerto RPC principal para interactuar con la blockchain.
     restart: always
     volumes:
+      # ¡CLAVE! Montamos nuestro archivo de génesis modificado para asegurar que las cuentas de desarrollo estén pre-fondeadas.
       - ./genesis.final.json:/root/genesis.json:ro
+      # Monta el secreto JWT generado por el servicio de inicialización.
       - jwttoken-sequencer:/root/jwt:ro
+      # Persiste los datos de la blockchain.
       - ev-reth-sequencer-data:/root/reth
     entrypoint: /bin/sh -c
     command:
@@ -57,10 +64,13 @@ services:
           --txpool.max-new-txns 2048 \
           --txpool.additional-validation-tasks 16 \
           --datadir /root/reth \
+          # ¡CLAVE! Forza a Reth a iniciarse en modo desarrollo, creando y fondeando cuentas de prueba.
           --dev
     networks:
       - evstack_shared
 
+  # Este es el SECUENCIADOR.
+  # Utiliza Evolve/ev-node para ordenar transacciones y publicar en la capa de DA.
   single-sequencer:
     container_name: single-sequencer
     image: ghcr.io/evstack/ev-node-evm-single:main

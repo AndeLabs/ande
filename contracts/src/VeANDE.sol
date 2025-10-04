@@ -16,6 +16,13 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @notice Vote-escrowed ANDE token for governance
  * @dev Implements time-locked voting power that decays linearly over time
  */
+/**
+ * @title VeANDE (Vote-Escrowed ANDE)
+ * @author Ande Labs, inspired by Curve Finance
+ * @notice Este contrato implementa el modelo de vote-escrow. Los usuarios bloquean tokens $ANDE por un período de tiempo
+ * para recibir poder de voto (veANDE), el cual decae linealmente hasta la fecha de desbloqueo.
+ * @dev A mayor tiempo de bloqueo, mayor poder de voto inicial. Implementa la interfaz IVotes de OpenZeppelin.
+ */
 contract VeANDE is 
     Initializable, 
     AccessControlUpgradeable, 
@@ -26,16 +33,19 @@ contract VeANDE is
 {
     using SafeERC20 for IERC20;
 
+    /// @dev Representa el estado de bloqueo de un usuario.
     struct LockedBalance {
-        uint256 amount;
-        uint256 end;
+        uint256 amount; // Cantidad de $ANDE bloqueado.
+        uint256 end;    // Timestamp de Unix en el que finaliza el bloqueo.
     }
 
+    /// @dev Un checkpoint para el historial de poder de voto, necesario para la gobernanza.
     struct Checkpoint {
-        uint48 fromBlock;
-        uint208 votes;
+        uint48 fromBlock; // Bloque desde el cual este checkpoint es válido.
+        uint208 votes;    // Poder de voto total en este checkpoint.
     }
 
+    // --- Errores Custom --- //
     error InvalidAndeTokenAddress();
     error AmountNotPositive();
     error UnlockTimeNotInFuture();
@@ -45,15 +55,21 @@ contract VeANDE is
     error LockNotExpired();
     error BlockNotYetMined();
 
+    // --- State Variables --- //
+
+    /// @notice El token $ANDE que se bloquea en este contrato.
     IERC20 public andeToken;
+    /// @notice Mapeo de la dirección de un usuario a su balance bloqueado.
     mapping(address => LockedBalance) public lockedBalances;
 
     mapping(address => Checkpoint[]) private _checkpoints;
     Checkpoint[] private _totalCheckpoints;
     mapping(address => address) private _delegates;
 
+    /// @notice El tiempo máximo de bloqueo permitido, fijado en 4 años.
     uint256 public constant MAX_LOCK_TIME = 4 * 365 days;
 
+    // --- Eventos --- //
     event LockCreated(address indexed user, uint256 amount, uint256 unlockTime);
     event LockIncreased(address indexed user, uint256 additionalAmount);
     event LockExtended(address indexed user, uint256 newUnlockTime);
@@ -64,6 +80,11 @@ contract VeANDE is
         _disableInitializers();
     }
 
+    /**
+     * @notice Inicializa el contrato.
+     * @param defaultAdmin La dirección que tendrá el rol de administrador.
+     * @param andeTokenAddress La dirección del contrato del token $ANDE.
+     */
     function initialize(address defaultAdmin, address andeTokenAddress) public initializer {
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -78,6 +99,12 @@ contract VeANDE is
 
     // ============ Lock Management ============
 
+    /**
+     * @notice Crea o modifica un bloqueo de tokens $ANDE.
+     * @dev Puede ser usado para crear un nuevo bloqueo, añadir más tokens, o extender el tiempo de uno existente.
+     * @param amount La cantidad de $ANDE a añadir al bloqueo (puede ser 0 si solo se extiende el tiempo).
+     * @param unlockTime El nuevo timestamp de desbloqueo. Debe ser en el futuro y no puede ser anterior al actual.
+     */
     function createLock(uint256 amount, uint256 unlockTime) external {
         LockedBalance storage userLock = lockedBalances[msg.sender];
 
@@ -117,6 +144,9 @@ contract VeANDE is
         }
     }
 
+    /**
+     * @notice Retira los tokens $ANDE una vez que el período de bloqueo ha expirado.
+     */
     function withdraw() external {
         LockedBalance storage userLock = lockedBalances[msg.sender];
         if (userLock.amount == 0) revert NoLockFound();
@@ -139,6 +169,12 @@ contract VeANDE is
 
     // ============ Voting Power Calculation ============
 
+    /**
+     * @notice Calcula el poder de voto (veANDE) actual de una cuenta.
+     * @dev El poder de voto decae linealmente con el tiempo.
+     * @param owner La dirección de la cuenta a consultar.
+     * @return El poder de voto actual.
+     */
     function balanceOf(address owner) public view returns (uint256) {
         LockedBalance storage userLock = lockedBalances[owner];
         if (userLock.amount == 0 || block.timestamp >= userLock.end) {
@@ -150,41 +186,69 @@ contract VeANDE is
 
     // ============ IVotes Implementation ============
 
+    /**
+     * @notice Devuelve el reloj actual de la cadena, que es el número de bloque.
+     */
     function clock() public view virtual returns (uint48) {
         return uint48(block.number);
     }
 
+    /**
+     * @notice Describe el modo del reloj, requerido por la interfaz IVotes.
+     */
     function CLOCK_MODE() public pure virtual returns (string memory) {
         return "mode=blocknumber&from=default";
     }
 
+    /**
+     * @notice Obtiene el poder de voto de una cuenta en el bloque actual.
+     */
     function getVotes(address account) public view override returns (uint256) {
         return _checkpoints[account].length == 0 
             ? 0 
             : _checkpoints[account][_checkpoints[account].length - 1].votes;
     }
 
+    /**
+     * @notice Obtiene el poder de voto de una cuenta en un bloque pasado específico.
+     * @param account La dirección de la cuenta.
+     * @param timepoint El número de bloque en el pasado a consultar.
+     * @return El poder de voto en ese bloque.
+     */
     function getPastVotes(address account, uint256 timepoint) public view override returns (uint256) {
         uint48 currentClock = clock();
         if (timepoint >= currentClock) revert BlockNotYetMined();
         return _checkpointsLookup(_checkpoints[account], uint48(timepoint));
     }
 
+    /**
+     * @notice Obtiene el suministro total de poder de voto en un bloque pasado específico.
+     */
     function getPastTotalSupply(uint256 timepoint) public view virtual override returns (uint256) {
         uint48 currentClock = clock();
         if (timepoint >= currentClock) revert BlockNotYetMined();
         return _checkpointsLookup(_totalCheckpoints, uint48(timepoint));
     }
 
+    /**
+     * @notice Devuelve la dirección a la que una cuenta ha delegado su poder de voto.
+     */
     function delegates(address account) public view override returns (address) {
         address delegatee = _delegates[account];
         return delegatee == address(0) ? account : delegatee;
     }
 
+    /**
+     * @notice Delega el poder de voto a otra dirección.
+     * @param delegatee La dirección que recibirá el poder de voto.
+     */
     function delegate(address delegatee) public override {
         _delegate(msg.sender, delegatee);
     }
 
+    /**
+     * @notice Delega el poder de voto usando una firma (EIP-712), permitiendo delegaciones sin gas.
+     */
     function delegateBySig(
         address delegatee,
         uint256 nonce,
@@ -296,10 +360,12 @@ contract VeANDE is
 
     function _authorizeUpgrade(address newImplementation)
         internal
-        view
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    {
+        // La implementación de UUPS de OpenZeppelin v5 ya no requiere una vista (view).
+        // Dejar el cuerpo vacío es suficiente si no se necesita lógica de autorización adicional.
+    }
 
     // ============ View Functions ============
 

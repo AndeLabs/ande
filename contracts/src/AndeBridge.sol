@@ -7,14 +7,24 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 /**
  * @title AndeBridge
- * @notice Contrato en AndeChain para iniciar un bridge hacia Ethereum.
- * Bloquea los tokens y emite un evento para que un relayer lo procese.
+ * @author Ande Labs
+ * @notice Este contrato es el punto de entrada para puentear tokens desde AndeChain hacia otra red EVM (como Ethereum).
+ * Los usuarios llaman a `bridgeToEthereum` para bloquear sus tokens y emitir un evento que un relayer procesará.
  */
 contract AndeBridge is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable ABOB_TOKEN; // El token que se va a puentear (ej. $ABOB)
+    /// @notice El token ERC20 que este puente está configurado para manejar (ej. $ABOB).
+    IERC20 public immutable ABOB_TOKEN;
 
+    /**
+     * @notice Se emite cuando un usuario ha iniciado exitosamente un proceso de bridge.
+     * @param from La dirección del usuario que inicia el bridge en AndeChain.
+     * @param to La dirección del destinatario en la red de destino.
+     * @param amount La cantidad de tokens bloqueados.
+     * @param sourceChainId El ID de la cadena de origen (AndeChain).
+     * @param commitment Un hash único que representa esta transacción de bridge específica.
+     */
     event BridgeInitiated(
         address indexed from,
         address indexed to,
@@ -23,30 +33,33 @@ contract AndeBridge is ReentrancyGuard {
         bytes32 commitment
     );
 
+    /**
+     * @dev Configura el contrato con la dirección del token a puentear.
+     * @param _abobTokenAddress La dirección del contrato del token ERC20 (ej. $ABOB).
+     */
     constructor(address _abobTokenAddress) {
         ABOB_TOKEN = IERC20(_abobTokenAddress);
     }
 
     /**
-     * @notice Inicia el proceso de bridge desde AndeChain hacia Ethereum.
+     * @notice Inicia el proceso de bridge bloqueando los tokens del usuario y emitiendo un evento.
+     * @dev El usuario debe haber aprobado previamente a este contrato para gastar `_amount` de sus tokens.
      * @param _amount La cantidad de tokens a enviar.
-     * @param _recipientOnEthereum La dirección que recibirá los fondos en Ethereum.
+     * @param _recipientOnEthereum La dirección que recibirá los fondos en la red de destino.
      */
     function bridgeToEthereum(uint256 _amount, address _recipientOnEthereum) external nonReentrant {
         require(_amount > 0, "Amount must be greater than zero");
 
         // 1. Transferir los tokens desde el usuario hacia este contrato (lock)
-        // Usamos safeTransferFrom para revertir si la transferencia falla.
         ABOB_TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
 
         // 2. Crear un compromiso único para esta transacción.
-        // Este hash es lo que se publicará en Celestia y se verificará en Ethereum.
         bytes32 commitment = keccak256(abi.encodePacked(
             msg.sender,
             _recipientOnEthereum,
             _amount,
             block.chainid,
-            block.number // Usar block.number como nonce previene repeticiones
+            block.number
         ));
 
         // 3. Emitir el evento que el relayer off-chain estará escuchando.

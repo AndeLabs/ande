@@ -1,24 +1,41 @@
 [profile.default]
+# Directorio donde se encuentra el código fuente de los contratos.
 src = "src"
+# Directorio donde se guardarán los artefactos de compilación (ABI, bytecode).
 out = "artifacts"
+# Directorio de dependencias de Solidity.
 libs = ["lib"]
 
-# Configuraciones del compilador de Solidity
+# --- Configuraciones del Compilador ---
+
+# Fija la versión del compilador de Solidity para garantizar builds consistentes.
 solc_version = "0.8.25"
+
+# Habilita el optimizador de Solidity, crucial para reducir costos de gas en producción.
 optimizer = true
+# Número de "runs" para el optimizador. Un número alto optimiza para tamaño de contrato (costo de despliegue),
+# un número bajo optimiza para costo de ejecución de funciones.
 optimizer_runs = 20000
 
-# Perfil específico para nuestro rollup local
+# --- Perfiles de Ejecución ---
+
+# Perfil específico para nuestro rollup local. Hereda la configuración de `default`.
 [profile.local]
 src = "src"
 out = "artifacts"
 libs = ["lib"]
 
-# Endpoints RPC para diferentes redes
+# --- Endpoints RPC ---
+
+# Centraliza las URLs de las redes para facilitar los comandos de despliegue.
+# Ahora podemos usar `forge script --rpc-url local`.
 [rpc_endpoints]
 local = "http://localhost:8545"
 
-# Configuración para la verificación en el explorador de bloques
+# --- Verificación de Contratos ---
+
+# Configuración para verificar automáticamente los contratos en un explorador de bloques.
+# La clave es un placeholder, pero la URL apunta a nuestro Blockscout local.
 [etherscan]
 local = { key = "dummy-key", url = "http://localhost:4000/api" }
 
