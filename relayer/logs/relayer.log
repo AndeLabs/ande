@@ -1,0 +1,40 @@
+
+> relayer@1.0.0 start
+> ts-node src/main.ts
+
+[dotenv@17.2.3] injecting env (6) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+Iniciando Relayer...
+[AndeChain Listener] Conectado y escuchando eventos en el contrato 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9...
+[AndeChain Listener] ¡Evento BridgeInitiated detectado!
+--- Nuevo Evento de Bridge Recibido ---
+  Desde (AndeChain): 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Hacia (Ethereum):    0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+  Monto:               100.0 ABOB
+  Commitment:          0xfbc14f1838b7951d00d170471dcbe819b80619fdaba7a9329d9793b6ef485837
+-----------------------------------------
+[Celestia Submitter] Enviando blob JSON-RPC a http://localhost:7980...
+[Celestia Submitter] ¡Blob publicado exitosamente! IDs: CQAAAAAAAACpwkmlUPX97rl2IcT5zrAUAaVhC3JuU/uX0ytot3WZFQ==
+[Merkle Processor] Raíz de Merkle generada: 0x4296e57a41d78bcc100bffd38af60a2b33b3cbd6eb508bcd6920637af4c77225
+
+[DEBUG] Datos para completar el bridge: {
+  "recipient": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "amount": "100000000000000000000",
+  "sourceChainId": "1234",
+  "sourceAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "celestiaBlockHeight": 1,
+  "merkleProof": [],
+  "merkleRoot": "0x4296e57a41d78bcc100bffd38af60a2b33b3cbd6eb508bcd6920637af4c77225"
+}
+[Ethereum Submitter] Intentando completar bridge para 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 en Ethereum...
+[Ethereum Submitter] Error al completar el bridge: Cannot read properties of undefined (reading 'then')
+Fallo en el procesamiento del evento de bridge. TypeError: Cannot read properties of undefined (reading 'then')
+    at ParamType.#walkAsync (/Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/abi/fragments.ts:780:20)
+    at ParamType.walkAsync (/Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/abi/fragments.ts:797:24)
+    at /Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/contract/contract.ts:170:22
+    at Array.map (<anonymous>)
+    at resolveArgs (/Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/contract/contract.ts:169:37)
+    at populateTransaction (/Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/contract/contract.ts:294:36)
+    at send (/Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/contract/contract.ts:313:55)
+    at Proxy.completeBridge (/Users/munay/dev/ande-labs/andechain/relayer/node_modules/ethers/src.ts/contract/contract.ts:352:22)
+    at completeBridgeOnEthereum (/Users/munay/dev/ande-labs/andechain/relayer/src/submitters/ethereum.ts:30:36)
+    at handleBridgeEvent (/Users/munay/dev/ande-labs/andechain/relayer/src/main.ts:55:39)

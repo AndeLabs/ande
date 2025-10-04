@@ -29,7 +29,7 @@ services:
       - "8545:8545"
     restart: always
     volumes:
-      - ./genesis.json:/root/genesis.json:ro
+      - ./genesis.final.json:/root/genesis.json:ro
       - jwttoken-sequencer:/root/jwt:ro
       - ev-reth-sequencer-data:/root/reth
     entrypoint: /bin/sh -c
@@ -56,7 +56,8 @@ services:
           --txpool.max-account-slots 2048 \
           --txpool.max-new-txns 2048 \
           --txpool.additional-validation-tasks 16 \
-          --datadir /root/reth
+          --datadir /root/reth \
+          --dev
     networks:
       - evstack_shared
 

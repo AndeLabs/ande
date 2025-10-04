@@ -1,11 +1,25 @@
 [profile.default]
 src = "src"
 out = "artifacts"
-libs = ["node_modules", "lib"]
-remappings = [
-    "@openzeppelin/=node_modules/@openzeppelin/",
-    "eth-gas-reporter/=node_modules/eth-gas-reporter/",
-    "hardhat/=node_modules/hardhat/",
-]
+libs = ["lib"]
+
+# Configuraciones del compilador de Solidity
+solc_version = "0.8.25"
+optimizer = true
+optimizer_runs = 20000
+
+# Perfil específico para nuestro rollup local
+[profile.local]
+src = "src"
+out = "artifacts"
+libs = ["lib"]
+
+# Endpoints RPC para diferentes redes
+[rpc_endpoints]
+local = "http://localhost:8545"
+
+# Configuración para la verificación en el explorador de bloques
+[etherscan]
+local = { key = "dummy-key", url = "http://localhost:4000/api" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
