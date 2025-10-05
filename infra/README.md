@@ -28,16 +28,41 @@ El sistema se orquesta a través del archivo principal `docker-compose.yml`, que
 
 ## Gestión del Entorno
 
-El ciclo de vida se gestiona desde el directorio `infra/`.
+### Flujo de Trabajo Principal (Recomendado)
 
--   **Iniciar o reiniciar el entorno (RECOMENDADO):**
-    El uso de `down -v` y `--build` asegura que todos los cambios en la configuración se apliquen y que la base de datos de la cadena se cree desde cero.
+La forma recomendada de iniciar y gestionar el ecosistema completo (infraestructura + contratos) es a través de los comandos `make` definidos en el directorio raíz de `andechain/`.
+
+Estos comandos aseguran que todos los servicios se inicien en el orden correcto y que los contratos se desplieguen automáticamente.
+
+```bash
+# Navega al directorio raíz de andechain
+cd ..
+
+# Inicia la infraestructura, despliega y verifica los contratos
+make deploy-ecosystem
+make verify-contracts
+```
+
+Para más detalles, consulta el archivo `ONBOARDING.md`.
+
+### Comandos de Gestión Manual
+
+Los siguientes comandos `docker compose` son útiles si necesitas gestionar o depurar la capa de infraestructura de forma aislada.
+
+-   **Iniciar o reiniciar el entorno:**
+    El uso de `down -v` y `--force-recreate` asegura que la blockchain se cree desde cero, aplicando cualquier cambio en la configuración.
     ```bash
-    docker compose down -v && docker compose up -d --build
+    # Desde andechain/infra/
+    docker compose down -v && docker compose up -d --force-recreate
     ```
 
 -   **Ver logs de un servicio específico:**
     Muy útil para depurar. Por ejemplo, para ver los logs del secuenciador:
     ```bash
     docker compose logs -f single-sequencer
+    ```
+
+-   **Detener los servicios:**
+    ```bash
+    docker compose down
     ```

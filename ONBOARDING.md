@@ -43,117 +43,97 @@ andechain/
 
 ## 3. Guías por Rol
 
-A continuación se presentan guías específicas según tu rol en el proyecto.
+### 🚀 Flujo de Desarrollo Unificado (Recomendado)
+
+Esta es la guía de inicio rápido para levantar todo el ecosistema local. Estos comandos deben ejecutarse desde la raíz del directorio `andechain/`.
+
+**Paso 1: Iniciar la Infraestructura Blockchain**
+
+Este comando levanta todos los servicios de backend (Nodo, Sequencer, Explorador de Bloques, etc.) en segundo plano.
+
+```bash
+# Desde la raíz de andechain/
+cd infra
+docker compose up -d --force-recreate
+cd ..
+```
+*Nota: Usa `--force-recreate` para asegurar que los cambios en la configuración de Docker se apliquen. Si necesitas resetear la blockchain por completo, ejecuta `docker compose down -v` antes de este paso.*
+
+**Paso 2: Desplegar y Verificar Contratos**
+
+Estos comandos, definidos en el `Makefile`, compilan, despliegan y verifican todo el ecosistema de contratos inteligentes en la red local.
+
+```bash
+# Desde la raíz de andechain/
+make deploy-ecosystem
+make verify-contracts
+```
+
+**Paso 3: Iniciar el Frontend**
+
+Este comando inicia la aplicación web de AndeFrontend.
+
+```bash
+# Navega al directorio del frontend
+cd ../ande-frontend
+npm run dev
+```
+
+**Paso 4: Acceder al Ecosistema**
+
+*   **Frontend dApp:** [http://localhost:9002](http://localhost:9002)
+*   **Explorador de Bloques (Blockscout):** [http://localhost:4000](http://localhost:4000)
+
+---
 
 ### 📜 Guía para el Desarrollador de Smart Contracts
 
-Tu trabajo se centra en el directorio `contracts/`.
+Tu trabajo se centra en el directorio `contracts/`. El **Flujo de Desarrollo Unificado** es la forma recomendada de desplegar, pero para el desarrollo y pruebas iterativas, estos comandos son tu día a día.
 
 **1. Configuración Inicial (Solo una vez):**
-Instala las dependencias de Foundry.
 ```bash
-cd andechain/contracts
+cd contracts
 forge install
 ```
 
 **2. Ciclo de Desarrollo Típico:**
-
-*   **Compilar:** Verifica que no haya errores de sintaxis.
-    ```bash
-    forge build
-    ```
-*   **Probar:** Ejecuta todas las pruebas unitarias.
-    ```bash
-    forge test
-    ```
-
-**3. Desplegar y Probar en la Red Local:**
-
-*   **Asegúrate de que el entorno esté corriendo.** (Ver la guía del Operador de Nodo).
-
-*   **Obtén la Clave Privada de Desarrollo:** Nuestra red local pre-funda la siguiente cuenta con `aande` para pagar el gas. No necesitas un faucet.
-    *   **Clave Privada:** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
-
-*   **Ejecuta tu Script de Despliegue:**
-    ```bash
-    # Navega al directorio de contratos
-    cd andechain/contracts
-
-    # Exporta la clave privada
-    export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
-    # Ejecuta el script especificando el contrato con --tc
-    forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
-    ```
-
-### 🌐 Guía para el Operador de Nodo y Relayer
-
-Tu trabajo se centra en los directorios `infra/` y `relayer/`.
-
-**1. Levantar el Entorno Blockchain Completo:**
-Este comando construye las imágenes de Docker si no existen y levanta todos los servicios (DA, Sequencer, EVM, Explorador, etc.).
 ```bash
-cd andechain/infra
-docker compose up -d --build
+# Compilar contratos
+forge build
+
+# Ejecutar pruebas
+forge test
+
+# Obtener cobertura de pruebas
+forge coverage
 ```
 
-**2. Gestionar el Ciclo de Vida del Entorno:**
+### 🌐 Guía para el Operador de Nodo
 
-*   **Verificar Servicios Activos:**
-    ```bash
-    docker compose ps
-    ```
-*   **Resetear la Blockchain (Comando más común):**
-    Para empezar desde cero, borrando todos los datos de la cadena, usa el flag `-v`. Esto es esencial para aplicar cambios en el `genesis.json`.
-    ```bash
-    docker compose down -v
-    ```
+El **Flujo de Desarrollo Unificado** gestiona el inicio de la infraestructura. Los siguientes comandos son para gestión y troubleshooting.
 
-**3. Ejecutar el Servicio de Relayer:**
+```bash
+# Navega al directorio de infraestructura
+cd infra
 
-*   **Instalación (Solo una vez):**
-    ```bash
-    cd andechain/relayer
-    npm install
-    ```
-*   **Configuración (Solo una vez):**
-    Crea tu archivo de configuración local a partir de la plantilla.
-    ```bash
-    cp .env.example .env
-    ```
-    *Nota: Asegúrate de que las variables en `.env` (especialmente las direcciones de los contratos) coincidan con las desplegadas en tu red local.*
+# Verificar servicios activos
+docker compose ps
 
-*   **Iniciar el Relayer:**
-    Este comando inicia el servicio, que se quedará escuchando eventos de la blockchain en la misma terminal.
-    ```bash
-    npm start
-    ```
+# Detener todos los servicios
+docker compose down
+
+# Resetear la blockchain (borra todos los datos)
+docker compose down -v
+```
 
 ### 🔍 Guía para el Auditor o Explorador
 
-Tu rol es interactuar con la red desplegada para verificar su estado y comportamiento.
+Tu rol es interactuar con la red desplegada para verificar su estado.
 
-**1. Puntos de Acceso:**
-
-*   **RPC Endpoint (para `cast` o dApps):** `http://localhost:8545`
-*   **Explorador de Bloques:** Abre `http://localhost:4000` en tu navegador para ver transacciones y bloques en tiempo real.
-
-**2. Comandos Útiles con `cast` (de Foundry):**
-Estos comandos se ejecutan desde cualquier terminal, ya que `cast` suele estar en tu PATH.
-
-*   **Verificar el Saldo de una Cuenta:**
+*   **RPC Endpoint:** `http://localhost:8545`
+*   **Explorador de Bloques:** `http://localhost:4000`
+*   **Comandos `cast`:** Usa `cast` de Foundry para interactuar directamente con los contratos desde la línea de comandos. Revisa las direcciones en el `DEPLOYMENT SUMMARY` del comando `make deploy-ecosystem`.
     ```bash
+    # Ejemplo: Verificar el balance de ANDE del desplegador
     cast balance --rpc-url http://localhost:8545 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-    ```
-
-*   **Llamar a una Función de Solo Lectura (`view`):**
-    Por ejemplo, para ver la aprobación de un token ERC20.
-    ```bash
-    # cast call <DIRECCION_CONTRATO> "<FIRMA_FUNCION>" <ARGUMENTOS...>
-    cast call 0x5FbDB2315678afecb367f032d93F642f64180aa3 "allowance(address,address)" 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
-    ```
-
-*   **Enviar una Transacción (como la de `approve`):**
-    ```bash
-    cast send <DIRECCION_CONTRATO> "<FIRMA_FUNCION>" <ARGUMENTOS...> --rpc-url local --private-key <TU_CLAVE>
     ```

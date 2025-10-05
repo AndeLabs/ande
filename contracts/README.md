@@ -24,33 +24,37 @@ Este directorio contiene todo el código de Solidity para el ecosistema de AndeC
 | `AndeBridge.sol` | Contrato de origen del puente. Bloquea tokens y emite eventos. |
 | `EthereumBridge.sol` | Contrato de destino del puente. Verifica pruebas de DA y libera fondos. |
 
-## Flujo de Desarrollo
+## Flujo de Desarrollo y Despliegue
 
-El ciclo de vida completo se gestiona con `forge`.
+El ciclo de vida de desarrollo y pruebas se gestiona con `forge`.
 
-1.  **Compilar:**
-    ```bash
-    forge build
-    ```
+### 1. Desarrollo Iterativo
 
-2.  **Probar:**
-    Ejecuta todas las pruebas. Para ejecutar un solo archivo, usa `forge test --match-path test/MiPrueba.t.sol`.
-    ```bash
-    forge test
-    ```
+Durante el desarrollo, los siguientes comandos son tu día a día:
 
-3.  **Ver Cobertura de Pruebas:**
-    Genera un reporte de qué líneas de código están cubiertas por las pruebas.
-    ```bash
-    forge coverage
-    ```
+-   **Compilar:** `forge build`
+-   **Probar:** `forge test`
+-   **Ver Cobertura:** `forge coverage`
 
-4.  **Desplegar:**
-    Usa el perfil `local` definido en `foundry.toml`.
-    ```bash
-    export PRIVATE_KEY=<TU_CLAVE_PRIVADA>
-    forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
-    ```
+Para ejecutar pruebas de un archivo específico, usa la opción `--match-path`:
+`forge test --match-path test/MiPrueba.t.sol`
+
+### 2. Despliegue del Ecosistema
+
+El despliegue y la verificación de todo el ecosistema de contratos están automatizados a través de `make` desde el directorio padre (`andechain/`).
+
+**Método Recomendado:**
+
+```bash
+# Navega al directorio raíz de andechain
+cd ..
+
+# Despliega y verifica todos los contratos
+make deploy-ecosystem
+make verify-contracts
+```
+
+Para el flujo completo, incluyendo cómo iniciar la infraestructura necesaria, consulta el archivo `ONBOARDING.md` en el directorio raíz de `andechain`.
 
 ## Interactuando con Contratos Usando `cast`
 
