@@ -30,6 +30,8 @@ contract ANDEToken is
 {
     /// @notice Rol para acuñar nuevos tokens. Asignado al MintController.
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    /// @notice Rol para quemar tokens. Asignado al DualTrackBurnEngine.
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     /// @notice Rol para pausar y reanudar las transferencias de tokens en caso de emergencia.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 

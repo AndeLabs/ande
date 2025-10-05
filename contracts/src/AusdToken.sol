@@ -10,6 +10,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IOracle} from "./IOracle.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface IERC20withDecimals is IERC20 {
     function decimals() external view returns (uint8);
@@ -36,6 +37,7 @@ contract AusdToken is
     // ==================== ROLES ====================
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // For internal minting logic
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); // For internal burning logic
     bytes32 public constant COLLATERAL_MANAGER_ROLE = keccak256("COLLATERAL_MANAGER_ROLE");
 
     // ==================== STRUCTS ====================
@@ -142,10 +144,10 @@ contract AusdToken is
         // Formula: (collateralAmount * price) / 10^oracleDecimals
         // Para evitar pérdida de precisión, escalamos el precio a 18 decimales antes de dividir
         uint256 scaledPrice = collateralPrice * (10**(18 - oracleDecimals));
-        uint256 valueInUsd = (_collateralAmount * scaledPrice) / (10**collateralDecimals);
+        uint256 valueInUsd = Math.mulDiv(_collateralAmount, scaledPrice, (10**collateralDecimals));
 
         // 4. Calcular la cantidad de AUSD a acuñar
-        uint256 amountToMint = (valueInUsd * 10000) / collateral.overCollateralizationRatio;
+        uint256 amountToMint = Math.mulDiv(valueInUsd, 10000, collateral.overCollateralizationRatio);
 
         IERC20(_collateral).safeTransferFrom(msg.sender, address(this), _collateralAmount);
         collateral.totalDeposited += _collateralAmount;
@@ -173,10 +175,10 @@ contract AusdToken is
         uint256 valueInUsd = _ausdAmount;
 
         // 3. Calcular la cantidad de colateral a retirar, APLICANDO EL RATIO
-        uint256 collateralValueInUsd = (valueInUsd * collateral.overCollateralizationRatio) / 10000;
+        uint256 collateralValueInUsd = Math.mulDiv(valueInUsd, collateral.overCollateralizationRatio, 10000);
         uint8 collateralDecimals = IERC20withDecimals(_collateral).decimals();
         uint256 scaledPrice = collateralPrice * (10**(18 - oracleDecimals));
-        uint256 collateralToWithdraw = (collateralValueInUsd * (10**collateralDecimals)) / scaledPrice;
+        uint256 collateralToWithdraw = Math.mulDiv(collateralValueInUsd, (10**collateralDecimals), scaledPrice);
 
         if (collateralToWithdraw > collateral.totalDeposited) revert InsufficientCollateral();
 
@@ -187,6 +189,28 @@ contract AusdToken is
         emit Burned(msg.sender, _collateral, collateralToWithdraw, _ausdAmount);
     }
 
+
+    // ==================== PRIVILEGED MINT/BURN ====================
+
+    /**
+     * @notice Permite a contratos con rol MINTER_ROLE acuñar aUSD directamente
+     * @dev Solo para uso de contratos autorizados como StabilityEngine
+     * @param to Dirección del destinatario
+     * @param amount Cantidad a acuñar
+     */
+    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
+        _mint(to, amount);
+    }
+
+    /**
+     * @notice Permite a contratos con rol BURNER_ROLE quemar aUSD de una dirección
+     * @dev Solo para uso de contratos autorizados como StabilityEngine
+     * @param from Dirección del propietario
+     * @param amount Cantidad a quemar
+     */
+    function burnFrom(address from, uint256 amount) public override onlyRole(BURNER_ROLE) {
+        _burn(from, amount);
+    }
 
     // ==================== PAUSABLE OVERRIDES ====================
 
