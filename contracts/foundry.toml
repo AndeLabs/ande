@@ -2,7 +2,7 @@
 # Directorio donde se encuentra el código fuente de los contratos.
 src = "src"
 # Directorio donde se guardarán los artefactos de compilación (ABI, bytecode).
-out = "artifacts"
+out = "out"
 # Directorio de dependencias de Solidity.
 libs = ["lib"]
 
@@ -22,7 +22,7 @@ optimizer_runs = 20000
 # Perfil específico para nuestro rollup local. Hereda la configuración de `default`.
 [profile.local]
 src = "src"
-out = "artifacts"
+out = "out"
 libs = ["lib"]
 
 # --- Endpoints RPC ---

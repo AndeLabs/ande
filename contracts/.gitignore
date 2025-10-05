@@ -1,0 +1,26 @@
+# Compiler output
+out/
+cache/
+artifacts/
+
+# Coverage reports
+coverage/
+lcov.info
+*.lcov
+
+# Broadcast logs (deployment)
+broadcast/
+
+# OpenZeppelin upgrades
+.openzeppelin/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
