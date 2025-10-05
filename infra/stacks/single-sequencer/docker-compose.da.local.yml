@@ -55,6 +55,7 @@ services:
           --authrpc.jwtsecret /root/jwt/jwt.hex \
           --http --http.addr 0.0.0.0 --http.port 8545 \
           --http.api "admin,eth,net,web3,txpool" \
+          --http.corsdomain "*" \
           --disable-discovery \
           --txpool.pending-max-count 200000 \
           --txpool.pending-max-size 200 \
