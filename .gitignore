@@ -14,3 +14,6 @@ contracts/typechain-types
 # Gemini local files
 **/GEMINI.md
 **/.gemini/
+
+# AI Assistant Files
+CLAUDE.md

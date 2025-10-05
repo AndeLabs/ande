@@ -45,23 +45,52 @@ graph TD
 - Docker Desktop
 - Foundry (Kit de herramientas para Solidity)
 
-**Pasos:**
+### Método Recomendado (Automatizado) ✅
+
+**Un solo comando que garantiza el orden correcto:**
+
+```bash
+cd andechain
+make start
+```
+
+Este comando:
+1. ✅ Levanta la infraestructura Docker
+2. ✅ Despliega los contratos
+3. ✅ Configura el relayer automáticamente
+4. ✅ Inicia el relayer
+
+### Método Manual (Paso a Paso)
 
 1.  **Resetear y Levantar el Stack:**
-    Este es el comando principal para iniciar un entorno limpio. Se ejecuta desde `andechain/infra`.
     ```bash
     cd andechain/infra
     docker compose down -v && docker compose up -d --build
     ```
-    *Tu rollup soberano local estará funcionando en `http://localhost:8545`.*
 
-2.  **Desplegar los Contratos de Prueba:**
-    En otra terminal, despliega los contratos del bridge para poder interactuar con ellos.
+2.  **Desplegar los Contratos:**
     ```bash
     cd andechain/contracts
     export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
     forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
     ```
+
+3.  **Configurar y Iniciar Relayer:**
+    ```bash
+    cd andechain/relayer
+    # Actualizar .env con las direcciones desplegadas
+    npm start
+    ```
+
+### Comandos Útiles
+
+```bash
+make test         # Ejecutar tests
+make coverage     # Reporte de cobertura
+make security     # Análisis de seguridad
+make reset        # Reset completo
+make stop         # Detener servicios
+```
 
 Para una guía mucho más detallada sobre el flujo de desarrollo, troubleshooting y la arquitectura, consulta el **[Manual de Operaciones (ONBOARDING.md)](./ONBOARDING.md)**.
 
@@ -80,6 +109,9 @@ Estas son las direcciones de los contratos después de ejecutar el script `Deplo
 ## 📚 Estructura y Documentación del Proyecto
 
 -   **[ONBOARDING.md](./ONBOARDING.md)**: **(LEER PRIMERO)** El manual principal para desarrolladores y operadores. Contiene guías detalladas, solución de problemas y lecciones aprendidas.
+-   **[HEALTH_CHECK.md](./HEALTH_CHECK.md)**: Guía con comandos para realizar una auditoría y verificación completa del proyecto.
+-   **[FIXES_APPLIED.md](./FIXES_APPLIED.md)**: Reporte de correcciones aplicadas a fallos críticos identificados.
+-   **[TEST_COVERAGE_IMPROVEMENT.md](./TEST_COVERAGE_IMPROVEMENT.md)**: Reporte de mejoras en cobertura de tests (MintController: 31% → 72%).
 -   **[contracts/README.md](./contracts/README.md)**: Documentación específica del stack de Smart Contracts (Foundry).
 -   **[infra/README.md](./infra/README.md)**: Documentación específica del stack de infraestructura (Docker, Rollup).
 -   **[relayer/README.md](./relayer/README.md)**: Documentación específica del servicio de relayer off-chain.
