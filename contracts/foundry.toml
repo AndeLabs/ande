@@ -17,6 +17,9 @@ optimizer = true
 # un número bajo optimiza para costo de ejecución de funciones.
 optimizer_runs = 20000
 
+# Habilita la compilación a través de IR (Intermediate Representation) para evitar errores de "Stack too deep".
+via_ir = true
+
 # --- Perfiles de Ejecución ---
 
 # Perfil específico para nuestro rollup local. Hereda la configuración de `default`.

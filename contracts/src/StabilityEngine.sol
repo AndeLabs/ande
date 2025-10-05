@@ -1,111 +1,136 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity ^0.8.24;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AbobToken} from "./AbobToken.sol";
-import {IOracle} from "./IOracle.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./IOracle.sol";
+import "./ANDEToken.sol";
+import "./AusdToken.sol";
 
-contract StabilityEngine is
-    Initializable,
-    AccessControlUpgradeable,
-    UUPSUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+/// @title StabilityEngine
+/// @author AndeLabs
+/// @notice Este contrato gestiona la acuñación y quema de la stablecoin aUSD,
+/// utilizando ANDE como colateral y manteniendo la estabilidad del sistema.
+contract StabilityEngine is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
-    using SafeERC20 for AbobToken;
 
-    struct CollateralRatio {
-        uint8 ausd;
-        uint8 ande;
-    }
+    // --- State Variables ---
 
-    AbobToken public abobToken;
-    IERC20 public ausdToken;
-    IERC20 public andeToken;
-    IOracle public andeOracle;
-    CollateralRatio public ratio;
-    bytes32 public constant ANDE_USD_PAIR_ID = keccak256(abi.encodePacked("ANDE/USD"));
+    ANDEToken public andeToken;
+    AusdToken public ausdToken;
+    IOracle public andeUsdOracle;
 
-    event RatioUpdated(uint8 newAusdRatio, uint8 newAndeRatio);
-    event AbobMinted(address indexed user, uint256 abobAmount, uint256 ausdAmount, uint256 andeAmount);
-    event AbobBurned(address indexed user, uint256 abobAmount, uint256 ausdAmount, uint256 andeAmount);
+    uint256 public collateralRatio; // e.g., 150 for 150%
+
+    // --- Events ---
+
+    event Minted(address indexed user, uint256 andeAmount, uint256 ausdAmount);
+    event Burned(address indexed user, uint256 ausdAmount, uint256 andeAmount);
+
+    // --- Errors ---
+    error AmountMustBePositive();
+    error OraclePriceInvalid();
+    error InsufficientCollateral();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
+    /// @notice Inicializa el contrato, estableciendo las dependencias clave.
+    /// @param initialOwner El propietario inicial del contrato.
+    /// @param _andeToken La dirección del token ANDE.
+    /// @param _ausdToken La dirección del token aUSD.
+    /// @param _andeUsdOracle La dirección del oráculo de precios ANDE/USD.
+    /// @param _collateralRatio El ratio de colateralización inicial (e.g., 150 para 150%).
     function initialize(
-        address defaultAdmin,
-        address _abobToken,
-        address _ausdToken,
+        address initialOwner,
         address _andeToken,
-        address _andeOracle
+        address _ausdToken,
+        address _andeUsdOracle,
+        uint256 _collateralRatio
     ) public initializer {
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
+        __Ownable_init(initialOwner);
+        __Pausable_init();
         __ReentrancyGuard_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-
-        abobToken = AbobToken(_abobToken);
-        ausdToken = IERC20(_ausdToken);
-        andeToken = IERC20(_andeToken);
-        andeOracle = IOracle(_andeOracle);
-
-        ratio = CollateralRatio({ausd: 80, ande: 20});
+        andeToken = ANDEToken(_andeToken);
+        ausdToken = AusdToken(_ausdToken);
+        andeUsdOracle = IOracle(_andeUsdOracle);
+        collateralRatio = _collateralRatio;
     }
 
-    function mint(uint256 abobAmount) external nonReentrant {
-        require(abobAmount > 0, "Amount must be positive");
-        uint256 requiredAusd = (abobAmount * ratio.ausd) / 100;
-        uint256 requiredAndeValue = (abobAmount * ratio.ande) / 100;
-        
-        // --- ORACLE CALL UPDATED ---
-        (, int256 price_signed, , , ) = andeOracle.latestRoundData();
-        require(price_signed > 0, "Invalid ANDE price");
+    // --- Core Functions ---
+
+    /// @notice Acuña una cantidad de aUSD depositando ANDE como colateral.
+    /// @param amountToMint La cantidad de aUSD a acuñar.
+    function mint(uint256 amountToMint) external whenNotPaused nonReentrant {
+        if (amountToMint == 0) revert AmountMustBePositive();
+
+        (, int256 price_signed, , , ) = andeUsdOracle.latestRoundData();
+        if (price_signed <= 0) revert OraclePriceInvalid();
         uint256 andePrice = uint256(price_signed);
+        uint8 oracleDecimals = andeUsdOracle.decimals();
 
-        uint256 requiredAnde = (requiredAndeValue * (10**18)) / andePrice;
+        // Calculate required ANDE collateral
+        // (amountToMint * collateralRatio / 100) * 1e18 / andePrice
+        uint256 requiredAndeValue = (amountToMint * collateralRatio) / 100;
+        uint256 requiredAndeAmount = (requiredAndeValue * (10**oracleDecimals)) / andePrice;
 
-        ausdToken.safeTransferFrom(msg.sender, address(this), requiredAusd);
-        andeToken.safeTransferFrom(msg.sender, address(this), requiredAnde);
+        // Transfer ANDE from user to this contract
+        IERC20(address(andeToken)).safeTransferFrom(msg.sender, address(this), requiredAndeAmount);
 
-        // abobToken.mint(msg.sender, abobAmount); // TODO: Rediseñar. AbobToken ya no tiene un mint simple.
-        emit AbobMinted(msg.sender, abobAmount, requiredAusd, requiredAnde);
+        // Mint aUSD to the user
+        ausdToken.mint(msg.sender, amountToMint);
+
+        emit Minted(msg.sender, requiredAndeAmount, amountToMint);
     }
 
-    function burn(uint256 abobAmount) external nonReentrant {
-        require(abobAmount > 0, "Amount must be positive");
-        abobToken.burnFrom(msg.sender, abobAmount);
-        uint256 ausdToReturn = (abobAmount * ratio.ausd) / 100;
-        uint256 andeValueToReturn = (abobAmount * ratio.ande) / 100;
+    /// @notice Quema aUSD para redimir el colateral de ANDE.
+    /// @param amountToBurn La cantidad de aUSD a quemar.
+    function burn(uint256 amountToBurn) external whenNotPaused nonReentrant {
+        if (amountToBurn == 0) revert AmountMustBePositive();
 
-        // --- ORACLE CALL UPDATED ---
-        (, int256 price_signed, , , ) = andeOracle.latestRoundData();
-        require(price_signed > 0, "Invalid ANDE price");
+        // Burn aUSD from the user (user must have approved this contract)
+        ausdToken.burnFrom(msg.sender, amountToBurn);
+
+        (, int256 price_signed, , , ) = andeUsdOracle.latestRoundData();
+        if (price_signed <= 0) revert OraclePriceInvalid();
         uint256 andePrice = uint256(price_signed);
+        uint8 oracleDecimals = andeUsdOracle.decimals();
 
-        uint256 andeToReturn = (andeValueToReturn * (10**18)) / andePrice;
+        // Calculate ANDE to return
+        uint256 andeValueToReturn = (amountToBurn * 100) / collateralRatio;
+        uint256 andeAmountToReturn = (andeValueToReturn * (10**oracleDecimals)) / andePrice;
 
-        ausdToken.safeTransfer(msg.sender, ausdToReturn);
-        andeToken.safeTransfer(msg.sender, andeToReturn);
-        emit AbobBurned(msg.sender, abobAmount, ausdToReturn, andeToReturn);
+        uint256 contractBalance = IERC20(address(andeToken)).balanceOf(address(this));
+        if (andeAmountToReturn > contractBalance) revert InsufficientCollateral();
+
+        // Transfer ANDE from this contract to the user
+        IERC20(address(andeToken)).safeTransfer(msg.sender, andeAmountToReturn);
+
+        emit Burned(msg.sender, amountToBurn, andeAmountToReturn);
     }
 
-    function setRatio(uint8 newAusdRatio, uint8 newAndeRatio) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newAusdRatio + newAndeRatio == 100, "Ratios must sum to 100");
-        ratio = CollateralRatio({ausd: newAusdRatio, ande: newAndeRatio});
-        emit RatioUpdated(newAusdRatio, newAndeRatio);
+    // --- Admin Functions ---
+
+    function setCollateralRatio(uint256 _newRatio) external onlyOwner {
+        collateralRatio = _newRatio;
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    // --- Pausable Functions ---
+
+    /// @notice Pausa el contrato en caso de emergencia. Solo el propietario.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Reanuda el contrato. Solo el propietario.
+    function unpause() external onlyOwner {
+        _unpause();
+    }
 }

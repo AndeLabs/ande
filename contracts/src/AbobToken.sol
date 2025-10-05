@@ -10,6 +10,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IOracle} from "./IOracle.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title AbobToken
@@ -90,10 +91,10 @@ contract AbobToken is
         uint256 andePrice = uint256(andePriceSigned);
         uint256 abobPrice = uint256(abobPriceSigned);
 
-        uint256 totalCollateralValueInUSD = (_abobAmountToMint * abobPrice) / 1e18;
-        uint256 requiredAusdAmount = (totalCollateralValueInUSD * collateralRatio) / BASIS_POINTS;
+        uint256 totalCollateralValueInUSD = Math.mulDiv(_abobAmountToMint, abobPrice, 1e18);
+        uint256 requiredAusdAmount = Math.mulDiv(totalCollateralValueInUSD, collateralRatio, BASIS_POINTS);
         uint256 requiredAndeValueInUSD = totalCollateralValueInUSD - requiredAusdAmount;
-        uint256 requiredAndeAmount = (requiredAndeValueInUSD * 1e18) / andePrice;
+        uint256 requiredAndeAmount = Math.mulDiv(requiredAndeValueInUSD, 1e18, andePrice);
 
         ausdToken.safeTransferFrom(msg.sender, address(this), requiredAusdAmount);
         andeToken.safeTransferFrom(msg.sender, address(this), requiredAndeAmount);
@@ -116,10 +117,10 @@ contract AbobToken is
         uint256 andePrice = uint256(andePriceSigned);
         uint256 abobPrice = uint256(abobPriceSigned);
 
-        uint256 totalCollateralValueInUSD = (_abobAmountToBurn * abobPrice) / 1e18;
-        uint256 ausdAmountToReturn = (totalCollateralValueInUSD * collateralRatio) / BASIS_POINTS;
+        uint256 totalCollateralValueInUSD = Math.mulDiv(_abobAmountToBurn, abobPrice, 1e18);
+        uint256 ausdAmountToReturn = Math.mulDiv(totalCollateralValueInUSD, collateralRatio, BASIS_POINTS);
         uint256 andeValueToReturnInUSD = totalCollateralValueInUSD - ausdAmountToReturn;
-        uint256 andeAmountToReturn = (andeValueToReturnInUSD * 1e18) / andePrice;
+        uint256 andeAmountToReturn = Math.mulDiv(andeValueToReturnInUSD, 1e18, andePrice);
 
         ausdToken.safeTransfer(msg.sender, ausdAmountToReturn);
         andeToken.safeTransfer(msg.sender, andeAmountToReturn);

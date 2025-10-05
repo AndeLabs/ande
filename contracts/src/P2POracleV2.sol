@@ -176,14 +176,14 @@ contract P2POracleV2 is
      * @dev The user must first approve the contract to spend `minStake` of their ANDE tokens.
      */
     function register() external nonReentrant {
-        andeToken.safeTransferFrom(msg.sender, address(this), minStake);
-        
         reporters[msg.sender] = Reporter({
             isRegistered: true,
             stake: minStake,
             registrationTime: block.timestamp,
             lastReportEpoch: 0
         });
+
+        andeToken.safeTransferFrom(msg.sender, address(this), minStake);
 
         emit ReporterRegistered(msg.sender, minStake);
     }
