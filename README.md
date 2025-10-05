@@ -12,6 +12,8 @@
 
 AndeChain es una blockchain soberana regional que inicia en Bolivia y se expande, construida como un **Rollup EVM sobre Celestia**. Nuestra misión es resolver la fragmentación financiera de América Latina a través de un sistema económico robusto y una infraestructura tecnológica de vanguardia.
 
+**Token Nativo**: ANDE es la moneda nativa de la chain, utilizada para pagos de gas y gobernanza. Esto garantiza verdadera soberanía económica sin dependencias externas.
+
 Para una inmersión profunda en la visión y el modelo económico, consulta el [plan del proyecto](../planande.md) y los [tokenomics](../tokenomics.md).
 
 ## 🏗️ Arquitectura Técnica
@@ -41,74 +43,59 @@ graph TD
 
 ## 🚀 Guía de Inicio Rápido (Desarrollo Local)
 
-**Requisitos:**
+Esta guía te permitirá levantar todo el ecosistema de AndeChain en tu máquina local.
+
+**Requisitos Previos:**
 - Docker Desktop
 - Foundry (Kit de herramientas para Solidity)
+- Node.js y npm
 
-### Método Recomendado (Automatizado) ✅
+### Pasos para el Despliegue Local
 
-**Un solo comando que garantiza el orden correcto:**
+**1. Iniciar la Infraestructura Blockchain**
 
-```bash
-cd andechain
-make start
-```
-
-Este comando:
-1. ✅ Levanta la infraestructura Docker
-2. ✅ Despliega los contratos
-3. ✅ Configura el relayer automáticamente
-4. ✅ Inicia el relayer
-
-### Método Manual (Paso a Paso)
-
-1.  **Resetear y Levantar el Stack:**
-    ```bash
-    cd andechain/infra
-    docker compose down -v && docker compose up -d --build
-    ```
-
-2.  **Desplegar los Contratos:**
-    ```bash
-    cd andechain/contracts
-    export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-    forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast
-    ```
-
-3.  **Configurar y Iniciar Relayer:**
-    ```bash
-    cd andechain/relayer
-    # Actualizar .env con las direcciones desplegadas
-    npm start
-    ```
-
-### Comandos Útiles
+Este comando levanta todos los servicios de backend (Nodo, Sequencer, Explorador, etc.) en segundo plano.
 
 ```bash
-make test         # Ejecutar tests
-make coverage     # Reporte de cobertura
-make security     # Análisis de seguridad
-make reset        # Reset completo
-make stop         # Detener servicios
+# Desde la raíz de andechain/
+cd infra
+docker compose up -d --force-recreate
+cd ..
 ```
+
+**2. Desplegar y Verificar los Contratos**
+
+Estos comandos, definidos en el `Makefile`, compilan, despliegan y verifican todo el ecosistema de contratos inteligentes en la red local.
+
+```bash
+# Desde la raíz de andechain/
+make deploy-ecosystem
+make verify-contracts
+```
+*Después de ejecutar `make deploy-ecosystem`, la terminal mostrará un resumen completo con todas las direcciones de los contratos recién desplegados.*
+
+**3. Iniciar el Frontend**
+
+Este comando inicia la aplicación web para interactuar con el ecosistema.
+
+```bash
+# Desde la raíz del repositorio (ande-labs/)
+cd ande-frontend
+npm run dev
+```
+
+### Puntos de Acceso al Ecosistema
+
+-   **Frontend dApp:** [http://localhost:9002](http://localhost:9002)
+-   **Explorador de Bloques (Blockscout):** [http://localhost:4000](http://localhost:4000)
+-   **RPC Endpoint:** `http://localhost:8545`
 
 Para una guía mucho más detallada sobre el flujo de desarrollo, troubleshooting y la arquitectura, consulta el **[Manual de Operaciones (ONBOARDING.md)](./ONBOARDING.md)**.
-
-## 📜 Contratos Desplegados (Entorno Local)
-
-Estas son las direcciones de los contratos después de ejecutar el script `DeployBridge.s.sol` en un entorno local reseteado.
-
-| Contrato | Dirección en la Red Local (`chainId: 1234`) |
-| :-------------------- | :------------------------------------------ |
-| `MockABOB` | `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
-| `MockUSDC` | `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512` |
-| `MockBlobstream` | `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0` |
-| `AndeBridge` | `0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9` |
-| `EthereumBridge` | `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9` |
 
 ## 📚 Estructura y Documentación del Proyecto
 
 -   **[ONBOARDING.md](./ONBOARDING.md)**: **(LEER PRIMERO)** El manual principal para desarrolladores y operadores. Contiene guías detalladas, solución de problemas y lecciones aprendidas.
+-   **[NATIVE_ANDE_MIGRATION.md](./NATIVE_ANDE_MIGRATION.md)**: **Guía de migración a ANDE como token nativo de gas**. Proceso completo para hacer AndeChain verdaderamente soberana.
 -   **[HEALTH_CHECK.md](./HEALTH_CHECK.md)**: Guía con comandos para realizar una auditoría y verificación completa del proyecto.
 -   **[FIXES_APPLIED.md](./FIXES_APPLIED.md)**: Reporte de correcciones aplicadas a fallos críticos identificados.
 -   **[TEST_COVERAGE_IMPROVEMENT.md](./TEST_COVERAGE_IMPROVEMENT.md)**: Reporte de mejoras en cobertura de tests (MintController: 31% → 72%).
