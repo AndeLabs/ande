@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.25;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -371,9 +371,9 @@ contract MintController is
         }
 
         // Execute mint
+        proposal.executed = true;
         _mint(proposal.recipient, proposal.amount);
 
-        proposal.executed = true;
         emit ProposalExecuted(proposalId, proposal.amount, proposal.recipient);
     }
 
