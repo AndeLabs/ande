@@ -21,9 +21,9 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INFRA_DIR="$PROJECT_ROOT/andechain/infra"
-CONTRACTS_DIR="$PROJECT_ROOT/andechain/contracts"
-RELAYER_DIR="$PROJECT_ROOT/andechain/relayer"
+INFRA_DIR="$PROJECT_ROOT/infra"
+CONTRACTS_DIR="$PROJECT_ROOT/contracts"
+RELAYER_DIR="$PROJECT_ROOT/relayer"
 RPC_URL="http://localhost:8545"
 PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 MAX_RETRIES=30
@@ -68,7 +68,7 @@ wait_for_rpc() {
 # Function to extract contract address from broadcast JSON
 extract_address() {
     local contract_name=$1
-    local broadcast_file="$CONTRACTS_DIR/broadcast/DeployBridge.s.sol/12345/run-latest.json"
+    local broadcast_file="$CONTRACTS_DIR/broadcast/DeployEcosystem.s.sol/1234/run-latest.json"
 
     if [ ! -f "$broadcast_file" ]; then
         print_error "Archivo de broadcast no encontrado: $broadcast_file"
@@ -123,8 +123,8 @@ forge build
 # Deploy
 print_step "Ejecutando script de deploy..."
 export PRIVATE_KEY=$PRIVATE_KEY
-forge script script/DeployBridge.s.sol \
-    --tc DeployBridge \
+forge script script/DeployEcosystem.s.sol \
+    --tc DeployEcosystem \
     --rpc-url local \
     --broadcast \
     --legacy  # Use legacy transactions for local dev
@@ -149,7 +149,7 @@ ETHEREUM_BRIDGE=$(extract_address "EthereumBridge")
 
 if [ -z "$ANDE_BRIDGE" ] || [ -z "$ETHEREUM_BRIDGE" ]; then
     print_error "No se pudieron extraer las direcciones de los contratos"
-    print_warning "Verifica el archivo: $CONTRACTS_DIR/broadcast/DeployBridge.s.sol/12345/run-latest.json"
+    print_warning "Verifica el archivo: $CONTRACTS_DIR/broadcast/DeployEcosystem.s.sol/1234/run-latest.json"
     exit 1
 fi
 
