@@ -1,19 +1,99 @@
 # Environment variables
 .env
+.env.local
+.env.*.local
 
 # Node.js dependencies
-node_modules
+node_modules/
 npm-debug.log
 yarn-error.log
+package-lock.json
+pnpm-lock.yaml
 
 # Build artifacts
-artifacts
-cache
-contracts/typechain-types
+artifacts/
+cache/
+out/
+broadcast/
+contracts/typechain-types/
+dist/
+build/
+
+# Foundry
+cache_hardhat/
+cache_forge/
 
 # Gemini local files
 **/GEMINI.md
 **/.gemini/
 
-# AI Assistant Files
+# AI Assistant Files (temporary development aids)
 CLAUDE.md
+
+# ========================================
+# MARKDOWN DOCUMENTATION STRATEGY
+# ========================================
+# Ignore temporary/generated reports by default
+*.md
+
+# ----------------------------------------
+# ESSENTIAL PROJECT DOCUMENTATION (Always tracked)
+# ----------------------------------------
+!README.md
+!CHANGELOG.md
+!CODE_OF_CONDUCT.md
+!SECURITY.md
+!GIT_WORKFLOW.md
+
+# ----------------------------------------
+# DEVELOPER GUIDES (Always tracked)
+# ----------------------------------------
+!ONBOARDING.md
+!QUICK_START.md
+!HEALTH_CHECK.md
+!DOCS_INDEX.md
+
+# ----------------------------------------
+# PROJECT PLANNING (Always tracked)
+# ----------------------------------------
+!ROADMAP.md
+
+# ----------------------------------------
+# TECHNICAL SPECS (Always tracked)
+# ----------------------------------------
+!NATIVE_ANDE_MIGRATION.md
+!FAUCET.md
+
+# ----------------------------------------
+# REPORTS & FIXES (Temporary - Ignored)
+# ----------------------------------------
+# BLOCKSCOUT_*.md - Integration reports (archive after completion)
+# *_REPORT.md - Health check and test reports (temporary)
+# FIXES_APPLIED.md - Fix tracking (can be archived)
+# TEST_COVERAGE_*.md - Coverage reports (regenerate as needed)
+
+# ----------------------------------------
+# SUBDIRECTORY DOCUMENTATION (Always tracked)
+# ----------------------------------------
+!**/README.md
+!docs/**/*.md
+
+# Exception: Ignore archived reports
+docs/archive/**/*.md
+!docs/archive/**/README.md
+
+# ----------------------------------------
+# IDE & OS
+# ----------------------------------------
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ----------------------------------------
+# Logs
+# ----------------------------------------
+*.log
+logs/
