@@ -262,56 +262,27 @@ andechain/
 
 ### 🔧 Componentes Principales
 
-#### 💰 Tokenomics V3.0
+#### 💰 Tokenomics ABOB 2.0
+
+Nuestra economía se centra en un **Protocolo de Deuda Colateralizada (CDP)** avanzado, donde ABOB no es simplemente un token, sino una deuda respaldada por un valor superior de activos depositados por los usuarios en sus propias bóvedas.
 
 | Contrato | Token | Propósito | Características Clave |
-|----------|-------|-----------|----------------------|
-| `ANDEToken.sol` | **ANDE** | Governance + Gas Nativo | ERC20Votes, Burnable, Pausable, UUPS |
-| `VeANDE.sol` | **veANDE** | Vote-Escrowed | Lock hasta 4 años, poder boosteado |
-| `AusdToken.sol` | **AUSD** | Stablecoin Algorítmica | Collateralizado, rebase mechanism |
-| `AbobToken.sol` | **ABOB** | Boliviano Tokenizado | Pegged a BOB, 1:1 backing |
-| `sAbobToken.sol` | **sABOB** | Staked ABOB | Yield compounding, rewards |
+|---|---|---|---|
+| `AbobToken.sol` | **ABOB** | Stablecoin sobre-colateralizada | Se acuña como deuda contra un vault multi-colateral (USDC, wETH, ANDE). |
+| `ANDEToken.sol` | **ANDE** | Governance + Colateral Nativo | Token principal del ecosistema, usado para gobernar y como colateral volátil. |
+| `veANDE.sol` | **veANDE** | Vote-Escrowed Governance | Representa el poder de voto bloqueado a largo plazo, alineando incentivos. |
+| `sABOB.sol` | **sABOB** | Staked ABOB (Yield) | Vault ERC-4626 que acumula los ingresos del protocolo para los holders de ABOB. |
 
-#### 🏛️ Sistema de Gobernanza
+#### 🏛️ Arquitectura del Protocolo
 
-**Contratos Principales:**
-- **`AndeGovernor.sol`**: Gobernanza on-chain para propuestas y votación
-- **`AndeTimelockController.sol`**: Ejecución retardada de propuestas (48h)
-- **`MintController.sol`**: Control de emisión con límites de seguridad:
-  - Hard cap: 1B ANDE
-  - Límite anual: 50M ANDE
-  - Supermajority requerida: 66%
+El sistema está diseñado para ser modular, seguro y descentralizado desde su núcleo.
 
-#### 🌉 Bridge Infrastructure
-
-**Arquitectura de Puentes:**
-```
-Source Chain (AndeChain)        Destination Chain (BSC)
-       │                                │
-AndeBridge.sol                BSCBridge.sol
-       │                                │
-   Lock Tokens                     Mint Tokens
-       │                                │
-   Emit Events                    Verify DA Proofs
-       │                                │
-   └───────► Blobstream ◄───────────────┘
-               (Celestia DA)
-```
-
-#### 📊 Oracle Network
-
-**Sistema Multi-Oracle:**
-- **P2POracleV2**: Tasas P2P reales de usuarios
-- **AndeOracleAggregator**: Agregador de múltiples fuentes
-- **TrustedRelayerOracle**: Oráculo centralizado para casos específicos
-
-**Tipos de Precios Soportados:**
-- BOB/USD (Boliviano)
-- CLP/USD (Peso Chileno)
-- PEN/USD (Sol Peruano)
-- ARS/USD (Peso Argentino)
-- EUR/USD (Euro)
-- BTC/USD (Bitcoin)
+**Contratos de Soporte:**
+- **`CollateralManager.sol`**: Un registro flexible donde la gobernanza aprueba y gestiona los parámetros de riesgo para cada tipo de colateral (USDC, wETH, etc.).
+- **`PriceOracle.sol`**: Un oráculo de mediana (Medianizer) que agrega precios de múltiples fuentes para resistir la manipulación.
+- **`AuctionManager.sol`**: Gestiona subastas holandesas para liquidaciones justas y eficientes.
+- **`AndeGovernor.sol`**: El centro de la gobernanza, donde los holders de `veANDE` votan sobre el futuro del protocolo.
+- **`AndeTimelockController.sol`**: Añade un retardo de seguridad a todas las decisiones críticas de la gobernanza.
 
 ---
 
