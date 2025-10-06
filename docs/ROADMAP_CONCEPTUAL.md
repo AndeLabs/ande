@@ -189,106 +189,90 @@ P2POracleV2.sol
 
 ---
 
-## FASE 1: GÉNESIS ABOB
+## FASE 1: GÉNESIS ABOB 2.0 - PROTOCOLO DE DEUDA COLATERALIZADA
 
 ### 🎯 Objetivo
-**Lanzar el token ABOB con su mecanismo de estabilidad y yield.**
+**Lanzar la versión inicial del Protocolo de Deuda Colateralizada (CDP) ABOB, sentando las bases para una stablecoin robusta, multi-colateral y sobre-colateralizada.**
 
 ### 📦 Componentes
 
-#### ABOB - Stablecoin Híbrida
+#### ABOB - Protocolo de Deuda Colateralizada (CDP)
+
+Abandonamos el modelo de colateral dual fijo por una arquitectura superior inspirada en MakerDAO. Los usuarios no simplemente "compran" ABOB, sino que lo "acuñan" (piden prestado) contra el colateral depositado en sus **bóvedas de deuda (Vaults) personales**.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│            ABOB TOKEN ARCHITECTURE                  │
-└─────────────────────────────────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-   ┌────▼─────┐     ┌───▼────┐      ┌───▼────┐
-   │ ABOB     │     │ sABOB  │      │ Dual   │
-   │ ERC20    │     │ ERC4626│      │Collat. │
-   └────┬─────┘     └───┬────┘      └───┬────┘
-        │                │                │
-    Stability         Yield           AUSD+ANDE
-    Mechanism       Generation         70/30
+┌───────────────────────────────────────────────────────────┐
+│               ARQUITECTURA CDP - ABOB 2.0                   │
+├───────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐             │
+│  │   USDC   │   │   wETH   │   │   ANDE   │ (Colaterales) │
+│  └─────┬────┘   └─────┬────┘   └─────┬────┘             │
+│        └─────────────┬┴──────────────┘                  │
+│                      ▼                                  │
+│      ┌───────────────────────────┐                      │
+│      │  Registro de Colaterales  │ (Gobernanza decide)    │
+│      └─────────────┬─────────────┘                      │
+│                    ▼                                    │
+│      ┌───────────────────────────┐                      │
+│      │  Vault de Usuario (CDP)   │                      │
+│      │  - Ratio Sobre-Colat: 150%  │                      │
+│      └─────────────┬─────────────┘                      │
+│                    │ Acuña (Pide prestado)              │
+│                    ▼                                    │
+│      ┌───────────────────────────┐                      │
+│      │       Token ABOB          │ (Deuda del usuario)    │
+│      └───────────────────────────┘                      │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
 ```
 
-**Mecanismo de Colateral Dual:**
-```
-Usuario deposita → Mint ABOB
-    ↓
-Colateral Dual:
-├─ 70% AUSD (estable)
-└─ 30% ANDE (algorítmico)
-
-Ratio ajustable por gobernanza
-```
-
-**Funciones Core:**
-- `mint(amount)` - Deposita AUSD+ANDE, recibe ABOB
-- `redeem(amount)` - Quema ABOB, recupera colateral
-- `setCollateralRatio()` - Ajusta ratio (governance)
+**Mecanismo de CDP:**
+1.  **Depósito de Colateral:** El usuario deposita activos aprobados por la gobernanza (ej. `USDC`, `wETH`, `ANDE`) en su `Vault` personal.
+2.  **Sobre-colateralización:** Para acuñar 100 ABOB (valor $100), el usuario debe depositar un valor superior, ej. $150 (ratio del 150%). Este colchón protege al sistema.
+3.  **Acuñación de ABOB:** El usuario acuña ABOB contra su colateral, creando una deuda que debe pagar para recuperar sus activos.
+4.  **Liquidación:** Si el valor del colateral cae por debajo de un umbral de seguridad (ej. 125%), el `LiquidationManager` puede vender el colateral (idealmente vía subastas) para saldar la deuda.
 
 #### sABOB - Yield Vault
 
-**Concepto:**
+**Concepto:** Sigue siendo el mismo, un vault ERC-4626 que genera rendimiento.
 ```
 Usuario deposita ABOB → Recibe sABOB shares
     ↓
 Yield generado por:
-├─ DEX trading fees
-├─ Bridge fees
-├─ Lending interest
+├─ Fees de acuñación y redención del CDP
+├─ Ingresos de liquidaciones
+├─ DEX trading fees (Fase 5)
 └─ Protocol revenue
-
-sABOB value aumenta automáticamente
 ```
 
-**Estándar:** ERC-4626 Tokenized Vault
+#### Oráculos de Precio (Medianizer)
 
-**Funciones:**
-- `deposit(assets)` - Stake ABOB, recibe sABOB
-- `withdraw(assets)` - Burn sABOB, recibe ABOB + yield
-- `depositYield(amount)` - Protocol deposita ganancias
-
-#### Oráculos de Precio
-
-**P2POracleV2 - Descentralizado:**
-```
-Reporters staking ANDE
-    ↓
-Submit prices cada epoch
-    ↓
-Finalizer calcula mediana ponderada
-    ↓
-Precio usado por contratos
-```
+**Arquitectura Mejorada:**
+- **Múltiples Fuentes:** Se utilizan varios oráculos para cada activo.
+- **Medianizer:** En lugar de un promedio, el sistema calcula la **mediana** de los precios reportados. Esto lo hace extremadamente resistente a un oráculo malicioso o erróneo.
 
 **Precios Necesarios:**
-- ANDE/USD - Para cálculos de colateral
-- ABOB/BOB - Vinculación al Boliviano
-- AUSD/USD - Validación de stablecoin
+- `USDC/USD`, `wETH/USD`, `ANDE/USD` para valorar el colateral.
 
 ### ✅ Criterios de Éxito
 
-- [ ] ABOB minted y circulando
-- [ ] sABOB generando yield
-- [ ] Oráculos funcionando con 5+ reporters
-- [ ] Ratio de colateralización >100%
-- [ ] Tests exhaustivos de mint/redeem
+- [ ] Vaults de ABOB funcionando, permitiendo acuñar y redimir deuda.
+- [ ] Sistema de sobre-colateralización manteniendo un ratio global > 150%.
+- [ ] Oráculo Medianizer implementado y proveyendo precios seguros.
+- [ ] Mecanismo de liquidación básico funcional.
+- [ ] `sABOB` acumulando fees generados por el protocolo.
 
 ### 🔗 Dependencias
 **Requiere FASE 0:**
-- Blockchain funcionando
-- ANDEToken deployed
-- AusdToken deployed
+- Blockchain funcionando.
+- `ANDEToken` desplegado.
+- Acceso a `USDC` y `wETH` en la red de pruebas.
 
 ### 🚀 Mejoras Incrementales
-- Health ratio monitoring
-- Emergency shutdown mechanism
-- Insurance fund para undercollateralization
-- Multiple oracle sources (Chainlink backup)
+- Implementar **Subastas Holandesas** para liquidaciones más justas.
+- Introducir el sistema de gobernanza **`veANDE`** para gestionar el protocolo.
+- Añadir más tipos de colateral al registro.
 
 ---
 
