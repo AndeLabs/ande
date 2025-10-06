@@ -29,8 +29,7 @@ contract AusdTokenTest is Test {
         pauser = makeAddr("pauser");
 
         usdcCollateral = new MockERC20("Mock USDC", "USDC", 6);
-        usdcOracle = new MockOracle();
-        usdcOracle.setPrice(1 * 10**8);
+        usdcOracle = new MockOracle(1 * 10**8, 8);
 
         AusdToken implementation = new AusdToken();
         bytes memory data = abi.encodeWithSelector(AusdToken.initialize.selector, owner);
