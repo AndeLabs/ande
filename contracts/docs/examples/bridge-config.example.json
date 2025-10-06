@@ -1,0 +1,198 @@
+{
+  "networks": {
+    "andechain": {
+      "chainId": 999,
+      "name": "AndeChain Mainnet",
+      "rpc": "https://rpc.andechain.io",
+      "explorer": "https://explorer.andechain.io",
+      "tokens": {
+        "ANDE": {
+          "address": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "type": "native"
+        },
+        "xANDE": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        },
+        "AUSD": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        },
+        "ABOB": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        }
+      },
+      "contracts": {
+        "lockbox": "0x...",
+        "bridge": "0x...",
+        "blobstreamVerifier": "0x..."
+      }
+    },
+    "ethereum": {
+      "chainId": 1,
+      "name": "Ethereum Mainnet",
+      "rpc": "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+      "explorer": "https://etherscan.io",
+      "tokens": {
+        "xANDE": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        },
+        "AUSD": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        },
+        "ABOB": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        }
+      },
+      "contracts": {
+        "bridge": "0x...",
+        "blobstreamVerifier": "0x..."
+      }
+    },
+    "polygon": {
+      "chainId": 137,
+      "name": "Polygon Mainnet",
+      "rpc": "https://polygon-rpc.com",
+      "explorer": "https://polygonscan.com",
+      "tokens": {
+        "xANDE": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        },
+        "AUSD": {
+          "address": "0x...",
+          "decimals": 18,
+          "type": "xERC20"
+        }
+      },
+      "contracts": {
+        "bridge": "0x..."
+      }
+    }
+  },
+  "bridges": {
+    "andechain-ethereum": {
+      "source": "andechain",
+      "destination": "ethereum",
+      "type": "custom",
+      "rateLimits": {
+        "xANDE": {
+          "mintLimit": "1000000000000000000000000",
+          "burnLimit": "1000000000000000000000000",
+          "description": "1M tokens per day"
+        },
+        "AUSD": {
+          "mintLimit": "5000000000000000000000000",
+          "burnLimit": "5000000000000000000000000",
+          "description": "5M tokens per day"
+        },
+        "ABOB": {
+          "mintLimit": "2000000000000000000000000",
+          "burnLimit": "2000000000000000000000000",
+          "description": "2M tokens per day"
+        }
+      },
+      "fees": {
+        "fixed": "0",
+        "percentage": "0.1",
+        "description": "0.1% bridge fee"
+      },
+      "confirmations": {
+        "source": 6,
+        "destination": 12
+      }
+    },
+    "andechain-polygon": {
+      "source": "andechain",
+      "destination": "polygon",
+      "type": "custom",
+      "rateLimits": {
+        "xANDE": {
+          "mintLimit": "500000000000000000000000",
+          "burnLimit": "500000000000000000000000",
+          "description": "500K tokens per day"
+        },
+        "AUSD": {
+          "mintLimit": "2000000000000000000000000",
+          "burnLimit": "2000000000000000000000000",
+          "description": "2M tokens per day"
+        }
+      },
+      "fees": {
+        "fixed": "0",
+        "percentage": "0.15"
+      },
+      "confirmations": {
+        "source": 6,
+        "destination": 128
+      }
+    }
+  },
+  "relayer": {
+    "enabled": true,
+    "polling": {
+      "interval": 5000,
+      "description": "Poll for events every 5 seconds"
+    },
+    "batchSize": 10,
+    "retryAttempts": 3,
+    "retryDelay": 30000,
+    "gasSettings": {
+      "maxFeePerGas": "100000000000",
+      "maxPriorityFeePerGas": "2000000000",
+      "gasLimit": "500000"
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "alerts": {
+      "lowRateLimit": {
+        "threshold": 0.2,
+        "description": "Alert when rate limit below 20%"
+      },
+      "highVolume": {
+        "threshold": 3,
+        "description": "Alert when 24h volume > 3x average"
+      },
+      "failedTransactions": {
+        "threshold": 5,
+        "description": "Alert when 5+ failed txs in 1 hour"
+      }
+    },
+    "webhooks": [
+      {
+        "url": "https://hooks.slack.com/services/YOUR_WEBHOOK",
+        "events": ["alert", "error", "warning"]
+      }
+    ]
+  },
+  "security": {
+    "multiSig": {
+      "address": "0x...",
+      "threshold": 3,
+      "signers": 5,
+      "description": "3-of-5 multisig for admin functions"
+    },
+    "emergencyPause": {
+      "enabled": true,
+      "contacts": [
+        "security@andelabs.io",
+        "+1-XXX-XXX-XXXX"
+      ]
+    },
+    "rateLimitBuffer": 0.1,
+    "description": "Keep 10% buffer in rate limits"
+  }
+}
