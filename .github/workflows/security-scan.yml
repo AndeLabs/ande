@@ -1,0 +1,78 @@
+name: 🔒 Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scan daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  security-scan:
+    name: 🔍 Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Install Dependencies
+      run: |
+        pip install -r .github/requirements.txt
+
+    - name: 🔍 Run Slither Analysis
+      run: |
+        cd contracts
+        slither . --json slither-report.json --filter-paths "lib/" --exclude naming-convention,external-function
+
+    - name: 📊 Calculate Security Score
+      run: |
+        python3 .github/scripts/calculate_security_score.py contracts/slither-report.json
+
+    - name: 🛡️ Run Bandit Security Scan
+      run: |
+        bandit -r .github/scripts/ -f json -o bandit-report.json || true
+
+    - name: 🔍 Run Safety Check
+      run: |
+        safety check --json --output safety-report.json || true
+
+    - name: 📤 Upload Security Reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          contracts/slither-report.json
+          bandit-report.json
+          safety-report.json
+          security-score.json
+        retention-days: 30
+
+    - name: 🚨 Security Alert on Critical Issues
+      if: failure()
+      run: |
+        echo "🚨 Critical security issues detected!"
+        echo "Please review the security reports before merging."
+
+    - name: 📊 Security Summary
+      if: always()
+      run: |
+        echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f "contracts/slither-report.json" ]; then
+          HIGH_ISSUES=$(python3 -c "import json; data=json.load(open('contracts/slither-report.json')); print(len([r for r in data.get('results', {}).get('detectors', []) if r.get('impact', '').lower() == 'high']))")
+          echo "- **High Issues**: $HIGH_ISSUES" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "- **Slither Analysis**: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- **Bandit Scan**: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- **Safety Check**: ✅ Completed" >> $GITHUB_STEP_SUMMARY
