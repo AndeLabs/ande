@@ -1,32 +1,54 @@
-# Use a multi-stage build to keep the final image small
+# 🐳 Smart Contracts Dockerfile - AndeChain
+FROM ghcr.io/foundry-rs/foundry:latest
 
-# 1. Builder stage: Install dependencies and build contracts
-FROM ghcr.io/foundry-rs/foundry:latest as builder
+# Install Python and security tools
+USER root
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-venv && \
+    pip3 install slither-analyzer && \
+    rm -rf /var/lib/apt/lists/*
+USER foundry
 
 # Set working directory
 WORKDIR /app
 
-# Copy foundry configuration and library dependencies first
-COPY foundry.toml remappings.txt ./
-COPY lib/ lib/
+# Copy foundry configuration first (for better layer caching)
+COPY foundry.toml ./
+COPY remappings.txt ./
 
-# Copy contract source and tests
-COPY src/ src/
-COPY test/ test/
-COPY script/ script/
+# Copy library dependencies
+COPY lib/ ./lib
 
-# Build the project
+# Copy source code
+COPY src/ ./src
+COPY test/ ./test
+COPY script/ ./script
+
+# Build contracts
 RUN forge build
 
-# 2. Final stage: A minimal image with just the artifacts
-FROM alpine:latest
+# Install Node.js for Gemini analysis scripts
+USER root
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g @google/generative-ai && \
+    rm -rf /var/lib/apt/lists/*
+USER foundry
 
-WORKDIR /app
+# Create CI scripts directory
+RUN mkdir -p .github/scripts
 
-# Copy the compiled artifacts from the builder stage
-# The output directory is configured in foundry.toml to be "artifacts"
-COPY --from=builder /app/artifacts/ ./artifacts/
+# Copy CI scripts (will be mounted as volume in CI)
+COPY .github/scripts/ .github/scripts/
 
-# The container doesn't need to run anything by default.
-# It will be used as a volume mount or for `docker compose run` commands.
-CMD ["sleep", "infinity"]
+# Make scripts executable
+RUN chmod +x .github/scripts/*.js .github/scripts/*.py
+
+# Set permissions back to foundry user
+USER foundry
+
+# Expose volume for test results and artifacts
+VOLUME ["/app/artifacts", "/app/test-results", "/app/coverage"]
+
+# Default command - run tests
+CMD ["forge", "test", "--gas-report"]
