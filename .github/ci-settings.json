@@ -1,0 +1,71 @@
+{
+  "ci": {
+    "version": "1.0.0",
+    "description": "AndeChain CI/CD Configuration",
+    "pipeline": {
+      "stages": [
+        "setup",
+        "lint",
+        "test",
+        "security",
+        "ai-analysis",
+        "build",
+        "deploy"
+      ]
+    },
+    "thresholds": {
+      "coverage": {
+        "minimum": 80,
+        "target": 90
+      },
+      "security": {
+        "minimum_score": 70,
+        "critical_issues": 0,
+        "high_issues": 0
+      },
+      "gas": {
+        "max_increase_percent": 10,
+        "warning_threshold": 50000
+      }
+    },
+    "notifications": {
+      "discord": {
+        "enabled": true,
+        "on_success": false,
+        "on_failure": true,
+        "on_warning": true
+      }
+    },
+    "ai_analysis": {
+      "enabled": true,
+      "model": "gemini-1.5-flash",
+      "temperature": 0.3,
+      "max_tokens": 8192,
+      "focus_areas": [
+        "security",
+        "gas_optimization",
+        "code_quality",
+        "best_practices"
+      ]
+    },
+    "docker": {
+      "registry": "ghcr.io/andelabs",
+      "build_args": {
+        "NODE_ENV": "production"
+      }
+    },
+    "deployment": {
+      "environments": {
+        "staging": {
+          "auto_deploy": true,
+          "requires_approval": false
+        },
+        "production": {
+          "auto_deploy": false,
+          "requires_approval": true,
+          "approvers": ["@andechain/core-team"]
+        }
+      }
+    }
+  }
+}
