@@ -6,6 +6,10 @@ out = "out"
 # Directorio de dependencias de Solidity.
 libs = ["lib"]
 
+# Note: Foundry doesn't support excluded_paths natively
+# Files are excluded by not being in src/ or test/ directories
+# temp_deprecated/ has been moved to ../../temp_deprecated_backup/
+
 # --- Configuraciones del Compilador ---
 
 # Fija la versión del compilador de Solidity para garantizar builds consistentes.
