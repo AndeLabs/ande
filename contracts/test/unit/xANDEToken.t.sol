@@ -38,8 +38,7 @@ contract xANDETokenTest is Test {
 
         // Deploy native ANDE token
         ANDEToken andeImpl = new ANDEToken();
-        bytes memory andeData =
-            abi.encodeWithSelector(ANDEToken.initialize.selector, admin, minter);
+        bytes memory andeData = abi.encodeWithSelector(ANDEToken.initialize.selector, admin, minter);
         ERC1967Proxy andeProxy = new ERC1967Proxy(address(andeImpl), andeData);
         ande = ANDEToken(address(andeProxy));
 

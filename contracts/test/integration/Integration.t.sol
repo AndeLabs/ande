@@ -42,11 +42,7 @@ contract IntegrationTest is Test {
         // --- 2. Desplegar y Configurar P2POracleV2 ---
         P2POracleV2 p2pImpl = new P2POracleV2();
         bytes memory p2pInitData = abi.encodeWithSelector(
-            P2POracleV2.initialize.selector,
-            admin,
-            address(ande),
-            ORACLE_MIN_STAKE,
-            ORACLE_EPOCH_DURATION
+            P2POracleV2.initialize.selector, admin, address(ande), ORACLE_MIN_STAKE, ORACLE_EPOCH_DURATION
         );
         ERC1967Proxy p2pProxy = new ERC1967Proxy(address(p2pImpl), p2pInitData);
         p2pAndeOracle = P2POracleV2(address(p2pProxy));
@@ -73,7 +69,7 @@ contract IntegrationTest is Test {
 
         // --- 4. Preparar a los Reporters ---
         address[3] memory reporters = [reporter1, reporter2, reporter3];
-        for (uint i = 0; i < reporters.length; i++) {
+        for (uint256 i = 0; i < reporters.length; i++) {
             address r = reporters[i];
             // Darles ANDE para el stake
             ande.mint(r, ORACLE_MIN_STAKE);
@@ -125,7 +121,7 @@ contract IntegrationTest is Test {
         vm.prank(user);
         abobToken.mint(abobToMint);
 
-        // --- 5. Verificar --- 
+        // --- 5. Verificar ---
         // Calculamos el colateral ANDE esperado usando el precio mediano del oráculo
         uint256 totalCollateralValue = (abobToMint * ABOB_PRICE) / 1e18;
         uint256 ausdCollateral = (totalCollateralValue * 7000) / 10000;
@@ -134,6 +130,10 @@ contract IntegrationTest is Test {
 
         uint256 userAndeBalanceAfter = ande.balanceOf(user);
 
-        assertEq(userAndeBalanceBefore - userAndeBalanceAfter, expectedAndeAmount, unicode"La cantidad de ANDE cobrada no coincide con el precio del oráculo P2P");
+        assertEq(
+            userAndeBalanceBefore - userAndeBalanceAfter,
+            expectedAndeAmount,
+            unicode"La cantidad de ANDE cobrada no coincide con el precio del oráculo P2P"
+        );
     }
 }

@@ -30,11 +30,7 @@ contract P2POracleV2Test is Test {
         // 2. Deploy contract (con proxy)
         P2POracleV2 oracleImpl = new P2POracleV2();
         bytes memory initData = abi.encodeWithSelector(
-            P2POracleV2.initialize.selector,
-            admin,
-            address(andeToken),
-            INITIAL_STAKE,
-            EPOCH_DURATION
+            P2POracleV2.initialize.selector, admin, address(andeToken), INITIAL_STAKE, EPOCH_DURATION
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(oracleImpl), initData);
         oracle = P2POracleV2(address(proxy));
@@ -83,7 +79,7 @@ contract P2POracleV2Test is Test {
         vm.prank(reporter1);
         oracle.register();
 
-        (bool isRegisteredBefore, , , ) = oracle.reporters(reporter1);
+        (bool isRegisteredBefore,,,) = oracle.reporters(reporter1);
         assertTrue(isRegisteredBefore, "Reporter should be registered initially");
         assertEq(andeToken.balanceOf(address(oracle)), INITIAL_STAKE, "Oracle should hold the stake");
 
@@ -95,12 +91,14 @@ contract P2POracleV2Test is Test {
 
         // Assert
         // 1. El reportero ya no está registrado
-        (bool isRegisteredAfter, , , ) = oracle.reporters(reporter1);
+        (bool isRegisteredAfter,,,) = oracle.reporters(reporter1);
         assertFalse(isRegisteredAfter, "Reporter should be unregistered after slash");
 
         // 2. El stake se ha transferido a la tesorería
         assertEq(andeToken.balanceOf(address(oracle)), 0, "Oracle should have no stake left");
-        assertEq(andeToken.balanceOf(treasury), treasuryBalanceBefore + INITIAL_STAKE, "Treasury should receive the stake");
+        assertEq(
+            andeToken.balanceOf(treasury), treasuryBalanceBefore + INITIAL_STAKE, "Treasury should receive the stake"
+        );
     }
 
     function test_Slash_OnNonReporter_Reverts() public {

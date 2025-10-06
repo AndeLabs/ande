@@ -36,12 +36,8 @@ contract DeployAndeBridge is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy the AndeChainBridge
-        AndeChainBridge bridge = new AndeChainBridge(
-            bridgeAdminAddress,
-            blobstreamVerifierAddress,
-            minConfirmations,
-            forceInclusionPeriod
-        );
+        AndeChainBridge bridge =
+            new AndeChainBridge(bridgeAdminAddress, blobstreamVerifierAddress, minConfirmations, forceInclusionPeriod);
 
         console.log("AndeChainBridge deployed to:", address(bridge));
 

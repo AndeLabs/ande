@@ -7,7 +7,8 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20BurnableUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 
 contract DualTrackBurnEngine is Initializable, AccessControlUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -45,7 +46,7 @@ contract DualTrackBurnEngine is Initializable, AccessControlUpgradeable, UUPSUpg
         require(amount > 0, "Burn amount must be positive");
         require(amount <= MAX_IMPULSIVE_BURN_AMOUNT, "Exceeds max burn per tx");
         require(amount <= currentBalance, "Burn amount exceeds balance");
-        
+
         ERC20BurnableUpgradeable(address(andeToken)).burn(amount);
     }
 
@@ -59,12 +60,7 @@ contract DualTrackBurnEngine is Initializable, AccessControlUpgradeable, UUPSUpg
     }
 
     // The following functions are required by UUPSUpgradeable.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        onlyRole(DEFAULT_ADMIN_ROLE)
-        view
-        override
-    {
+    function _authorizeUpgrade(address newImplementation) internal view override onlyRole(DEFAULT_ADMIN_ROLE) {
         newImplementation;
     }
 }

@@ -41,18 +41,8 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
     uint256 public constant BASIS_POINTS = 10000;
 
     // ==================== EVENTS ====================
-    event CollateralMinted(
-        address indexed user,
-        uint256 abobAmount,
-        uint256 ausdAmount,
-        uint256 andeAmount
-    );
-    event CollateralRedeemed(
-        address indexed user,
-        uint256 abobAmount,
-        uint256 ausdAmount,
-        uint256 andeAmount
-    );
+    event CollateralMinted(address indexed user, uint256 abobAmount, uint256 ausdAmount, uint256 andeAmount);
+    event CollateralRedeemed(address indexed user, uint256 abobAmount, uint256 ausdAmount, uint256 andeAmount);
     event CollateralRatioUpdated(uint256 newRatio);
     event PriceFeedsUpdated(address newAndeFeed, address newAbobFeed);
     event CollateralTokensUpdated(address newAusdToken, address newAndeToken);
@@ -117,11 +107,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
      * @dev Calculates required collateral based on dynamic ratio and oracle prices
      * @param _abobAmountToMint Amount of ABOB to mint
      */
-    function mintWithCollateral(uint256 _abobAmountToMint)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function mintWithCollateral(uint256 _abobAmountToMint) external whenNotPaused nonReentrant {
         if (_abobAmountToMint == 0) revert InvalidAmount();
 
         // Get oracle prices
@@ -133,12 +119,10 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
         uint256 abobPrice = uint256(abobPriceSigned);
 
         // Calculate total collateral value needed in USD (18 decimals)
-        uint256 totalCollateralValueInUSD =
-            Math.mulDiv(_abobAmountToMint, abobPrice, 1e18);
+        uint256 totalCollateralValueInUSD = Math.mulDiv(_abobAmountToMint, abobPrice, 1e18);
 
         // Calculate AUSD portion (stable collateral)
-        uint256 requiredAusdAmount =
-            Math.mulDiv(totalCollateralValueInUSD, collateralRatio, BASIS_POINTS);
+        uint256 requiredAusdAmount = Math.mulDiv(totalCollateralValueInUSD, collateralRatio, BASIS_POINTS);
 
         // Calculate ANDE portion (volatile collateral)
         uint256 requiredAndeValueInUSD = totalCollateralValueInUSD - requiredAusdAmount;
@@ -151,9 +135,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
         // Mint ABOB
         _mint(msg.sender, _abobAmountToMint);
 
-        emit CollateralMinted(
-            msg.sender, _abobAmountToMint, requiredAusdAmount, requiredAndeAmount
-        );
+        emit CollateralMinted(msg.sender, _abobAmountToMint, requiredAusdAmount, requiredAndeAmount);
     }
 
     /**
@@ -161,11 +143,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
      * @dev Returns collateral based on current ratio and oracle prices
      * @param _abobAmountToBurn Amount of ABOB to burn
      */
-    function redeemCollateral(uint256 _abobAmountToBurn)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function redeemCollateral(uint256 _abobAmountToBurn) external whenNotPaused nonReentrant {
         if (_abobAmountToBurn == 0) revert InvalidAmount();
 
         // Burn ABOB first
@@ -180,12 +158,10 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
         uint256 abobPrice = uint256(abobPriceSigned);
 
         // Calculate total collateral value to return in USD
-        uint256 totalCollateralValueInUSD =
-            Math.mulDiv(_abobAmountToBurn, abobPrice, 1e18);
+        uint256 totalCollateralValueInUSD = Math.mulDiv(_abobAmountToBurn, abobPrice, 1e18);
 
         // Calculate AUSD to return
-        uint256 ausdAmountToReturn =
-            Math.mulDiv(totalCollateralValueInUSD, collateralRatio, BASIS_POINTS);
+        uint256 ausdAmountToReturn = Math.mulDiv(totalCollateralValueInUSD, collateralRatio, BASIS_POINTS);
 
         // Calculate ANDE to return
         uint256 andeValueToReturnInUSD = totalCollateralValueInUSD - ausdAmountToReturn;
@@ -195,9 +171,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
         ausdToken.safeTransfer(msg.sender, ausdAmountToReturn);
         andeToken.safeTransfer(msg.sender, andeAmountToReturn);
 
-        emit CollateralRedeemed(
-            msg.sender, _abobAmountToBurn, ausdAmountToReturn, andeAmountToReturn
-        );
+        emit CollateralRedeemed(msg.sender, _abobAmountToBurn, ausdAmountToReturn, andeAmountToReturn);
     }
 
     // ==================== GOVERNANCE FUNCTIONS ====================
@@ -219,10 +193,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
      * @param _newAndeFeed New ANDE price feed address
      * @param _newAbobFeed New ABOB price feed address
      */
-    function setPriceFeeds(address _newAndeFeed, address _newAbobFeed)
-        external
-        onlyRole(GOVERNANCE_ROLE)
-    {
+    function setPriceFeeds(address _newAndeFeed, address _newAbobFeed) external onlyRole(GOVERNANCE_ROLE) {
         if (_newAndeFeed == address(0) || _newAbobFeed == address(0)) {
             revert InvalidAddress();
         }
@@ -237,10 +208,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
      * @param _newAusdToken New AUSD token address
      * @param _newAndeToken New ANDE token address
      */
-    function setCollateralTokens(address _newAusdToken, address _newAndeToken)
-        external
-        onlyRole(GOVERNANCE_ROLE)
-    {
+    function setCollateralTokens(address _newAusdToken, address _newAndeToken) external onlyRole(GOVERNANCE_ROLE) {
         if (_newAusdToken == address(0) || _newAndeToken == address(0)) {
             revert InvalidAddress();
         }
@@ -270,11 +238,7 @@ contract AbobTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable 
     /**
      * @dev Override _update to add pause check
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override
-        whenNotPaused
-    {
+    function _update(address from, address to, uint256 value) internal override whenNotPaused {
         super._update(from, to, value);
     }
 

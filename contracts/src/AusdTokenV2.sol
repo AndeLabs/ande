@@ -26,11 +26,7 @@ interface IERC20withDecimals is IERC20 {
  * - Native on AndeChain (backed by real collateral)
  * - Bridgeable to other chains (via xERC20 standard)
  */
-contract AusdTokenV2 is
-    XERC20,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract AusdTokenV2 is XERC20, PausableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     // ==================== ROLES ====================
@@ -53,16 +49,10 @@ contract AusdTokenV2 is
     event CollateralAdded(address indexed collateral, uint256 ratio, address priceFeed);
     event CollateralRatioUpdated(address indexed collateral, uint256 newRatio);
     event CollateralMinted(
-        address indexed user,
-        address indexed collateral,
-        uint256 collateralAmount,
-        uint256 ausdAmount
+        address indexed user, address indexed collateral, uint256 collateralAmount, uint256 ausdAmount
     );
     event CollateralBurned(
-        address indexed user,
-        address indexed collateral,
-        uint256 collateralAmount,
-        uint256 ausdAmount
+        address indexed user, address indexed collateral, uint256 collateralAmount, uint256 ausdAmount
     );
 
     // ==================== ERRORS ====================
@@ -103,11 +93,10 @@ contract AusdTokenV2 is
      * @param _ratio Over-collateralization ratio in basis points (e.g., 15000 = 150%)
      * @param _priceFeed Address of the Chainlink price feed oracle
      */
-    function addCollateralType(
-        address _collateral,
-        uint128 _ratio,
-        address _priceFeed
-    ) external onlyRole(COLLATERAL_MANAGER_ROLE) {
+    function addCollateralType(address _collateral, uint128 _ratio, address _priceFeed)
+        external
+        onlyRole(COLLATERAL_MANAGER_ROLE)
+    {
         require(!collateralTypes[_collateral].isSupported, "Collateral already supported");
         if (_ratio < 10000) revert InvalidCollateralizationRatio(); // Must be >= 100%
         if (_priceFeed == address(0)) revert InvalidPriceFeed();
@@ -128,10 +117,7 @@ contract AusdTokenV2 is
      * @param _collateral Address of the collateral token
      * @param _newRatio New ratio in basis points
      */
-    function updateCollateralRatio(address _collateral, uint128 _newRatio)
-        external
-        onlyRole(COLLATERAL_MANAGER_ROLE)
-    {
+    function updateCollateralRatio(address _collateral, uint128 _newRatio) external onlyRole(COLLATERAL_MANAGER_ROLE) {
         if (!collateralTypes[_collateral].isSupported) revert CollateralNotSupported();
         if (_newRatio < 10000) revert InvalidCollateralizationRatio();
 
@@ -147,11 +133,7 @@ contract AusdTokenV2 is
      * @param _collateral Address of the collateral token to deposit
      * @param _collateralAmount Amount of collateral to deposit
      */
-    function depositAndMint(address _collateral, uint256 _collateralAmount)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function depositAndMint(address _collateral, uint256 _collateralAmount) external whenNotPaused nonReentrant {
         if (_collateralAmount == 0) revert AmountMustBePositive();
         CollateralInfo storage collateral = collateralTypes[_collateral];
         if (!collateral.isSupported) revert CollateralNotSupported();
@@ -167,12 +149,10 @@ contract AusdTokenV2 is
 
         // Calculate collateral value in USD (normalized to 18 decimals)
         uint256 scaledPrice = collateralPrice * (10 ** (18 - oracleDecimals));
-        uint256 valueInUsd =
-            Math.mulDiv(_collateralAmount, scaledPrice, (10 ** collateralDecimals));
+        uint256 valueInUsd = Math.mulDiv(_collateralAmount, scaledPrice, (10 ** collateralDecimals));
 
         // Calculate AUSD to mint based on over-collateralization ratio
-        uint256 amountToMint =
-            Math.mulDiv(valueInUsd, 10000, collateral.overCollateralizationRatio);
+        uint256 amountToMint = Math.mulDiv(valueInUsd, 10000, collateral.overCollateralizationRatio);
 
         // Transfer collateral and mint AUSD
         IERC20(_collateral).safeTransferFrom(msg.sender, address(this), _collateralAmount);
@@ -188,11 +168,7 @@ contract AusdTokenV2 is
      * @param _collateral Address of the collateral token to withdraw
      * @param _ausdAmount Amount of AUSD to burn
      */
-    function burnAndWithdraw(address _collateral, uint256 _ausdAmount)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function burnAndWithdraw(address _collateral, uint256 _ausdAmount) external whenNotPaused nonReentrant {
         if (_ausdAmount == 0) revert AmountMustBePositive();
         CollateralInfo storage collateral = collateralTypes[_collateral];
         if (!collateral.isSupported) revert CollateralNotSupported();
@@ -205,12 +181,10 @@ contract AusdTokenV2 is
 
         // Calculate collateral to withdraw
         uint256 valueInUsd = _ausdAmount;
-        uint256 collateralValueInUsd =
-            Math.mulDiv(valueInUsd, collateral.overCollateralizationRatio, 10000);
+        uint256 collateralValueInUsd = Math.mulDiv(valueInUsd, collateral.overCollateralizationRatio, 10000);
         uint8 collateralDecimals = IERC20withDecimals(_collateral).decimals();
         uint256 scaledPrice = collateralPrice * (10 ** (18 - oracleDecimals));
-        uint256 collateralToWithdraw =
-            Math.mulDiv(collateralValueInUsd, (10 ** collateralDecimals), scaledPrice);
+        uint256 collateralToWithdraw = Math.mulDiv(collateralValueInUsd, (10 ** collateralDecimals), scaledPrice);
 
         if (collateralToWithdraw > collateral.totalDeposited) revert InsufficientCollateral();
 
@@ -244,11 +218,7 @@ contract AusdTokenV2 is
      * @dev Override _update to add pause check
      * @dev Note: XERC20 mint/burn functions already have their own access control via rate limits
      */
-    function _update(address from, address to, uint256 value)
-        internal
-        override
-        whenNotPaused
-    {
+    function _update(address from, address to, uint256 value) internal override whenNotPaused {
         super._update(from, to, value);
     }
 
@@ -264,11 +234,7 @@ contract AusdTokenV2 is
     /**
      * @notice Returns collateral information for a specific token
      */
-    function getCollateralInfo(address _collateral)
-        external
-        view
-        returns (CollateralInfo memory)
-    {
+    function getCollateralInfo(address _collateral) external view returns (CollateralInfo memory) {
         return collateralTypes[_collateral];
     }
 }

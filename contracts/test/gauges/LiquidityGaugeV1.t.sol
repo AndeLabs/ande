@@ -48,7 +48,9 @@ contract LiquidityGaugeV1Test is Test {
         vm.stopPrank();
 
         // 2. Check balances after deposit
-        assertEq(lpToken.balanceOf(alice), initial_alice_balance - deposit_amount, "Alice LP balance incorrect after deposit");
+        assertEq(
+            lpToken.balanceOf(alice), initial_alice_balance - deposit_amount, "Alice LP balance incorrect after deposit"
+        );
         assertEq(lpToken.balanceOf(address(gauge)), deposit_amount, "Gauge LP balance incorrect after deposit");
         assertEq(gauge.balanceOf(alice), deposit_amount, "Alice gauge share balance incorrect after deposit");
 
@@ -84,7 +86,7 @@ contract LiquidityGaugeV1Test is Test {
         vm.warp(last_update + 7 days);
 
         uint256 earned = gauge.earned(alice);
-        
+
         // Since she is the only depositor, she should get all the rewards.
         // Allow a small delta for single-second timestamp variations.
         assertApproxEqAbs(earned, reward_amount, 1e18, "Earned amount is incorrect");
@@ -122,8 +124,10 @@ contract LiquidityGaugeV1Test is Test {
 
         // 5. Check balances
         uint256 final_ande_balance = ande.balanceOf(alice);
-        assertApproxEqAbs(final_ande_balance, initial_ande_balance + earned, 1, "Alice did not receive correct reward amount");
-        
+        assertApproxEqAbs(
+            final_ande_balance, initial_ande_balance + earned, 1, "Alice did not receive correct reward amount"
+        );
+
         uint256 remaining_earned = gauge.earned(alice);
         assertEq(remaining_earned, 0, "Earned amount should be 0 after claiming");
     }

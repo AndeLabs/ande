@@ -103,12 +103,10 @@ contract P2POracleV2 is
      * @param _minStake The minimum stake required to be a reporter.
      * @param _epochDuration The duration of each reporting epoch in seconds.
      */
-    function initialize(
-        address defaultAdmin,
-        address andeTokenAddress,
-        uint256 _minStake,
-        uint256 _epochDuration
-    ) public initializer {
+    function initialize(address defaultAdmin, address andeTokenAddress, uint256 _minStake, uint256 _epochDuration)
+        public
+        initializer
+    {
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -147,13 +145,7 @@ contract P2POracleV2 is
     function latestRoundData()
         external
         view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        )
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         uint256 currentEpochNumber = block.timestamp / reportEpochDuration;
         if (currentEpochNumber == 0) {
@@ -162,7 +154,7 @@ contract P2POracleV2 is
         uint256 latestFinalizedEpoch = currentEpochNumber - 1;
         uint256 price = finalizedPrices[latestFinalizedEpoch];
         uint256 timestamp = finalizedTimestamps[latestFinalizedEpoch];
-        
+
         return (
             uint80(latestFinalizedEpoch),
             int256(price),
@@ -191,12 +183,8 @@ contract P2POracleV2 is
      * @dev The user must first approve the contract to spend `minStake` of their ANDE tokens.
      */
     function register() external nonReentrant {
-        reporters[msg.sender] = Reporter({
-            isRegistered: true,
-            stake: minStake,
-            registrationTime: block.timestamp,
-            lastReportEpoch: 0
-        });
+        reporters[msg.sender] =
+            Reporter({isRegistered: true, stake: minStake, registrationTime: block.timestamp, lastReportEpoch: 0});
 
         andeToken.safeTransferFrom(msg.sender, address(this), minStake);
 
@@ -249,16 +237,12 @@ contract P2POracleV2 is
         require(reporter.isRegistered, "Not a registered reporter");
 
         uint256 epoch = block.timestamp / reportEpochDuration;
-        
+
         // Correctly prevent double-reporting, including for epoch 0
         require(reporter.lastReportEpoch != epoch + 1, "Already reported this epoch");
 
         reporter.lastReportEpoch = epoch + 1;
-        epochReports[epoch].push(PriceReport({
-            reporter: msg.sender,
-            price: price,
-            stake: reporter.stake
-        }));
+        epochReports[epoch].push(PriceReport({reporter: msg.sender, price: price, stake: reporter.stake}));
 
         emit PriceReported(epoch, msg.sender, price);
     }
@@ -278,7 +262,7 @@ contract P2POracleV2 is
         // --- Stake-Weighted Median Calculation ---
         _sortReports(reports);
         uint256 totalStake = 0;
-        for (uint i = 0; i < reports.length; i++) {
+        for (uint256 i = 0; i < reports.length; i++) {
             totalStake += reports[i].stake;
         }
 
@@ -286,7 +270,7 @@ contract P2POracleV2 is
         uint256 cumulativeStake = 0;
         uint256 medianPrice = 0;
 
-        for (uint i = 0; i < reports.length; i++) {
+        for (uint256 i = 0; i < reports.length; i++) {
             cumulativeStake += reports[i].stake;
             if (cumulativeStake >= medianStake) {
                 medianPrice = reports[i].price;
@@ -309,9 +293,9 @@ contract P2POracleV2 is
      * @param _reports The array of PriceReport structs to sort.
      */
     function _sortReports(PriceReport[] memory _reports) internal pure {
-        for (uint i = 1; i < _reports.length; i++) {
+        for (uint256 i = 1; i < _reports.length; i++) {
             PriceReport memory key = _reports[i];
-            uint j = i;
+            uint256 j = i;
             while (j > 0 && _reports[j - 1].price > key.price) {
                 _reports[j] = _reports[j - 1];
                 j--;
@@ -326,9 +310,5 @@ contract P2POracleV2 is
      * @dev Authorizes an upgrade to a new implementation contract.
      * @dev Can only be called by an account with the DEFAULT_ADMIN_ROLE.
      */
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

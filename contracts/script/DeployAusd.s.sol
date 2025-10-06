@@ -30,10 +30,7 @@ contract DeployAusd is Script {
         console.log("AusdTokenV2 implementation deployed to:", address(ausdImplementation));
 
         // 2. Deploy the ERC1967Proxy for AusdTokenV2
-        bytes memory initData = abi.encodeWithSelector(
-            AusdTokenV2.initialize.selector,
-            ausdAdminAddress
-        );
+        bytes memory initData = abi.encodeWithSelector(AusdTokenV2.initialize.selector, ausdAdminAddress);
         ERC1967Proxy ausdProxy = new ERC1967Proxy(address(ausdImplementation), initData);
         AusdTokenV2 ausd = AusdTokenV2(address(ausdProxy));
         console.log("AusdTokenV2 proxy deployed to:", address(ausd));

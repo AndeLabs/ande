@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {TimelockControllerUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
+import {TimelockControllerUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
@@ -24,12 +25,10 @@ contract AndeTimelockController is Initializable, TimelockControllerUpgradeable 
      * @param executors An array of addresses that are allowed to execute proposals. (Can be anyone, or restricted).
      * @param admin The admin of this timelock. Can grant and revoke roles. (A multisig or another governance contract).
      */
-    function initialize(
-        uint256 minDelay,
-        address[] memory proposers,
-        address[] memory executors,
-        address admin
-    ) public initializer {
+    function initialize(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin)
+        public
+        initializer
+    {
         __TimelockController_init(minDelay, proposers, executors, admin);
     }
 }

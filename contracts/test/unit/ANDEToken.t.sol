@@ -8,7 +8,7 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 
 contract ANDETokenTest is Test {
     ANDEToken public andeToken;
-    
+
     address public owner;
     address public minter;
     address public otherAccount;
@@ -47,7 +47,9 @@ contract ANDETokenTest is Test {
     function test_Minting_NonMinterCannotMint() public {
         uint256 mintAmount = 1000 * 1e18;
         vm.prank(otherAccount);
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherAccount, MINTER_ROLE));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherAccount, MINTER_ROLE)
+        );
         andeToken.mint(otherAccount, mintAmount);
     }
 }

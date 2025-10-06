@@ -195,7 +195,7 @@ contract AbobTokenTest is Test {
         // First, mint some tokens to have a balance to redeem
         vm.prank(user);
         abobToken.mint(abobToMintAndRedeem);
-        
+
         uint256 userAusdBefore = ausdToken.balanceOf(user);
         uint256 userAndeBefore = andeToken.balanceOf(user);
         uint256 contractAusdBefore = ausdToken.balanceOf(address(abobToken));
@@ -207,19 +207,26 @@ contract AbobTokenTest is Test {
         uint256 expectedAndeValueToReturn = totalValueToReturn - expectedAusdToReturn;
         uint256 expectedAndeToReturn = (expectedAndeValueToReturn * 1e18) / ANDE_PRICE;
 
-
         // Act: Redeem the tokens
         vm.prank(user);
         abobToken.redeem(abobToMintAndRedeem);
 
         // Assert: Check balances for exact amounts
         assertEq(abobToken.balanceOf(user), 0, "User ABOB balance should be zero");
-        
+
         assertEq(ausdToken.balanceOf(user), userAusdBefore + expectedAusdToReturn, "User AUSD balance is incorrect");
         assertEq(andeToken.balanceOf(user), userAndeBefore + expectedAndeToReturn, "User ANDE balance is incorrect");
 
-        assertEq(ausdToken.balanceOf(address(abobToken)), contractAusdBefore - expectedAusdToReturn, "Contract AUSD balance is incorrect");
-        assertEq(andeToken.balanceOf(address(abobToken)), contractAndeBefore - expectedAndeToReturn, "Contract ANDE balance is incorrect");
+        assertEq(
+            ausdToken.balanceOf(address(abobToken)),
+            contractAusdBefore - expectedAusdToReturn,
+            "Contract AUSD balance is incorrect"
+        );
+        assertEq(
+            andeToken.balanceOf(address(abobToken)),
+            contractAndeBefore - expectedAndeToReturn,
+            "Contract ANDE balance is incorrect"
+        );
     }
 
     function test_Redeem_WhenAndePriceCrashes() public {
@@ -252,7 +259,11 @@ contract AbobTokenTest is Test {
         abobToken.redeem(abobToMintAndRedeem);
 
         // Assert: User gets fewer ANDE tokens back, but same USD value
-        assertEq(andeToken.balanceOf(user), userAndeBefore + expectedAndeToReturn, "User should receive fewer ANDE after price increase");
+        assertEq(
+            andeToken.balanceOf(user),
+            userAndeBefore + expectedAndeToReturn,
+            "User should receive fewer ANDE after price increase"
+        );
     }
 
     function test_Redeem_RevertIf_AmountIsZero() public {

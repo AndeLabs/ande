@@ -52,12 +52,7 @@ contract AndeChainBridgeTest is Test {
 
         // Deploy Bridge
         vm.prank(owner);
-        bridge = new AndeChainBridge(
-            owner,
-            address(mockVerifier),
-            10,
-            FORCE_INCLUSION_PERIOD
-        );
+        bridge = new AndeChainBridge(owner, address(mockVerifier), 10, FORCE_INCLUSION_PERIOD);
 
         // Configure Bridge
         vm.prank(owner);
@@ -77,12 +72,7 @@ contract AndeChainBridgeTest is Test {
         uint256 bridgeAmount = 100 * 1e18;
         vm.startPrank(user);
         mockToken.approve(address(bridge), bridgeAmount);
-        bridge.bridgeTokens(
-            address(mockToken),
-            recipient,
-            bridgeAmount,
-            DESTINATION_CHAIN_ID
-        );
+        bridge.bridgeTokens(address(mockToken), recipient, bridgeAmount, DESTINATION_CHAIN_ID);
         vm.stopPrank();
 
         // 2. Relayer does not process it. Time passes beyond the force inclusion period.

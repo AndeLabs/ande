@@ -35,8 +35,7 @@ contract XERC20LockboxTest is Test {
 
         // Deploy xERC20
         XERC20 implementation = new XERC20();
-        bytes memory data =
-            abi.encodeWithSelector(XERC20.initialize.selector, "xMock Token", "xMTK", admin);
+        bytes memory data = abi.encodeWithSelector(XERC20.initialize.selector, "xMock Token", "xMTK", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), data);
         xerc20 = XERC20(address(proxy));
 

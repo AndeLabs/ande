@@ -33,10 +33,7 @@ contract sAbobToken is
         _disableInitializers();
     }
 
-    function initialize(
-        address defaultAdmin,
-        address abobTokenAddress
-    ) public initializer {
+    function initialize(address defaultAdmin, address abobTokenAddress) public initializer {
         __ERC20_init("Staked ABOB", "sABOB");
         __ERC4626_init(IERC20(abobTokenAddress));
         __AccessControl_init();
@@ -49,29 +46,18 @@ contract sAbobToken is
 
     // ==================== YIELD DEPOSIT ====================
 
-    function depositYield(uint256 amount)
-        external
-        onlyRole(YIELD_DEPOSITOR_ROLE)
-    {
+    function depositYield(uint256 amount) external onlyRole(YIELD_DEPOSITOR_ROLE) {
         require(amount > 0, "Yield amount must be positive");
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     // ==================== PAUSABLE OVERRIDES ====================
 
-    function _update(address from, address to, uint256 value) 
-        internal 
-        override
-        whenNotPaused
-    {
+    function _update(address from, address to, uint256 value) internal override whenNotPaused {
         super._update(from, to, value);
     }
 
     // ==================== UUPS UPGRADE ====================
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

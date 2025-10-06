@@ -35,8 +35,7 @@ contract XERC20Test is Test {
 
         // Deploy proxy and initialize
         XERC20 implementation = new XERC20();
-        bytes memory data =
-            abi.encodeWithSelector(XERC20.initialize.selector, "xToken", "xTKN", admin);
+        bytes memory data = abi.encodeWithSelector(XERC20.initialize.selector, "xToken", "xTKN", admin);
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), data);
         xerc20 = XERC20(address(proxy));
     }
@@ -76,11 +75,7 @@ contract XERC20Test is Test {
     function test_SetLimits_NonAdminCannotSetLimits() public {
         vm.prank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector,
-                user,
-                BRIDGE_MANAGER_ROLE
-            )
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user, BRIDGE_MANAGER_ROLE)
         );
         xerc20.setLimits(bridge1, 1000 ether, 500 ether);
     }
@@ -130,9 +125,7 @@ contract XERC20Test is Test {
     function test_SetLockbox_NonAdminCannotSetLockbox() public {
         vm.prank(user);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, user, ADMIN_ROLE
-            )
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user, ADMIN_ROLE)
         );
         xerc20.setLockbox(lockbox);
     }
