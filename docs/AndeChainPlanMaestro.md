@@ -66,48 +66,52 @@ Estás mezclando conceptos de rollup soberano puro con arquitecturas híbridas q
 
 ---
 
-### 2. **SISTEMA DE PUENTES: ARQUITECTURA "UNIFIED LIQUIDITY HUB"**
+### 2. **SISTEMA DE STABLECOIN: ARQUITECTURA "ABOB 2.0 - PROTOCOLO DE DEUDA COLATERALIZADA"**
 
-#### Problema con tu enfoque actual:
-xERC20 (ERC-7281) es excelente pero asume que controlas el token en todas las cadenas. Para ABOB esto funciona, pero limita interoperabilidad con tokens externos.
+#### Evolución del Concepto:
+Hemos trascendido la idea de una simple `stablecoin` para adoptar un modelo de **Protocolo de Deuda Colateralizada (CDP)**, inspirado en los líderes de la industria como MakerDAO y FRAX. Cada usuario opera su propio "banco descentralizado".
 
-#### Solución conceptual superior: **Hybrid Bridge Architecture**
+#### Solución Arquitectónica Superior: **Sistema Híbrido y Multi-Colateral**
 
-**Componentes:**
+**Componentes Clave:**
 
-1. **Native Token Layer (xERC20 para ABOB/AUSD)**
-   - Control total de emisión
-   - Rate limits por bridge
-   - Fungibilidad garantizada
+1.  **Vaults de Usuario Individuales:**
+    *   Cada usuario gestiona su propia posición de deuda y colateral, asegurando que el riesgo esté aislado y no compartido.
 
-2. **External Token Layer (Wrapped + Liquidity Pool)**
-   - Para tokens que NO controlas (USDC, USDT, ETH)
-   - Combinar xERC20 donde posible + wrapped versions como fallback
-   - Liquidity pools unifican versiones de diferentes bridges
+2.  **Registro de Colaterales Dinámico:**
+    *   El protocolo no está limitado a un par de activos. La gobernanza puede votar para aceptar múltiples tipos de colateral.
+    *   **Colaterales Iniciales Planeados:** `USDC` (o `USDT`), `wETH`, y nuestro token nativo `ANDE`.
+    *   **Gestión de Riesgo Granular:** Cada tipo de colateral tiene sus propios parámetros de riesgo (ratio de sobre-colateralización, umbral de liquidación) definidos por la gobernanza.
 
-3. **Abstraction Layer (Intent-based bridging)**
-   - Usuarios no eligen bridge, el sistema optimiza
-   - Routing inteligente según liquidez, costo, velocidad
-   - Compatible con Across Protocol y LI.FI
+3.  **Sobre-colateralización (Over-Collateralization):**
+    *   Para acuñar 100 ABOB, un usuario debe depositar un valor significativamente mayor (ej. $150 - $200) en colaterales aprobados.
+    *   Este "colchón" de seguridad protege al protocolo de la volatilidad del mercado y previene espirales de deuda.
 
-**Flujo conceptual mejorado:**
+4.  **Liquidaciones por Subasta Holandesa (Dutch Auctions):**
+    *   Cuando un vault cae por debajo de su umbral de seguridad, en lugar de transferir todo el colateral a un liquidador, se inicia una subasta pública.
+    *   Esto asegura un precio justo de mercado para el colateral y devuelve cualquier excedente al dueño del vault, siendo un sistema más justo y eficiente.
+
+5.  **Gobernanza con Incentivos a Largo Plazo (`veANDE`):**
+    *   El poder de voto se basará en el modelo `Vote-Escrow`, donde los usuarios que bloquean `ANDE` por más tiempo tienen más influencia. Esto alinea la gobernanza con la salud a largo plazo del protocolo.
+
+**Flujo conceptual de acuñación (minting):**
 
 ```
-Usuario solicita: "Traer 1000 USDC desde Ethereum"
+Usuario deposita en su Vault:
+  - 1 ETH (valorado en $3000)
+  - 1000 USDC (valorado en $1000)
     ↓
-Intent Router analiza:
-  - ¿USDC tiene versión xERC20? → Priorizar
-  - ¿Qué bridge tiene mejor liquidez?
-  - ¿Cuál tiene menor latencia?
+Valor Total del Colateral: $4000
     ↓
-Ejecuta vía mejor ruta:
-  LayerZero (xERC20) ← Óptimo
-  O Axelar (wrapped) + swap automático
+Sistema calcula la deuda máxima permitida (ej. con ratio de 150%):
+  - $4000 / 1.5 = ~$2666
     ↓
-Usuario recibe: USDC nativo en AndeChain
+Usuario acuña (pide prestado) 2000 ABOB contra su colateral.
+    ↓
+El usuario ahora tiene 2000 ABOB para usar, y su colateral de $4000 permanece en su vault, seguro y sobre-colateralizado.
 ```
 
-**Ventaja clave**: Los usuarios no se preocupan por qué bridge usar, el sistema optimiza automáticamente.
+**Ventaja clave**: Este modelo es resiliente, descentralizado y flexible. Nos permite crecer de forma segura, adaptarnos a las condiciones del mercado y competir directamente con los protocolos DeFi más establecidos del mundo.
 
 ---
 
