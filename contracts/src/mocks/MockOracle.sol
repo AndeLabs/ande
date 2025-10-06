@@ -6,23 +6,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /**
  * @title MockOracle
  * @dev Mock para un oráculo de precios estilo Chainlink.
- * Almacena el precio con 8 decimales, como es estándar en los pares USD de Chainlink.
+ * Almacena el precio con decimales configurables.
  */
 contract MockOracle is Ownable {
-    uint256 private _price; // Precio almacenado con 8 decimales
+    uint256 private _price;
+    uint8 private _decimals;
 
     event PriceUpdated(uint256 newPrice);
 
-    constructor() Ownable(msg.sender) {
-        // Precio inicial por defecto (ej. 1 USD)
-        _price = 1 * 10**8;
+    constructor(int256 initialPrice, uint8 decimals_) Ownable(msg.sender) {
+        require(initialPrice >= 0, "Price must be non-negative");
+        _price = uint256(initialPrice);
+        _decimals = decimals_;
     }
 
     /**
      * @dev Retorna la cantidad de decimales que usa el oráculo.
      */
-    function decimals() external pure returns (uint8) {
-        return 8;
+    function decimals() external view returns (uint8) {
+        return _decimals;
     }
 
     /**
@@ -51,8 +53,7 @@ contract MockOracle is Ownable {
     
     /**
      * @dev Permite al owner establecer un nuevo precio.
-     * El precio debe ser enviado con 8 decimales.
-     * Ejemplo: para 1.5 USD, enviar 150000000.
+     * El precio debe ser enviado con el número de decimales configurado en el constructor.
      */
     function setPrice(uint256 newPrice) external onlyOwner {
         _price = newPrice;

@@ -5,6 +5,7 @@ import {IXERC20} from "../interfaces/IXERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {IBlobstream} from "./IBlobstream.sol";
 
 /**
  * @title AndeChainBridge
@@ -46,6 +47,9 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
 
     /// @notice Address of Celestia Blobstream verifier contract
     address public blobstreamVerifier;
+
+    /// @notice Force inclusion period (time after which users can force transactions)
+    uint256 public forceInclusionPeriod;
 
     // ==================== EVENTS ====================
 
@@ -98,6 +102,17 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      */
     event DestinationBridgeSet(uint256 indexed chainId, address bridge);
 
+    // ==================== STRUCTS =====================
+
+    struct BridgeTransaction {
+        address token;
+        address recipient;
+        uint256 amount;
+        uint256 sourceChain;
+        bytes32 sourceTxHash;
+        uint256 blockTimestamp; // Timestamp of inclusion in DA layer
+    }
+
     // ==================== ERRORS ====================
 
     error TokenNotSupported();
@@ -108,6 +123,7 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
     error TransactionAlreadyProcessed();
     error InvalidBlobstreamVerifier();
     error InsufficientConfirmations();
+    error ForcePeriodNotElapsed();
 
     // ==================== CONSTRUCTOR ====================
 
@@ -116,16 +132,19 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      * @param initialOwner Owner address (should be multi-sig)
      * @param _blobstreamVerifier Celestia Blobstream verifier address
      * @param _minConfirmations Minimum confirmations required
+     * @param _forceInclusionPeriod Time window for forced transactions
      */
     constructor(
         address initialOwner,
         address _blobstreamVerifier,
-        uint256 _minConfirmations
+        uint256 _minConfirmations,
+        uint256 _forceInclusionPeriod
     ) Ownable(initialOwner) {
         if (_blobstreamVerifier == address(0)) revert InvalidBlobstreamVerifier();
 
         blobstreamVerifier = _blobstreamVerifier;
         minConfirmations = _minConfirmations;
+        forceInclusionPeriod = _forceInclusionPeriod;
     }
 
     // ==================== EXTERNAL FUNCTIONS ====================
@@ -201,6 +220,46 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
         emit TokensReceived(token, recipient, amount, sourceChain, sourceTxHash);
     }
 
+    /**
+     * @notice Allows a user to force a transaction if the relayer has not processed it
+     * @dev Requires a valid proof and that the forceInclusionPeriod has passed
+     * @param txData The full transaction data struct
+     * @param proof Merkle proof from Celestia Blobstream
+     */
+    function forceTransaction(
+        BridgeTransaction calldata txData,
+        bytes calldata proof
+    ) external nonReentrant whenNotPaused {
+        // 1. Check if already processed
+        if (processedTransactions[txData.sourceTxHash]) {
+            revert TransactionAlreadyProcessed();
+        }
+
+        // 2. Verify the proof from Celestia
+        if (!_verifyBlobstreamProof(txData.sourceTxHash, txData.sourceChain, proof)) {
+            revert ProofVerificationFailed();
+        }
+
+        // 3. Check if the force inclusion period has passed
+        if (block.timestamp < txData.blockTimestamp + forceInclusionPeriod) {
+            revert ForcePeriodNotElapsed();
+        }
+
+        // 4. Mark as processed to prevent replay
+        processedTransactions[txData.sourceTxHash] = true;
+
+        // 5. Mint the tokens to the recipient
+        IXERC20(txData.token).mint(txData.recipient, txData.amount);
+
+        emit TokensReceived(
+            txData.token,
+            txData.recipient,
+            txData.amount,
+            txData.sourceChain,
+            txData.sourceTxHash
+        );
+    }
+
     // ==================== ADMIN FUNCTIONS ====================
 
     /**
@@ -249,6 +308,14 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
+     * @notice Update the force inclusion period
+     * @param _forceInclusionPeriod New force inclusion period in seconds
+     */
+    function setForceInclusionPeriod(uint256 _forceInclusionPeriod) external onlyOwner {
+        forceInclusionPeriod = _forceInclusionPeriod;
+    }
+
+    /**
      * @notice Pause bridge operations
      */
     function pause() external onlyOwner {
@@ -277,22 +344,14 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
         uint256 sourceChain,
         bytes calldata proof
     ) internal view returns (bool) {
-        // TODO: Implement actual Celestia Blobstream verification
-        // This should call the Blobstream contract to verify:
-        // 1. The transaction exists in Celestia DA
-        // 2. The transaction has minimum confirmations
-        // 3. The Merkle proof is valid
-
-        // Example interface (pseudo-code):
-        // return IBlobstream(blobstreamVerifier).verifyAttestation(
-        //     txHash,
-        //     sourceChain,
-        //     proof,
-        //     minConfirmations
-        // );
-
-        // For now, require proof to be non-empty as basic validation
-        return proof.length > 0 && txHash != bytes32(0) && sourceChain != 0;
+        // Call the actual Blobstream contract to verify the proof.
+        // This ensures the transaction is valid and included in the DA layer.
+        return IBlobstream(blobstreamVerifier).verifyAttestation(
+            txHash,
+            sourceChain,
+            proof,
+            minConfirmations
+        );
     }
 
     // ==================== VIEW FUNCTIONS ====================
