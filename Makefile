@@ -51,7 +51,7 @@ coverage:
 # Análisis de seguridad
 security:
 	@echo "Ejecutando análisis de seguridad con Slither..."
-	@cd contracts && slither . --config-file ../slither.config.json || echo "Slither no instalado. Instala con: pip install slither-analyzer"
+	@docker compose -f infra/docker-compose.yml run --rm contracts slither /app
 
 # Solo deploy (asume que la infraestructura está corriendo)
 deploy-only:
