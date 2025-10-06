@@ -4,11 +4,15 @@ on:
   push:
     branches: [main, develop, staging]
     paths:
-      - 'andechain/contracts/**'
+      - 'contracts/**'
+      - '.github/workflows/ci-cd.yml'
+      - '.github/scripts/**'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'andechain/contracts/**'
+      - 'contracts/**'
+      - '.github/workflows/ci-cd.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: write
@@ -37,7 +41,7 @@ jobs:
           version: nightly
 
       - name: Run Forge fmt
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         id: fmt
         run: forge fmt --check
 
@@ -59,11 +63,11 @@ jobs:
           version: nightly
 
       - name: Run Forge tests
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         run: forge test -vv
 
       - name: Generate coverage report
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         run: forge coverage --report lcov
         continue-on-error: true
 
@@ -71,7 +75,7 @@ jobs:
         uses: codecov/codecov-action@v4
         if: always()
         with:
-          files: ./andechain/contracts/lcov.info
+          files: ./contracts/lcov.info
           flags: smart-contracts
         continue-on-error: true
 
@@ -94,14 +98,14 @@ jobs:
           version: nightly
 
       - name: Compile contracts
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         run: forge build --sizes
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: foundry-artifacts
-          path: andechain/contracts/out/
+          path: contracts/out/
           retention-days: 30
 
   # ============================================
@@ -123,7 +127,7 @@ jobs:
           version: nightly
 
       - name: Run gas snapshot
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         run: forge snapshot
 
       - name: Upload gas report
@@ -131,7 +135,7 @@ jobs:
         if: always()
         with:
           name: gas-report
-          path: andechain/contracts/gas-snapshot.md
+          path: contracts/gas-snapshot.md
         continue-on-error: true
 
   # ============================================
@@ -160,18 +164,18 @@ jobs:
           node-version: '20'
 
       - name: Install solidity-docgen
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         run: npm install solidity-docgen
 
       - name: Generate contract documentation
-        working-directory: ./andechain/contracts
+        working-directory: ./contracts
         run: npx solidity-docgen
 
       - name: Commit documentation
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs(contracts): update natspec documentation [skip ci]"
-          file_pattern: "andechain/contracts/docs/**/*.md"
+          file_pattern: "contracts/docs/**/*.md"
           commit_user_name: "AndeChain Bot"
           commit_user_email: "bot@andechain.org"
 
@@ -198,7 +202,7 @@ jobs:
       - name: Run Slither analysis
         uses: crytic/slither-action@v0.4.0
         with:
-          target: 'andechain/contracts/'
+          target: 'contracts/'
           slither-args: '--foundry-remap-dependencies'
           sarif: slither.sarif
         continue-on-error: true
