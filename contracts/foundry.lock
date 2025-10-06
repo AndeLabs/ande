@@ -1,4 +1,7 @@
 {
+  "../infra/stacks/da-local/ev-node": {
+    "rev": "79cc0944cfeb0a1576e1c7dfcb1e8c2c3678ae80"
+  },
   "lib/openzeppelin-contracts": {
     "tag": {
       "name": "v5.0.2",

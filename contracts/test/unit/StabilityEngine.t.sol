@@ -31,8 +31,7 @@ contract StabilityEngineTest is Test {
 
     function setUp() public {
         // Deploy oracle
-        andeUsdOracle = new MockOracle();
-        andeUsdOracle.setPrice(ANDE_PRICE_USD);
+        andeUsdOracle = new MockOracle(int256(ANDE_PRICE_USD), 8);
 
         // Deploy ANDE token
         andeTokenImpl = new ANDEToken();
