@@ -31,12 +31,8 @@ contract AbobTokenTest is Test {
         // Deploy mocks
         ausdToken = new MockERC20("Andean USD", "AUSD", 18);
         andeToken = new MockERC20("Ande Token", "ANDE", 18);
-        andePriceFeed = new MockOracle();
-        abobPriceFeed = new MockOracle();
-
-        // Set oracle prices (MockOracle usa uint256 internamente)
-        andePriceFeed.setPrice(ANDE_PRICE);
-        abobPriceFeed.setPrice(ABOB_PRICE);
+        andePriceFeed = new MockOracle(int256(ANDE_PRICE), 18);
+        abobPriceFeed = new MockOracle(int256(ABOB_PRICE), 18);
 
         // Deploy implementation
         AbobToken implementation = new AbobToken();
@@ -193,6 +189,72 @@ contract AbobTokenTest is Test {
         assertGt(andeToken.balanceOf(user), userAndeBefore); // Got ANDE back
     }
 
+    function test_Redeem_Success_ExactAmounts() public {
+        uint256 abobToMintAndRedeem = 100e18;
+
+        // First, mint some tokens to have a balance to redeem
+        vm.prank(user);
+        abobToken.mint(abobToMintAndRedeem);
+        
+        uint256 userAusdBefore = ausdToken.balanceOf(user);
+        uint256 userAndeBefore = andeToken.balanceOf(user);
+        uint256 contractAusdBefore = ausdToken.balanceOf(address(abobToken));
+        uint256 contractAndeBefore = andeToken.balanceOf(address(abobToken));
+
+        // Calculate expected return amounts
+        uint256 totalValueToReturn = (abobToMintAndRedeem * ABOB_PRICE) / 1e18;
+        uint256 expectedAusdToReturn = (totalValueToReturn * INITIAL_RATIO) / 10000;
+        uint256 expectedAndeValueToReturn = totalValueToReturn - expectedAusdToReturn;
+        uint256 expectedAndeToReturn = (expectedAndeValueToReturn * 1e18) / ANDE_PRICE;
+
+
+        // Act: Redeem the tokens
+        vm.prank(user);
+        abobToken.redeem(abobToMintAndRedeem);
+
+        // Assert: Check balances for exact amounts
+        assertEq(abobToken.balanceOf(user), 0, "User ABOB balance should be zero");
+        
+        assertEq(ausdToken.balanceOf(user), userAusdBefore + expectedAusdToReturn, "User AUSD balance is incorrect");
+        assertEq(andeToken.balanceOf(user), userAndeBefore + expectedAndeToReturn, "User ANDE balance is incorrect");
+
+        assertEq(ausdToken.balanceOf(address(abobToken)), contractAusdBefore - expectedAusdToReturn, "Contract AUSD balance is incorrect");
+        assertEq(andeToken.balanceOf(address(abobToken)), contractAndeBefore - expectedAndeToReturn, "Contract ANDE balance is incorrect");
+    }
+
+    function test_Redeem_WhenAndePriceCrashes() public {
+        uint256 abobToMintAndRedeem = 100e18;
+
+        // Mint at normal price ($2)
+        vm.prank(user);
+        abobToken.mint(abobToMintAndRedeem);
+
+        // --- Market Price Change Simulation ---
+        // ANDE price increases from $2 to $4 (100% gain)
+        // This tests that redemption works correctly with price volatility
+        // User will receive fewer ANDE tokens but same USD value
+        uint256 newAndePrice = 4 * 1e18;
+        andePriceFeed.setPrice(newAndePrice);
+        // ------------------------------
+
+        uint256 userAndeBefore = andeToken.balanceOf(user);
+
+        // Calculate expected return amounts with the new price
+        uint256 totalValueToReturn = (abobToMintAndRedeem * ABOB_PRICE) / 1e18; // $100
+        uint256 expectedAusdToReturn = (totalValueToReturn * INITIAL_RATIO) / 10000; // $70
+        uint256 expectedAndeValueToReturn = totalValueToReturn - expectedAusdToReturn; // $30
+        // User should get fewer ANDE tokens for the same $30 value
+        // At $4/ANDE: $30 / $4 = 7.5 ANDE (vs 15 ANDE at $2)
+        uint256 expectedAndeToReturn = (expectedAndeValueToReturn * 1e18) / newAndePrice;
+
+        // Act: Redeem the tokens
+        vm.prank(user);
+        abobToken.redeem(abobToMintAndRedeem);
+
+        // Assert: User gets fewer ANDE tokens back, but same USD value
+        assertEq(andeToken.balanceOf(user), userAndeBefore + expectedAndeToReturn, "User should receive fewer ANDE after price increase");
+    }
+
     function test_Redeem_RevertIf_AmountIsZero() public {
         vm.prank(user);
         vm.expectRevert("Amount must be positive");
@@ -249,8 +311,8 @@ contract AbobTokenTest is Test {
     }
 
     function test_Governance_CanSetPriceFeeds() public {
-        MockOracle newAndeFeed = new MockOracle();
-        MockOracle newAbobFeed = new MockOracle();
+        MockOracle newAndeFeed = new MockOracle(int256(ANDE_PRICE), 18);
+        MockOracle newAbobFeed = new MockOracle(int256(ABOB_PRICE), 18);
 
         vm.prank(governance);
         abobToken.setPriceFeeds(address(newAndeFeed), address(newAbobFeed));

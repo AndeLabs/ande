@@ -75,6 +75,8 @@ contract P2POracleV2 is
     mapping(uint256 => uint256) public finalizedTimestamps;
     /// @notice The current epoch number, calculated from block.timestamp.
     uint256 public currentEpoch;
+    /// @notice The address where slashed stakes are sent.
+    address public treasury;
 
     /// @notice Emitted when a new reporter stakes tokens and registers.
     event ReporterRegistered(address indexed reporter, uint256 stake);
@@ -119,6 +121,7 @@ contract P2POracleV2 is
         minStake = _minStake;
         reportEpochDuration = _epochDuration;
         currentEpoch = block.timestamp / reportEpochDuration;
+        treasury = defaultAdmin; // Set initial treasury to the admin
     }
 
     // ==================== IOracle Implementation ====================
@@ -169,6 +172,18 @@ contract P2POracleV2 is
         );
     }
 
+    // ==================== Governance Functions ====================
+
+    /**
+     * @notice Sets the address of the treasury contract where slashed funds are sent.
+     * @dev Can only be called by an account with the DEFAULT_ADMIN_ROLE.
+     * @param _treasury The new treasury address.
+     */
+    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_treasury != address(0), "Treasury address cannot be zero");
+        treasury = _treasury;
+    }
+
     // ==================== Reporter Management ====================
 
     /**
@@ -211,9 +226,13 @@ contract P2POracleV2 is
     function slash(address reporterAddress) external onlyRole(SLASHER_ROLE) nonReentrant {
         Reporter storage reporter = reporters[reporterAddress];
         require(reporter.isRegistered, "Not a registered reporter");
+        require(treasury != address(0), "Treasury not set");
 
         uint256 slashedAmount = reporter.stake;
         delete reporters[reporterAddress];
+
+        // Transfer the slashed stake to the treasury
+        andeToken.safeTransfer(treasury, slashedAmount);
 
         emit ReporterSlashed(reporterAddress, slashedAmount);
     }
