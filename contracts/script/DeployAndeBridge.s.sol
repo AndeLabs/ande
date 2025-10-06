@@ -12,17 +12,20 @@ import {AndeChainBridge} from "../src/bridge/AndeChainBridge.sol";
  * - BRIDGE_ADMIN_ADDRESS: The address that will be the owner of the bridge.
  * - BLOBSTREAM_VERIFIER_ADDRESS: The address of the Celestia Blobstream verifier contract.
  * - MIN_CONFIRMATIONS: The minimum number of confirmations required before bridging.
+ * - FORCE_INCLUSION_PERIOD: The time period after which users can force transactions (in seconds).
  * - PRIVATE_KEY: The private key of the deployer.
  */
 contract DeployAndeBridge is Script {
     address private bridgeAdminAddress;
     address private blobstreamVerifierAddress;
     uint256 private minConfirmations;
+    uint256 private forceInclusionPeriod;
 
     function setUp() public {
         bridgeAdminAddress = vm.envAddress("BRIDGE_ADMIN_ADDRESS");
         blobstreamVerifierAddress = vm.envAddress("BLOBSTREAM_VERIFIER_ADDRESS");
         minConfirmations = vm.envUint("MIN_CONFIRMATIONS");
+        forceInclusionPeriod = vm.envUint("FORCE_INCLUSION_PERIOD");
 
         require(bridgeAdminAddress != address(0), "BRIDGE_ADMIN_ADDRESS env var not set");
         require(blobstreamVerifierAddress != address(0), "BLOBSTREAM_VERIFIER_ADDRESS env var not set");
@@ -36,7 +39,8 @@ contract DeployAndeBridge is Script {
         AndeChainBridge bridge = new AndeChainBridge(
             bridgeAdminAddress,
             blobstreamVerifierAddress,
-            minConfirmations
+            minConfirmations,
+            forceInclusionPeriod
         );
 
         console.log("AndeChainBridge deployed to:", address(bridge));
