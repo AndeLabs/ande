@@ -36,11 +36,7 @@ contract LiquidityGaugeV1 is ERC20, ReentrancyGuard {
 
     // --- Constructor ---
 
-    constructor(
-        address _lp_addr,
-        address _minter,
-        address _reward_token
-    ) ERC20("Ande Liquidity Gauge", "aLG") {
+    constructor(address _lp_addr, address _minter, address _reward_token) ERC20("Ande Liquidity Gauge", "aLG") {
         lp_token = IERC20(_lp_addr);
         minter = _minter;
         reward_token = IERC20(_reward_token);
@@ -67,7 +63,7 @@ contract LiquidityGaugeV1 is ERC20, ReentrancyGuard {
      */
     function deposit(uint256 _value) external nonReentrant update_reward(msg.sender) returns (bool) {
         require(_value > 0, "LG: Cannot deposit 0");
-        
+
         // Transfer LP tokens from user
         lp_token.safeTransferFrom(msg.sender, address(this), _value);
 

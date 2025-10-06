@@ -20,12 +20,7 @@ contract VotingEscrowTest is Test {
         ande = new MockERC20("Ande Token", "ANDE", 18);
 
         // Deploy VotingEscrow
-        ve = new VotingEscrow(
-            address(ande),
-            "Vote-escrowed ANDE",
-            "veANDE",
-            "1.0.0"
-        );
+        ve = new VotingEscrow(address(ande), "Vote-escrowed ANDE", "veANDE", "1.0.0");
 
         // Mint tokens for users
         ande.mint(alice, ALICE_AMOUNT);
@@ -64,7 +59,7 @@ contract VotingEscrowTest is Test {
         // 3. Check voting power
         uint256 voting_power = ve.balanceOf(alice);
         assertTrue(voting_power > 0, "Voting power should be > 0");
-        
+
         // Expected power is approx. amount * (lock_duration / MAXTIME)
         uint256 expected_power = lock_amount * lock_duration / ve.MAXTIME();
         // Allow for small precision differences due to integer math
@@ -119,7 +114,7 @@ contract VotingEscrowTest is Test {
         vm.warp(block.timestamp + half_duration);
 
         uint256 halfway_power = ve.balanceOf(alice);
-        
+
         // Expected power should be roughly half. Allow a small delta for precision.
         assertApproxEqAbs(halfway_power, initial_power / 2, 1e16, "Power should be ~half at halfway point");
 
@@ -138,7 +133,7 @@ contract VotingEscrowTest is Test {
         // 1. Create initial lock
         vm.startPrank(alice);
         ve.create_lock(initial_lock_amount, unlock_time);
-        
+
         uint256 initial_power = ve.balanceOf(alice);
 
         // 2. Increase lock amount

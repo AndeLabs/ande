@@ -16,10 +16,8 @@ interface IBlobstream {
      * @param minConfirmations The minimum number of confirmations required.
      * @return bool True if the proof is valid and has sufficient confirmations.
      */
-    function verifyAttestation(
-        bytes32 txHash,
-        uint256 sourceChain,
-        bytes calldata proof,
-        uint256 minConfirmations
-    ) external view returns (bool);
+    function verifyAttestation(bytes32 txHash, uint256 sourceChain, bytes calldata proof, uint256 minConfirmations)
+        external
+        view
+        returns (bool);
 }

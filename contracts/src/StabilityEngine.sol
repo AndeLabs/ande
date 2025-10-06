@@ -71,7 +71,7 @@ contract StabilityEngine is Initializable, OwnableUpgradeable, PausableUpgradeab
     function mint(uint256 amountToMint) external whenNotPaused nonReentrant {
         if (amountToMint == 0) revert AmountMustBePositive();
 
-        (, int256 price_signed, , , ) = andeUsdOracle.latestRoundData();
+        (, int256 price_signed,,,) = andeUsdOracle.latestRoundData();
         if (price_signed <= 0) revert OraclePriceInvalid();
         uint256 andePrice = uint256(price_signed);
         uint8 oracleDecimals = andeUsdOracle.decimals();
@@ -79,7 +79,7 @@ contract StabilityEngine is Initializable, OwnableUpgradeable, PausableUpgradeab
         // Calculate required ANDE collateral
         // (amountToMint * collateralRatio / 100) * 1e18 / andePrice
         uint256 requiredAndeValue = (amountToMint * collateralRatio) / 100;
-        uint256 requiredAndeAmount = (requiredAndeValue * (10**oracleDecimals)) / andePrice;
+        uint256 requiredAndeAmount = (requiredAndeValue * (10 ** oracleDecimals)) / andePrice;
 
         // Transfer ANDE from user to this contract
         IERC20(address(andeToken)).safeTransferFrom(msg.sender, address(this), requiredAndeAmount);
@@ -98,14 +98,14 @@ contract StabilityEngine is Initializable, OwnableUpgradeable, PausableUpgradeab
         // Burn aUSD from the user (user must have approved this contract)
         ausdToken.burnFrom(msg.sender, amountToBurn);
 
-        (, int256 price_signed, , , ) = andeUsdOracle.latestRoundData();
+        (, int256 price_signed,,,) = andeUsdOracle.latestRoundData();
         if (price_signed <= 0) revert OraclePriceInvalid();
         uint256 andePrice = uint256(price_signed);
         uint8 oracleDecimals = andeUsdOracle.decimals();
 
         // Calculate ANDE to return
         uint256 andeValueToReturn = (amountToBurn * 100) / collateralRatio;
-        uint256 andeAmountToReturn = (andeValueToReturn * (10**oracleDecimals)) / andePrice;
+        uint256 andeAmountToReturn = (andeValueToReturn * (10 ** oracleDecimals)) / andePrice;
 
         uint256 contractBalance = IERC20(address(andeToken)).balanceOf(address(this));
         if (andeAmountToReturn > contractBalance) revert InsufficientCollateral();

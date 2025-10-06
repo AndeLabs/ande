@@ -45,11 +45,7 @@ contract VotingEscrow is ReentrancyGuard {
     // --- Events ---
 
     event Deposit(
-        address indexed provider,
-        uint256 value,
-        uint256 indexed locktime,
-        DepositType indexed deposit_type,
-        uint256 ts
+        address indexed provider, uint256 value, uint256 indexed locktime, DepositType indexed deposit_type, uint256 ts
     );
     event Withdraw(address indexed provider, uint256 value, uint256 ts);
     event Supply(uint256 prevSupply, uint256 supply);
@@ -64,7 +60,7 @@ contract VotingEscrow is ReentrancyGuard {
     // --- State Variables ---
 
     IERC20 public immutable token; // The token being locked (ANDE)
-    
+
     string public name;
     string public symbol;
     string public version;
@@ -73,23 +69,18 @@ contract VotingEscrow is ReentrancyGuard {
     // --- History ---
     mapping(uint256 => Point) public point_history; // epoch -> Point
     mapping(address => mapping(uint256 => Point)) public user_point_history; // user -> epoch -> Point
-    
+
     // --- User Data ---
     mapping(address => LockedBalance) public locked;
-    
+
     uint256 public epoch;
     mapping(address => uint256) public user_point_epoch;
-    
+
     uint256 public supply;
 
     // --- Constructor ---
 
-    constructor(
-        address _token_addr,
-        string memory _name,
-        string memory _symbol,
-        string memory _version
-    ) {
+    constructor(address _token_addr, string memory _name, string memory _symbol, string memory _version) {
         require(_token_addr != address(0), "VE: Invalid token address");
         token = IERC20(_token_addr);
         name = _name;
@@ -108,7 +99,7 @@ contract VotingEscrow is ReentrancyGuard {
     function create_lock(uint256 _value, uint256 _unlock_time) external nonReentrant {
         address _provider = msg.sender;
         LockedBalance memory old_locked = locked[_provider];
-        
+
         require(_value > 0, "VE: Value must be > 0");
         require(old_locked.amount == 0, "VE: Withdraw old tokens first");
 
@@ -151,7 +142,7 @@ contract VotingEscrow is ReentrancyGuard {
     function withdraw() external nonReentrant {
         address _provider = msg.sender;
         LockedBalance memory old_locked = locked[_provider];
-        
+
         require(block.timestamp >= old_locked.end, "VE: Lock not yet expired");
         require(old_locked.amount > 0, "VE: Nothing to withdraw");
 
@@ -161,7 +152,7 @@ contract VotingEscrow is ReentrancyGuard {
         _checkpoint(_provider, old_locked, LockedBalance({amount: 0, end: 0}));
 
         delete locked[_provider];
-        
+
         token.safeTransfer(_provider, value);
 
         emit Withdraw(_provider, value, block.timestamp);
@@ -275,16 +266,12 @@ contract VotingEscrow is ReentrancyGuard {
      * @param _old_locked Old locked balance.
      * @param _new_locked New locked balance.
      */
-    function _checkpoint(
-        address _addr,
-        LockedBalance memory _old_locked,
-        LockedBalance memory _new_locked
-    ) internal {
+    function _checkpoint(address _addr, LockedBalance memory _old_locked, LockedBalance memory _new_locked) internal {
         Point memory u_old;
         Point memory u_new;
         int128 old_slope = 0;
         int128 new_slope = 0;
-        
+
         // Part 1: Update user's history
         uint256 user_epoch = user_point_epoch[_addr];
         if (user_epoch != 0) {
@@ -324,7 +311,7 @@ contract VotingEscrow is ReentrancyGuard {
             require(epoch_jump <= MAX_EPOCH_JUMP, "VE: Too many epochs to fill");
 
             Point memory last_g_point = point_history[g_epoch];
-            for (uint i = g_epoch; i < new_g_epoch; i++) {
+            for (uint256 i = g_epoch; i < new_g_epoch; i++) {
                 point_history[i + 1].bias = last_g_point.bias;
                 point_history[i + 1].slope = last_g_point.slope;
             }
@@ -404,12 +391,6 @@ contract VotingEscrow is ReentrancyGuard {
 
         locked[_provider] = new_locked;
 
-        emit Deposit(
-            _provider,
-            value,
-            new_locked.end,
-            _deposit_type,
-            block.timestamp
-        );
+        emit Deposit(_provider, value, new_locked.end, _deposit_type, block.timestamp);
     }
 }

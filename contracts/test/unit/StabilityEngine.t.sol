@@ -23,7 +23,7 @@ contract StabilityEngineTest is Test {
 
     // Configuración inicial
     uint256 constant INITIAL_COLLATERAL_RATIO = 150; // 150%
-    uint256 constant ANDE_PRICE_USD = 2 * 10**8; // $2 USD con 8 decimales
+    uint256 constant ANDE_PRICE_USD = 2 * 10 ** 8; // $2 USD con 8 decimales
     uint256 constant INITIAL_ANDE_SUPPLY = 1_000_000 * 1e18;
 
     event Minted(address indexed user, uint256 andeAmount, uint256 ausdAmount);
@@ -38,8 +38,7 @@ contract StabilityEngineTest is Test {
         andeToken = ANDEToken(
             address(
                 new ERC1967Proxy(
-                    address(andeTokenImpl),
-                    abi.encodeWithSelector(ANDEToken.initialize.selector, owner, owner)
+                    address(andeTokenImpl), abi.encodeWithSelector(ANDEToken.initialize.selector, owner, owner)
                 )
             )
         );
@@ -48,10 +47,7 @@ contract StabilityEngineTest is Test {
         ausdTokenImpl = new AusdToken();
         ausdToken = AusdToken(
             address(
-                new ERC1967Proxy(
-                    address(ausdTokenImpl),
-                    abi.encodeWithSelector(AusdToken.initialize.selector, owner)
-                )
+                new ERC1967Proxy(address(ausdTokenImpl), abi.encodeWithSelector(AusdToken.initialize.selector, owner))
             )
         );
 
@@ -193,7 +189,7 @@ contract StabilityEngineTest is Test {
 
     function test_Mint_WorksWithDifferentPrices() public {
         // Cambiar precio de ANDE a $5
-        andeUsdOracle.setPrice(5 * 10**8);
+        andeUsdOracle.setPrice(5 * 10 ** 8);
 
         uint256 amountToMint = 100 * 1e18;
         // Para 100 aUSD con ratio 150% a $5/ANDE: (100 * 150 / 100) / 5 = 30 ANDE
@@ -246,7 +242,7 @@ contract StabilityEngineTest is Test {
         uint256 amountToBurn = 50 * 1e18;
         // Al quemar 50 aUSD, recibimos: (50 * 100 / 150) / 2 = 16.666... ANDE
         // Más precisamente: (50 * 100 / 150) * 1e8 / 2e8 = 16.666666666666666666 ANDE
-        uint256 expectedAndeReturned = (amountToBurn * 100 * 10**8) / (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
+        uint256 expectedAndeReturned = (amountToBurn * 100 * 10 ** 8) / (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
 
         ausdToken.approve(address(engine), amountToBurn);
 
@@ -257,11 +253,7 @@ contract StabilityEngineTest is Test {
         vm.stopPrank();
 
         assertEq(ausdToken.balanceOf(user), amountToMint - amountToBurn);
-        assertApproxEqAbs(
-            andeToken.balanceOf(user),
-            10_000 * 1e18 - expectedAndeDeposited + expectedAndeReturned,
-            1
-        );
+        assertApproxEqAbs(andeToken.balanceOf(user), 10_000 * 1e18 - expectedAndeDeposited + expectedAndeReturned, 1);
     }
 
     function test_Burn_RevertsIfAmountIsZero() public {
@@ -300,7 +292,7 @@ contract StabilityEngineTest is Test {
         // El user depositó 75 ANDE para 100 aUSD (150% colateral)
         // Al quemar 100 aUSD, recibe: (100 * 100 / 150) / 2 = 33.333... ANDE
         // Así que el engine retiene: 75 - 33.333... = 41.666... ANDE
-        uint256 expectedReturned = (100 * 1e18 * 100 * 10**8) / (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
+        uint256 expectedReturned = (100 * 1e18 * 100 * 10 ** 8) / (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
         uint256 expectedRemaining = 75 * 1e18 - expectedReturned;
 
         uint256 finalEngineBalance = andeToken.balanceOf(address(engine));
@@ -351,19 +343,14 @@ contract StabilityEngineTest is Test {
         engine.mint(amountToMint);
 
         // Burn todo
-        uint256 expectedAndeReturned = (amountToMint * 100 * 10**8) /
-            (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
+        uint256 expectedAndeReturned = (amountToMint * 100 * 10 ** 8) / (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
 
         ausdToken.approve(address(engine), amountToMint);
         engine.burn(amountToMint);
         vm.stopPrank();
 
         assertEq(ausdToken.balanceOf(user), 0);
-        assertApproxEqAbs(
-            andeToken.balanceOf(user),
-            10_000 * 1e18 - expectedAndeDeposited + expectedAndeReturned,
-            1
-        );
+        assertApproxEqAbs(andeToken.balanceOf(user), 10_000 * 1e18 - expectedAndeDeposited + expectedAndeReturned, 1);
     }
 
     // ============================================
@@ -458,8 +445,7 @@ contract StabilityEngineTest is Test {
 
         // Burn 50 aUSD
         uint256 amountToBurn = 50 * 1e18;
-        uint256 expectedAndeReturned = (amountToBurn * 100 * 10**8) /
-            (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
+        uint256 expectedAndeReturned = (amountToBurn * 100 * 10 ** 8) / (INITIAL_COLLATERAL_RATIO * ANDE_PRICE_USD);
 
         ausdToken.approve(address(engine), amountToBurn);
         engine.burn(amountToBurn);
@@ -467,11 +453,7 @@ contract StabilityEngineTest is Test {
         vm.stopPrank();
 
         assertEq(ausdToken.balanceOf(user), amountToMint - amountToBurn);
-        assertApproxEqAbs(
-            andeToken.balanceOf(user),
-            afterMintAndeBalance + expectedAndeReturned,
-            1
-        );
+        assertApproxEqAbs(andeToken.balanceOf(user), afterMintAndeBalance + expectedAndeReturned, 1);
     }
 
     function test_Integration_PriceChangeScenario() public {
@@ -484,7 +466,7 @@ contract StabilityEngineTest is Test {
         uint256 engineAndeBalanceAfterMint = andeToken.balanceOf(address(engine));
 
         // Precio sube a $4
-        andeUsdOracle.setPrice(4 * 10**8);
+        andeUsdOracle.setPrice(4 * 10 ** 8);
 
         // Burn ahora devuelve menos ANDE porque vale más
         vm.startPrank(user);
@@ -505,8 +487,7 @@ contract StabilityEngineTest is Test {
         // Limitar el fuzzing a valores razonables
         amount = bound(amount, 1, 1000 * 1e18);
 
-        uint256 requiredAnde = (amount * INITIAL_COLLATERAL_RATIO * 10**8) /
-            (100 * ANDE_PRICE_USD);
+        uint256 requiredAnde = (amount * INITIAL_COLLATERAL_RATIO * 10 ** 8) / (100 * ANDE_PRICE_USD);
 
         // Asegurarse de que el usuario tiene suficiente
         vm.assume(requiredAnde <= 10_000 * 1e18);
@@ -523,8 +504,7 @@ contract StabilityEngineTest is Test {
         mintAmount = bound(mintAmount, 100 * 1e18, 1000 * 1e18);
         burnAmount = bound(burnAmount, 1, mintAmount);
 
-        uint256 requiredAnde = (mintAmount * INITIAL_COLLATERAL_RATIO * 10**8) /
-            (100 * ANDE_PRICE_USD);
+        uint256 requiredAnde = (mintAmount * INITIAL_COLLATERAL_RATIO * 10 ** 8) / (100 * ANDE_PRICE_USD);
 
         // Mint
         vm.startPrank(user);

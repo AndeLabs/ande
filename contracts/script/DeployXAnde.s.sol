@@ -37,10 +37,7 @@ contract DeployXAnde is Script {
         console.log("xANDEToken implementation deployed to:", address(xAndeImplementation));
 
         // 2. Deploy the ERC1967Proxy for xANDEToken
-        bytes memory initData = abi.encodeWithSelector(
-            xANDEToken.initialize.selector,
-            xandeAdminAddress
-        );
+        bytes memory initData = abi.encodeWithSelector(xANDEToken.initialize.selector, xandeAdminAddress);
         ERC1967Proxy xAndeProxy = new ERC1967Proxy(address(xAndeImplementation), initData);
         xANDEToken xAnde = xANDEToken(address(xAndeProxy));
         console.log("xANDEToken proxy deployed to:", address(xAnde));

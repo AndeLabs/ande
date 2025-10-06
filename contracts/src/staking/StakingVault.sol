@@ -3,8 +3,10 @@ pragma solidity ^0.8.25;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import {ERC20PermitUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {ERC20VotesUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -47,7 +49,9 @@ contract StakingVault is
     }
 
     // --- Events ---
-    event WithdrawalRequested(uint256 indexed requestId, address indexed owner, address indexed receiver, uint256 shares, uint256 assets);
+    event WithdrawalRequested(
+        uint256 indexed requestId, address indexed owner, address indexed receiver, uint256 shares, uint256 assets
+    );
     event WithdrawalClaimed(uint256 indexed requestId, address indexed owner, address indexed receiver, uint256 assets);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -56,11 +60,7 @@ contract StakingVault is
     }
 
     // --- Initializer ---
-    function initialize(
-        address defaultAdmin,
-        IERC20 _asset,
-        uint256 _unbondingPeriod
-    ) public initializer {
+    function initialize(address defaultAdmin, IERC20 _asset, uint256 _unbondingPeriod) public initializer {
         __ERC20_init("Staked ANDE", "stANDE");
         __ERC20Permit_init("Staked ANDE");
         __ERC20Votes_init();
@@ -74,7 +74,7 @@ contract StakingVault is
         asset = _asset;
         unbondingPeriod = _unbondingPeriod;
     }
-    
+
     // --- Pausable Control ---
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
@@ -94,7 +94,11 @@ contract StakingVault is
     }
 
     // --- Asynchronous Withdrawal Logic (ERC-7540 Pattern) ---
-    function requestWithdrawal(uint256 sharesToBurn, address receiver) external whenNotPaused returns (uint256 requestId) {
+    function requestWithdrawal(uint256 sharesToBurn, address receiver)
+        external
+        whenNotPaused
+        returns (uint256 requestId)
+    {
         require(sharesToBurn > 0, "Shares to burn cannot be zero");
         uint256 assetsToWithdraw = sharesToBurn;
 
@@ -139,18 +143,9 @@ contract StakingVault is
         super._update(from, to, value);
     }
 
-    function nonces(address owner)
-        public
-        view
-        override(ERC20PermitUpgradeable, NoncesUpgradeable)
-        returns (uint256)
-    {
+    function nonces(address owner) public view override(ERC20PermitUpgradeable, NoncesUpgradeable) returns (uint256) {
         return super.nonces(owner);
     }
-    
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

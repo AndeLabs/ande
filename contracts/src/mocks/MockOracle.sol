@@ -34,13 +34,7 @@ contract MockOracle is Ownable {
     function latestRoundData()
         external
         view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        )
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         return (
             1, // roundId
@@ -50,7 +44,7 @@ contract MockOracle is Ownable {
             1 // answeredInRound
         );
     }
-    
+
     /**
      * @dev Permite al owner establecer un nuevo precio.
      * El precio debe ser enviado con el número de decimales configurado en el constructor.

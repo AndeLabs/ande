@@ -3,7 +3,8 @@ pragma solidity ^0.8.25;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20BurnableUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -108,10 +109,7 @@ contract AusdToken is
         emit CollateralAdded(_collateral, _ratio, _priceFeed);
     }
 
-    function updateCollateralRatio(address _collateral, uint128 _newRatio)
-        external
-        onlyRole(COLLATERAL_MANAGER_ROLE)
-    {
+    function updateCollateralRatio(address _collateral, uint128 _newRatio) external onlyRole(COLLATERAL_MANAGER_ROLE) {
         if (!collateralTypes[_collateral].isSupported) revert CollateralNotSupported();
         if (_newRatio < 10000) revert InvalidCollateralizationRatio();
 
@@ -121,18 +119,14 @@ contract AusdToken is
 
     // ==================== CORE LOGIC: MINT & BURN ====================
 
-    function depositAndMint(address _collateral, uint256 _collateralAmount)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function depositAndMint(address _collateral, uint256 _collateralAmount) external whenNotPaused nonReentrant {
         if (_collateralAmount == 0) revert AmountMustBePositive();
         CollateralInfo storage collateral = collateralTypes[_collateral];
         if (!collateral.isSupported) revert CollateralNotSupported();
 
         // --- Lógica de Oráculo Corregida ---
         // 1. Obtener precio y decimales del oráculo
-        (, int256 price_signed, , , ) = collateral.priceFeed.latestRoundData();
+        (, int256 price_signed,,,) = collateral.priceFeed.latestRoundData();
         if (price_signed <= 0) revert OraclePriceInvalid();
         uint256 collateralPrice = uint256(price_signed);
         uint8 oracleDecimals = collateral.priceFeed.decimals();
@@ -143,8 +137,8 @@ contract AusdToken is
         // 3. Calcular el valor del colateral en USD, normalizado a 18 decimales (como AUSD)
         // Formula: (collateralAmount * price) / 10^oracleDecimals
         // Para evitar pérdida de precisión, escalamos el precio a 18 decimales antes de dividir
-        uint256 scaledPrice = collateralPrice * (10**(18 - oracleDecimals));
-        uint256 valueInUsd = Math.mulDiv(_collateralAmount, scaledPrice, (10**collateralDecimals));
+        uint256 scaledPrice = collateralPrice * (10 ** (18 - oracleDecimals));
+        uint256 valueInUsd = Math.mulDiv(_collateralAmount, scaledPrice, (10 ** collateralDecimals));
 
         // 4. Calcular la cantidad de AUSD a acuñar
         uint256 amountToMint = Math.mulDiv(valueInUsd, 10000, collateral.overCollateralizationRatio);
@@ -156,17 +150,13 @@ contract AusdToken is
         emit Minted(msg.sender, _collateral, _collateralAmount, amountToMint);
     }
 
-    function burnAndWithdraw(address _collateral, uint256 _ausdAmount)
-        external
-        whenNotPaused
-        nonReentrant
-    {
+    function burnAndWithdraw(address _collateral, uint256 _ausdAmount) external whenNotPaused nonReentrant {
         if (_ausdAmount == 0) revert AmountMustBePositive();
         CollateralInfo storage collateral = collateralTypes[_collateral];
         if (!collateral.isSupported) revert CollateralNotSupported();
 
         // --- Lógica de Oráculo Corregida ---
-        (, int256 price_signed, , , ) = collateral.priceFeed.latestRoundData();
+        (, int256 price_signed,,,) = collateral.priceFeed.latestRoundData();
         if (price_signed <= 0) revert OraclePriceInvalid();
         uint256 collateralPrice = uint256(price_signed);
         uint8 oracleDecimals = collateral.priceFeed.decimals();
@@ -177,8 +167,8 @@ contract AusdToken is
         // 3. Calcular la cantidad de colateral a retirar, APLICANDO EL RATIO
         uint256 collateralValueInUsd = Math.mulDiv(valueInUsd, collateral.overCollateralizationRatio, 10000);
         uint8 collateralDecimals = IERC20withDecimals(_collateral).decimals();
-        uint256 scaledPrice = collateralPrice * (10**(18 - oracleDecimals));
-        uint256 collateralToWithdraw = Math.mulDiv(collateralValueInUsd, (10**collateralDecimals), scaledPrice);
+        uint256 scaledPrice = collateralPrice * (10 ** (18 - oracleDecimals));
+        uint256 collateralToWithdraw = Math.mulDiv(collateralValueInUsd, (10 ** collateralDecimals), scaledPrice);
 
         if (collateralToWithdraw > collateral.totalDeposited) revert InsufficientCollateral();
 
@@ -188,7 +178,6 @@ contract AusdToken is
 
         emit Burned(msg.sender, _collateral, collateralToWithdraw, _ausdAmount);
     }
-
 
     // ==================== PRIVILEGED MINT/BURN ====================
 
@@ -214,21 +203,13 @@ contract AusdToken is
 
     // ==================== PAUSABLE OVERRIDES ====================
 
-    function _update(address from, address to, uint256 value)
-        internal
-        override
-        whenNotPaused
-    {
+    function _update(address from, address to, uint256 value) internal override whenNotPaused {
         super._update(from, to, value);
     }
 
     // ==================== UUPS UPGRADE ====================
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     // ==================== VIEW FUNCTIONS ====================
 

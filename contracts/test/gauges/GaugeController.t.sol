@@ -66,10 +66,10 @@ contract GaugeControllerTest is Test {
 
     function test_Fail_Vote_Over100Percent() public {
         vm.startPrank(alice);
-        
+
         // 1. Alice votes 8000 for gauge1 (should succeed)
         gc.vote(gauge1, 8000);
-        
+
         // 2. Alice tries to vote 3000 for gauge2 (total 11000, should fail)
         vm.expectRevert("GC: Total weight exceeds 10000");
         gc.vote(gauge2, 3000);

@@ -46,11 +46,7 @@ interface IXERC20 {
      * @param burningLimit New burning limit for the bridge
      * @param bridge Address of the bridge
      */
-    event BridgeLimitsSet(
-        uint256 mintingLimit,
-        uint256 burningLimit,
-        address indexed bridge
-    );
+    event BridgeLimitsSet(uint256 mintingLimit, uint256 burningLimit, address indexed bridge);
 
     // ==================== ERRORS ====================
 
@@ -85,11 +81,7 @@ interface IXERC20 {
      * @param mintingLimit Minting limit to set (tokens per duration)
      * @param burningLimit Burning limit to set (tokens per duration)
      */
-    function setLimits(
-        address bridge,
-        uint256 mintingLimit,
-        uint256 burningLimit
-    ) external;
+    function setLimits(address bridge, uint256 mintingLimit, uint256 burningLimit) external;
 
     /**
      * @notice Returns the maximum minting limit for a bridge

@@ -2,7 +2,8 @@
 pragma solidity ^0.8.25;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {ERC20BurnableUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -80,12 +81,12 @@ contract AbobToken is
         collateralRatio = _initialRatio;
     }
 
-    // --- Lógica de Acuñación (Mint) --- 
+    // --- Lógica de Acuñación (Mint) ---
     function mint(uint256 _abobAmountToMint) external whenNotPaused nonReentrant {
         require(_abobAmountToMint > 0, "Amount must be positive");
 
-        (, int256 andePriceSigned, , , ) = andePriceFeed.latestRoundData();
-        (, int256 abobPriceSigned, , , ) = abobPriceFeed.latestRoundData();
+        (, int256 andePriceSigned,,,) = andePriceFeed.latestRoundData();
+        (, int256 abobPriceSigned,,,) = abobPriceFeed.latestRoundData();
         require(andePriceSigned > 0 && abobPriceSigned > 0, "Invalid oracle price");
 
         uint256 andePrice = uint256(andePriceSigned);
@@ -110,8 +111,8 @@ contract AbobToken is
 
         _burn(msg.sender, _abobAmountToBurn);
 
-        (, int256 andePriceSigned, , , ) = andePriceFeed.latestRoundData();
-        (, int256 abobPriceSigned, , , ) = abobPriceFeed.latestRoundData();
+        (, int256 andePriceSigned,,,) = andePriceFeed.latestRoundData();
+        (, int256 abobPriceSigned,,,) = abobPriceFeed.latestRoundData();
         require(andePriceSigned > 0 && abobPriceSigned > 0, "Invalid oracle price");
 
         uint256 andePrice = uint256(andePriceSigned);

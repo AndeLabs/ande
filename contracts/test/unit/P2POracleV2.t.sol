@@ -33,11 +33,7 @@ contract P2POracleV2Test is Test {
 
         P2POracleV2 implementation = new P2POracleV2();
         bytes memory data = abi.encodeWithSelector(
-            P2POracleV2.initialize.selector,
-            owner,
-            address(andeToken),
-            MIN_STAKE,
-            EPOCH_DURATION
+            P2POracleV2.initialize.selector, owner, address(andeToken), MIN_STAKE, EPOCH_DURATION
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), data);
         oracle = P2POracleV2(address(proxy));
@@ -78,7 +74,9 @@ contract P2POracleV2Test is Test {
 
     function test_Registration_Fail_NoAllowance() public {
         vm.prank(reporter1);
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(oracle), 0, MIN_STAKE));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(oracle), 0, MIN_STAKE)
+        );
         oracle.register();
     }
 
@@ -114,9 +112,12 @@ contract P2POracleV2Test is Test {
         oracle.register();
         vm.stopPrank();
 
-        vm.prank(reporter2); oracle.reportPrice(200 * 1e16);
-        vm.prank(reporter3); oracle.reportPrice(210 * 1e16);
-        vm.prank(reporter1); oracle.reportPrice(190 * 1e16);
+        vm.prank(reporter2);
+        oracle.reportPrice(200 * 1e16);
+        vm.prank(reporter3);
+        oracle.reportPrice(210 * 1e16);
+        vm.prank(reporter1);
+        oracle.reportPrice(190 * 1e16);
 
         uint256 epochToFinalize = oracle.currentEpoch();
 
@@ -160,7 +161,11 @@ contract P2POracleV2Test is Test {
 
     function test_Slash_Fail_NotSlasher() public reporter1Registered {
         vm.startPrank(reporter2);
-        vm.expectRevert(abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", reporter2, oracle.SLASHER_ROLE()));
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "AccessControlUnauthorizedAccount(address,bytes32)", reporter2, oracle.SLASHER_ROLE()
+            )
+        );
         oracle.slash(reporter1);
         vm.stopPrank();
     }

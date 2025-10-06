@@ -68,19 +68,15 @@ contract GovernanceFlowTest is Test {
         bytes memory andeInitData = abi.encodeWithSelector(
             ANDEToken.initialize.selector,
             admin, // defaultAdmin
-            admin  // minter (will be changed to MintController later)
+            admin // minter (will be changed to MintController later)
         );
         ERC1967Proxy andeProxy = new ERC1967Proxy(address(andeImpl), andeInitData);
         andeToken = ANDEToken(address(andeProxy));
 
         // 2. Deploy StakingVault (stANDE)
         StakingVault stakingImpl = new StakingVault();
-        bytes memory stakingInitData = abi.encodeWithSelector(
-            StakingVault.initialize.selector,
-            admin,
-            address(andeToken),
-            UNBONDING_PERIOD
-        );
+        bytes memory stakingInitData =
+            abi.encodeWithSelector(StakingVault.initialize.selector, admin, address(andeToken), UNBONDING_PERIOD);
         ERC1967Proxy stakingProxy = new ERC1967Proxy(address(stakingImpl), stakingInitData);
         stakingVault = StakingVault(address(stakingProxy));
 
@@ -176,11 +172,7 @@ contract GovernanceFlowTest is Test {
         values[0] = 0;
 
         bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] = abi.encodeWithSelector(
-            andeToken.transfer.selector,
-            recipient,
-            transferAmount
-        );
+        calldatas[0] = abi.encodeWithSelector(andeToken.transfer.selector, recipient, transferAmount);
 
         string memory description = "Proposal #1: Transfer 1000 ANDE to recipient";
 

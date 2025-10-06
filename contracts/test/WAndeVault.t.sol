@@ -86,7 +86,11 @@ contract WAndeVaultTest is Test {
         assertEq(sharesBurned, withdrawAmount, "Shares burned should equal assets withdrawn");
 
         // 2. User's asset balance should be correctly updated
-        assertEq(andeToken.balanceOf(user), INITIAL_USER_BALANCE - depositAmount + withdrawAmount, "User asset balance is wrong");
+        assertEq(
+            andeToken.balanceOf(user),
+            INITIAL_USER_BALANCE - depositAmount + withdrawAmount,
+            "User asset balance is wrong"
+        );
 
         // 3. User's share balance should decrease
         assertEq(vault.balanceOf(user), depositAmount - sharesBurned, "User share balance is wrong");

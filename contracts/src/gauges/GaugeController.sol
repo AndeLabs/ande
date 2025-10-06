@@ -18,7 +18,6 @@ interface IVotingEscrow {
  *      receive token rewards. It calculates the relative weight of each gauge.
  */
 contract GaugeController is ReentrancyGuard {
-
     // --- Structs ---
 
     struct Point {
@@ -110,7 +109,7 @@ contract GaugeController is ReentrancyGuard {
         require(_gauge_type >= 0 && _gauge_type < n_gauge_types, "GC: Invalid gauge type");
 
         int256 n = n_gauges;
-        
+
         gauges[n] = _addr;
         gauge_types[_addr] = _gauge_type + 1; // Store type as type + 1 to avoid ambiguity with 0
         n_gauges = n + 1;
@@ -140,10 +139,10 @@ contract GaugeController is ReentrancyGuard {
         user_total_weight[user] = new_total_weight;
         user_vote_weight[user][_gauge_addr] = _user_weight;
 
-        // --- Checkpointing --- 
+        // --- Checkpointing ---
         int256 gauge_type = gauge_types[_gauge_addr] - 1;
         Slope memory old_slope_data = vote_user_slopes[user];
-        
+
         uint256 new_slope = user_power * _user_weight / 10000;
         vote_user_slopes[user] = Slope({slope: new_slope, power: user_power, end: block.timestamp}); // `end` is not strictly needed here, using ts
 

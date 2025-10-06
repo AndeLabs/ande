@@ -157,12 +157,11 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      * @param amount Amount to bridge
      * @param destinationChain Destination chain ID (1 = Ethereum, 137 = Polygon, etc.)
      */
-    function bridgeTokens(
-        address token,
-        address recipient,
-        uint256 amount,
-        uint256 destinationChain
-    ) external nonReentrant whenNotPaused {
+    function bridgeTokens(address token, address recipient, uint256 amount, uint256 destinationChain)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         // Validation
         if (!supportedTokens[token]) revert TokenNotSupported();
         if (amount == 0) revert InvalidAmount();
@@ -176,9 +175,7 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
         IXERC20(token).burn(msg.sender, amount);
 
         // Emit event for relayer to pick up
-        emit TokensBridged(
-            token, msg.sender, recipient, amount, destinationChain, nonce++
-        );
+        emit TokensBridged(token, msg.sender, recipient, amount, destinationChain, nonce++);
     }
 
     /**
@@ -226,10 +223,11 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      * @param txData The full transaction data struct
      * @param proof Merkle proof from Celestia Blobstream
      */
-    function forceTransaction(
-        BridgeTransaction calldata txData,
-        bytes calldata proof
-    ) external nonReentrant whenNotPaused {
+    function forceTransaction(BridgeTransaction calldata txData, bytes calldata proof)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         // 1. Check if already processed
         if (processedTransactions[txData.sourceTxHash]) {
             revert TransactionAlreadyProcessed();
@@ -251,13 +249,7 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
         // 5. Mint the tokens to the recipient
         IXERC20(txData.token).mint(txData.recipient, txData.amount);
 
-        emit TokensReceived(
-            txData.token,
-            txData.recipient,
-            txData.amount,
-            txData.sourceChain,
-            txData.sourceTxHash
-        );
+        emit TokensReceived(txData.token, txData.recipient, txData.amount, txData.sourceChain, txData.sourceTxHash);
     }
 
     // ==================== ADMIN FUNCTIONS ====================
@@ -339,19 +331,14 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      * @param proof Merkle proof bytes
      * @return bool True if proof is valid
      */
-    function _verifyBlobstreamProof(
-        bytes32 txHash,
-        uint256 sourceChain,
-        bytes calldata proof
-    ) internal view returns (bool) {
+    function _verifyBlobstreamProof(bytes32 txHash, uint256 sourceChain, bytes calldata proof)
+        internal
+        view
+        returns (bool)
+    {
         // Call the actual Blobstream contract to verify the proof.
         // This ensures the transaction is valid and included in the DA layer.
-        return IBlobstream(blobstreamVerifier).verifyAttestation(
-            txHash,
-            sourceChain,
-            proof,
-            minConfirmations
-        );
+        return IBlobstream(blobstreamVerifier).verifyAttestation(txHash, sourceChain, proof, minConfirmations);
     }
 
     // ==================== VIEW FUNCTIONS ====================

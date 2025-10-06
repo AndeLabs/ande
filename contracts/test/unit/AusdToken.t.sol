@@ -29,7 +29,7 @@ contract AusdTokenTest is Test {
         pauser = makeAddr("pauser");
 
         usdcCollateral = new MockERC20("Mock USDC", "USDC", 6);
-        usdcOracle = new MockOracle(1 * 10**8, 8);
+        usdcOracle = new MockOracle(1 * 10 ** 8, 8);
 
         AusdToken implementation = new AusdToken();
         bytes memory data = abi.encodeWithSelector(AusdToken.initialize.selector, owner);
@@ -41,7 +41,7 @@ contract AusdTokenTest is Test {
         ausdToken.grantRole(PAUSER_ROLE, pauser);
         vm.stopPrank();
 
-        usdcCollateral.mint(user, 10_000 * 10**6);
+        usdcCollateral.mint(user, 10_000 * 10 ** 6);
     }
 
     modifier givenUsdcIsCollateral() {
@@ -63,7 +63,7 @@ contract AusdTokenTest is Test {
     }
 
     function test_Core_DepositAndMint() public givenUsdcIsCollateral {
-        uint256 depositAmount = 120 * 10**6; // 120 USDC
+        uint256 depositAmount = 120 * 10 ** 6; // 120 USDC
         uint256 expectedAusd = 100 * 1e18;
 
         vm.startPrank(user);
@@ -75,7 +75,7 @@ contract AusdTokenTest is Test {
     }
 
     function test_Core_BurnAndWithdraw() public givenUsdcIsCollateral {
-        uint256 depositAmount = 120 * 10**6;
+        uint256 depositAmount = 120 * 10 ** 6;
         uint256 ausdToMint = 100 * 1e18;
 
         vm.startPrank(user);
@@ -84,7 +84,7 @@ contract AusdTokenTest is Test {
         vm.stopPrank();
 
         uint256 userInitialUsdc = usdcCollateral.balanceOf(user);
-        
+
         vm.startPrank(user);
         ausdToken.burnAndWithdraw(address(usdcCollateral), ausdToMint);
         vm.stopPrank();

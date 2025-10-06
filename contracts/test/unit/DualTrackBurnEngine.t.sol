@@ -19,8 +19,22 @@ contract DualTrackBurnEngineTest is Test {
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     function setUp() public {
-        andeToken = ANDEToken(address(new ERC1967Proxy(address(new ANDEToken()), abi.encodeWithSelector(ANDEToken.initialize.selector, address(this), address(this)))));
-        burnEngine = DualTrackBurnEngine(address(new ERC1967Proxy(address(new DualTrackBurnEngine()), abi.encodeWithSelector(DualTrackBurnEngine.initialize.selector, owner, burner, address(andeToken)))));
+        andeToken = ANDEToken(
+            address(
+                new ERC1967Proxy(
+                    address(new ANDEToken()),
+                    abi.encodeWithSelector(ANDEToken.initialize.selector, address(this), address(this))
+                )
+            )
+        );
+        burnEngine = DualTrackBurnEngine(
+            address(
+                new ERC1967Proxy(
+                    address(new DualTrackBurnEngine()),
+                    abi.encodeWithSelector(DualTrackBurnEngine.initialize.selector, owner, burner, address(andeToken))
+                )
+            )
+        );
 
         uint256 initialBurnableAmount = 10_000 * 1e18;
         andeToken.mint(address(burnEngine), initialBurnableAmount);

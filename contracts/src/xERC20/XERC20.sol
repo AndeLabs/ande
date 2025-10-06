@@ -2,7 +2,8 @@
 pragma solidity ^0.8.25;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {ERC20PermitUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -60,11 +61,7 @@ contract XERC20 is
      * @param symbol Token symbol
      * @param admin Address that will have admin and bridge manager roles
      */
-    function initialize(
-        string memory name,
-        string memory symbol,
-        address admin
-    ) public initializer {
+    function initialize(string memory name, string memory symbol, address admin) public initializer {
         __ERC20_init(name, symbol);
         __ERC20Permit_init(name);
         __AccessControl_init();
@@ -87,11 +84,10 @@ contract XERC20 is
     /**
      * @inheritdoc IXERC20
      */
-    function setLimits(
-        address _bridge,
-        uint256 _mintingLimit,
-        uint256 _burningLimit
-    ) external onlyRole(BRIDGE_MANAGER_ROLE) {
+    function setLimits(address _bridge, uint256 _mintingLimit, uint256 _burningLimit)
+        external
+        onlyRole(BRIDGE_MANAGER_ROLE)
+    {
         _changeMinterLimit(_bridge, _mintingLimit);
         _changeBurnerLimit(_bridge, _burningLimit);
         emit BridgeLimitsSet(_mintingLimit, _burningLimit, _bridge);
@@ -165,11 +161,7 @@ contract XERC20 is
      * @param _user Address to mint tokens to
      * @param _amount Amount to mint
      */
-    function _mintWithCaller(
-        address _caller,
-        address _user,
-        uint256 _amount
-    ) internal {
+    function _mintWithCaller(address _caller, address _user, uint256 _amount) internal {
         if (_caller != lockbox) {
             uint256 currentLimit = _getCurrentLimit(
                 bridges[_caller].minterParams.currentLimit,
@@ -191,11 +183,7 @@ contract XERC20 is
      * @param _user Address to burn tokens from
      * @param _amount Amount to burn
      */
-    function _burnWithCaller(
-        address _caller,
-        address _user,
-        uint256 _amount
-    ) internal {
+    function _burnWithCaller(address _caller, address _user, uint256 _amount) internal {
         if (_caller != lockbox) {
             uint256 currentLimit = _getCurrentLimit(
                 bridges[_caller].burnerParams.currentLimit,
@@ -307,12 +295,11 @@ contract XERC20 is
      * @param _ratePerSecond Rate of limit replenishment per second
      * @return Current available limit
      */
-    function _getCurrentLimit(
-        uint256 _currentLimit,
-        uint256 _maxLimit,
-        uint256 _timestamp,
-        uint256 _ratePerSecond
-    ) internal view returns (uint256) {
+    function _getCurrentLimit(uint256 _currentLimit, uint256 _maxLimit, uint256 _timestamp, uint256 _ratePerSecond)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 timeElapsed = block.timestamp - _timestamp;
         uint256 calculatedLimit = _currentLimit + (timeElapsed * _ratePerSecond);
         return calculatedLimit > _maxLimit ? _maxLimit : calculatedLimit;
@@ -321,9 +308,5 @@ contract XERC20 is
     /**
      * @dev Authorizes contract upgrades (UUPS pattern)
      */
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }
