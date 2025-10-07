@@ -3,19 +3,19 @@ pragma solidity ^0.8.25;
 
 import {Test, console} from "forge-std/Test.sol";
 import {AbobToken} from "../../src/AbobToken.sol";
-import {P2POracleV2} from "../../src/P2POracleV2.sol";
+import {P2POracle} from "../../src/P2POracle.sol";
 import {MockERC20} from "../../src/mocks/MockERC20.sol";
 import {MockOracle} from "../../src/mocks/MockOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @title Pruebas de Integración del Ecosistema ABOB
- * @notice Verifica la correcta interacción entre AbobToken y P2POracleV2.
+ * @notice Verifica la correcta interacción entre AbobToken y P2POracle.
  */
 contract IntegrationTest is Test {
     // === Contratos ===
     AbobToken public abobToken;
-    P2POracleV2 public p2pAndeOracle;
+    P2POracle public p2pAndeOracle;
     MockERC20 public ausd;
     MockERC20 public ande;
     MockOracle public abobOracle; // Mock para el precio de ABOB, que no es parte de esta prueba
@@ -39,13 +39,13 @@ contract IntegrationTest is Test {
         ande = new MockERC20("Mock ANDE", "mANDE", 18);
         abobOracle = new MockOracle(int256(ABOB_PRICE), 18);
 
-        // --- 2. Desplegar y Configurar P2POracleV2 ---
-        P2POracleV2 p2pImpl = new P2POracleV2();
+        // --- 2. Desplegar y Configurar P2POracle ---
+        P2POracle p2pImpl = new P2POracle();
         bytes memory p2pInitData = abi.encodeWithSelector(
-            P2POracleV2.initialize.selector, admin, address(ande), ORACLE_MIN_STAKE, ORACLE_EPOCH_DURATION
+            P2POracle.initialize.selector, admin, address(ande), ORACLE_MIN_STAKE, ORACLE_EPOCH_DURATION
         );
         ERC1967Proxy p2pProxy = new ERC1967Proxy(address(p2pImpl), p2pInitData);
-        p2pAndeOracle = P2POracleV2(address(p2pProxy));
+        p2pAndeOracle = P2POracle(address(p2pProxy));
 
         vm.startPrank(admin);
         p2pAndeOracle.grantRole(p2pAndeOracle.FINALIZER_ROLE(), finalizer);
@@ -65,7 +65,7 @@ contract IntegrationTest is Test {
             7000 // 70% collateral ratio
         );
         ERC1967Proxy abobProxy = new ERC1967Proxy(address(abobImpl), abobInitData);
-        abobToken = AbobToken(address(abobProxy));
+        abobToken = AbobToken(payable(address(abobProxy)));
 
         // --- 4. Preparar a los Reporters ---
         address[3] memory reporters = [reporter1, reporter2, reporter3];
@@ -119,7 +119,9 @@ contract IntegrationTest is Test {
         uint256 userAndeBalanceBefore = ande.balanceOf(user);
 
         vm.prank(user);
-        abobToken.mint(abobToMint);
+        // Deposit ANDE collateral and mint ABOB
+        uint256 collateralAmount = 200e18; // 200 ANDE as collateral (200% overcollateralization for 100 ABOB)
+        abobToken.depositCollateralAndMint(address(ande), collateralAmount, abobToMint);
 
         // --- 5. Verificar ---
         // Calculamos el colateral ANDE esperado usando el precio mediano del oráculo
