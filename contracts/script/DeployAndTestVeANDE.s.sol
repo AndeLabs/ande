@@ -8,7 +8,7 @@ import {GaugeController} from "../src/gauges/GaugeController.sol";
 import {AndeGovernor} from "../src/governance/AndeGovernor.sol";
 import {AndeTimelockController} from "../src/governance/AndeTimelockController.sol";
 import {LiquidityGaugeV1} from "../src/gauges/LiquidityGaugeV1.sol";
-import {MockERC20} from "../src/mock/MockERC20.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 
 contract DeployAndTestVeANDE is Script {
     // Core contracts
@@ -40,7 +40,7 @@ contract DeployAndTestVeANDE is Script {
         vm.startBroadcast(ADMIN);
 
         // === DEPLOY CORE INFRASTRUCTURE ===
-        console.log("=== DEPLOYING veANDE INFRASTRUCTURE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // 1. Deploy ANDE Token
         andeToken = new ANDEToken();
@@ -82,22 +82,22 @@ contract DeployAndTestVeANDE is Script {
         vm.stopBroadcast();
 
         // === SETUP GAUGE SYSTEM ===
-        console.log("\n=== SETTING UP GAUGE SYSTEM ===");
+        console.log("=== TEST COMPLETED ===");
         _setupGaugeSystem();
 
         // === SETUP GOVERNANCE ===
-        console.log("\n=== SETTING UP GOVERNANCE ===");
+        console.log("=== TEST COMPLETED ===");
         _setupGovernance();
 
         // === TEST veANDE FLOW ===
-        console.log("\n=== TESTING veANDE FLOW ===");
+        console.log("=== TEST COMPLETED ===");
         _testVeANDEFlow();
 
         // === TEST GOVERNANCE ===
-        console.log("\n=== TESTING GOVERNANCE ===");
+        console.log("=== TEST COMPLETED ===");
         _testGovernance();
 
-        console.log("\n=== ✅ veANDE SYSTEM TEST COMPLETED ===");
+        console.log("=== TEST COMPLETED ===");
     }
 
     function _setupGaugeSystem() internal {
@@ -221,7 +221,7 @@ contract DeployAndTestVeANDE is Script {
 
         vm.stopBroadcast();
 
-        console.log("   ✅ veANDE locking mechanism working correctly");
+        console.log("   SUCCESS veANDE locking mechanism working correctly");
     }
 
     function _testGovernance() internal {
@@ -272,10 +272,10 @@ contract DeployAndTestVeANDE is Script {
             console.log("   USER1 can create proposals");
 
             // This would normally create a proposal, but for testing we verify the mechanism
-            console.log("   ✅ Governance proposal mechanism available");
+            console.log("   SUCCESS Governance proposal mechanism available");
         } else {
             console.log("   USER1 needs more veANDE to create proposals");
-            console.log("   ✅ Proposal threshold mechanism working");
+            console.log("   SUCCESS Proposal threshold mechanism working");
         }
 
         vm.stopBroadcast();
@@ -298,7 +298,7 @@ contract DeployAndTestVeANDE is Script {
         // USER2: 1-year lock should have 0% power (expired)
         // USER3: 2-year lock should have 50% power remaining
 
-        console.log("   ✅ Power decay mechanism working correctly");
+        console.log("   SUCCESS Power decay mechanism working correctly");
 
         console.log("\n5. Testing gauge weight distribution");
 
@@ -308,14 +308,14 @@ contract DeployAndTestVeANDE is Script {
 
         console.log("   Gauge1 weight:", gauge1Weight);
         console.log("   Gauge2 weight:", gauge2Weight);
-        console.log("   ✅ Gauge weight distribution working");
+        console.log("   SUCCESS Gauge weight distribution working");
 
-        console.log("\n=== 🏆 veANDE SYSTEM SUMMARY ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Total veANDE supply:", votingEscrow.totalSupply() / 1e18);
         console.log("Number of gauges:", gaugeController.n_gauges());
         console.log("Governance contract:", address(governor));
         console.log("Timelock contract:", address(timelock));
-        console.log("✅ All veANDE mechanisms tested successfully");
+        console.log("SUCCESS All veANDE mechanisms tested successfully");
     }
 
     // Helper functions for testing

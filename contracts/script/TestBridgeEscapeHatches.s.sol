@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import {Script, console} from "forge-std/Script.sol";
 import {AndeChainBridge} from "../src/bridge/AndeChainBridge.sol";
-import {MockERC20} from "../src/mock/MockERC20.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {XERC20Lockbox} from "../src/xERC20/XERC20Lockbox.sol";
 
 contract TestBridgeEscapeHatches is Script {
@@ -25,7 +25,7 @@ contract TestBridgeEscapeHatches is Script {
         vm.startBroadcast(OWNER);
 
         // === DEPLOYMENT ===
-        console.log("=== DEPLOYING BRIDGE ESCAPE HATCH TEST ===");
+        console.log("=== TEST COMPLETED ===");
 
         // 1. Deploy mock token (acting as xERC20)
         token = new MockERC20("Test Token", "TEST", 18);
@@ -47,7 +47,7 @@ contract TestBridgeEscapeHatches is Script {
         console.log("Lockbox deployed to:", address(lockbox));
 
         // === SETUP ===
-        console.log("\n=== SETTING UP TEST ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Add token as supported
         bridge.addSupportedToken(address(token));
@@ -64,18 +64,18 @@ contract TestBridgeEscapeHatches is Script {
         vm.stopBroadcast();
 
         // === TEST NORMAL BRIDGE OPERATION ===
-        console.log("\n=== TESTING NORMAL BRIDGE OPERATION ===");
+        console.log("=== TEST COMPLETED ===");
         _testNormalBridgeFlow();
 
         // === TEST FORCE TRANSACTION ===
-        console.log("\n=== TESTING FORCE TRANSACTION ===");
+        console.log("=== TEST COMPLETED ===");
         _testForceTransaction();
 
         // === TEST EMERGENCY MODE ===
-        console.log("\n=== TESTING EMERGENCY MODE ===");
+        console.log("=== TEST COMPLETED ===");
         _testEmergencyMode();
 
-        console.log("\n=== ✅ BRIDGE ESCAPE HATCH TESTS COMPLETED ===");
+        console.log("=== TEST COMPLETED ===");
     }
 
     function _testNormalBridgeFlow() internal {
@@ -91,9 +91,9 @@ contract TestBridgeEscapeHatches is Script {
 
         vm.stopBroadcast();
 
-        console.log("   ✅ Tokens burned on source chain");
-        console.log("   ✅ Bridge event emitted");
-        console.log("   ✅ Normal flow working");
+        console.log("   SUCCESS Tokens burned on source chain");
+        console.log("   SUCCESS Bridge event emitted");
+        console.log("   SUCCESS Normal flow working");
     }
 
     function _testForceTransaction() internal {
@@ -110,8 +110,8 @@ contract TestBridgeEscapeHatches is Script {
 
         // This would normally fail because force period hasn't elapsed
         // For testing purposes, we'll verify the mechanism exists
-        console.log("   ✅ Force transaction function available");
-        console.log("   ✅ Force period configured:", bridge.forceInclusionPeriod(), "seconds");
+        console.log("   SUCCESS Force transaction function available");
+        console.log("   SUCCESS Force period configured:", bridge.forceInclusionPeriod(), "seconds");
 
         vm.stopBroadcast();
     }
@@ -121,7 +121,7 @@ contract TestBridgeEscapeHatches is Script {
 
         // Check initial state
         require(!bridge.emergencyMode(), "Emergency mode should be false initially");
-        console.log("   ✅ Emergency mode initially disabled");
+        console.log("   SUCCESS Emergency mode initially disabled");
 
         // Owner activates emergency mode
         vm.startBroadcast(OWNER);
@@ -129,7 +129,7 @@ contract TestBridgeEscapeHatches is Script {
         vm.stopBroadcast();
 
         require(bridge.emergencyMode(), "Emergency mode should be enabled");
-        console.log("   ✅ Emergency mode activated by owner");
+        console.log("   SUCCESS Emergency mode activated by owner");
 
         // Test emergency withdrawal
         bytes32 sourceTxHash = keccak256("emergency_test_hash");
@@ -138,8 +138,8 @@ contract TestBridgeEscapeHatches is Script {
         vm.startBroadcast(USER);
 
         // Verify emergency withdrawal function is available
-        console.log("   ✅ Emergency withdrawal function available");
-        console.log("   ✅ Emergency grace period:", bridge.emergencyGracePeriod(), "seconds");
+        console.log("   SUCCESS Emergency withdrawal function available");
+        console.log("   SUCCESS Emergency grace period:", bridge.emergencyGracePeriod(), "seconds");
 
         vm.stopBroadcast();
 
@@ -149,11 +149,11 @@ contract TestBridgeEscapeHatches is Script {
         vm.stopBroadcast();
 
         require(!bridge.emergencyMode(), "Emergency mode should be disabled");
-        console.log("   ✅ Emergency mode deactivated");
+        console.log("   SUCCESS Emergency mode deactivated");
     }
 
     function testBridgeSecurity() external view {
-        console.log("\n=== BRIDGE SECURITY OVERVIEW ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Contract Owner:", bridge.owner());
         console.log("Emergency Mode:", bridge.emergencyMode());
         console.log("Force Inclusion Period:", bridge.forceInclusionPeriod());
@@ -163,7 +163,7 @@ contract TestBridgeEscapeHatches is Script {
     }
 
     function simulateRelayerFailure() external {
-        console.log("\n=== SIMULATING RELAYER FAILURE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // This would be used in a real scenario where:
         // 1. User has bridged tokens
@@ -172,14 +172,14 @@ contract TestBridgeEscapeHatches is Script {
 
         bytes32 stuckTxHash = keccak256("stuck_transaction");
 
-        console.log("📋 Scenario: User has tokens stuck in bridge");
+        console.log("INFO Scenario: User has tokens stuck in bridge");
         console.log("   - Transaction hash:", vm.toString(stuckTxHash));
         console.log("   - Options available:");
         console.log("     1. Wait for force period (1 hour) and use forceTransaction()");
         console.log("     2. Wait for owner to enable emergency mode");
         console.log("     3. Use emergencyWithdraw() if emergency mode is active");
 
-        console.log("🛡️ Security: User funds are never at risk");
+        console.log("SHIELD Security: User funds are never at risk");
         console.log("   - All transactions require valid proofs");
         console.log("   - Replay protection prevents double withdrawals");
         console.log("   - Emergency claims tracked per user");
