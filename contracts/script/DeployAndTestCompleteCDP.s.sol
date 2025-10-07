@@ -6,7 +6,7 @@ import {AbobToken} from "../src/AbobToken.sol";
 import {CollateralManager} from "../src/CollateralManager.sol";
 import {AuctionManager} from "../src/AuctionManager.sol";
 import {AndeOracleAggregator} from "../src/AndeOracleAggregator.sol";
-import {MockERC20} from "../src/mock/MockERC20.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {P2POracle} from "../src/P2POracle.sol";
 import {ANDEToken} from "../src/ANDEToken.sol";
 
@@ -54,11 +54,11 @@ contract DeployAndTestCompleteCDP is Script {
         // === PHASE 5: TEST LIQUIDATIONS ===
         _testLiquidations();
 
-        console.log("\n=== ✅ CDP SYSTEM TEST COMPLETED SUCCESSFULLY ===");
+        console.log("=== TEST COMPLETED ===");
     }
 
     function _deployInfrastructure() internal {
-        console.log("=== DEPLOYING INFRASTRUCTURE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // 1. Deploy ANDE Token (native gas token)
         console.log("1. Deploying ANDE Token...");
@@ -129,11 +129,11 @@ contract DeployAndTestCompleteCDP is Script {
         mockUSDC.approve(address(auctionManager), type(uint256).max);
         mockWBTC.approve(address(auctionManager), type(uint256).max);
 
-        console.log("✅ Infrastructure deployed successfully");
+        console.log("SUCCESS Infrastructure deployed successfully");
     }
 
     function _setupOracles() internal {
-        console.log("\n=== SETTING UP ORACLES ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Setup P2P Oracle prices
         uint256 currentEpoch = block.timestamp / 3600;
@@ -162,13 +162,13 @@ contract DeployAndTestCompleteCDP is Script {
         vm.startPrank(ADMIN);
         p2pOracle.finalizeCurrentEpoch();
 
-        console.log("✅ Oracles configured with prices:");
+        console.log("SUCCESS Oracles configured with prices:");
         console.log("   USDC: $1.00");
         console.log("   WBTC: $50,000.00");
     }
 
     function _setupCollaterals() internal {
-        console.log("\n=== SETTING UP COLLATERALS ===");
+        console.log("=== TEST COMPLETED ===");
 
         vm.startBroadcast(ADMIN);
 
@@ -202,13 +202,13 @@ contract DeployAndTestCompleteCDP is Script {
         mockWBTC.transfer(USER2, 1 * 1e8);     // 1 WBTC
         mockWBTC.transfer(LIQUIDATOR, 5 * 1e8); // 5 WBTC
 
-        console.log("✅ Collaterals added:");
+        console.log("SUCCESS Collaterals added:");
         console.log("   USDC: 120% ratio, 110% threshold");
         console.log("   WBTC: 150% ratio, 125% threshold");
     }
 
     function _testCDPFlow() internal {
-        console.log("\n=== TESTING CDP FLOW ===");
+        console.log("=== TEST COMPLETED ===");
 
         // === Test 1: USER1 - Deposit USDC and mint ABOB ===
         console.log("\n1. USER1: Depositing USDC and minting ABOB...");
@@ -287,11 +287,11 @@ contract DeployAndTestCompleteCDP is Script {
         console.log("   New Health Factor:", healthFactor);
         require(healthFactor >= 12000, "Health factor too low after withdrawal");
 
-        console.log("✅ CDP flow tests completed successfully");
+        console.log("SUCCESS CDP flow tests completed successfully");
     }
 
     function _testLiquidations() internal {
-        console.log("\n=== TESTING LIQUIDATIONS ===");
+        console.log("=== TEST COMPLETED ===");
 
         // === Test 1: Create underwater position ===
         console.log("\n1. Creating underwater position for liquidation test...");
@@ -364,7 +364,7 @@ contract DeployAndTestCompleteCDP is Script {
         (,, uint256 successRate) = auctionManager.getAuctionStats();
         console.log("   Auction success rate:", successRate);
 
-        console.log("✅ Liquidation tests completed successfully");
+        console.log("SUCCESS Liquidation tests completed successfully");
     }
 
     // Helper function to get system overview
@@ -375,7 +375,7 @@ contract DeployAndTestCompleteCDP is Script {
     ) {
         (totalCollateral, totalSystemDebt, systemRatio) = abobToken.getSystemInfo();
 
-        console.log("\n=== SYSTEM OVERVIEW ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Total System Debt:", totalSystemDebt / 1e18);
         console.log("Total Collateral Value:", totalCollateral / 1e18);
         console.log("System Ratio:", systemRatio);

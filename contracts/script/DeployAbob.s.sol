@@ -48,7 +48,7 @@ contract DeployABOB is Script {
 
         deployer = msg.sender;
 
-        console.log("=== DEPLOYING ABOB ECOSYSTEM ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Deployer:", deployer);
         console.log("Chain ID:", block.chainid);
 
@@ -78,14 +78,14 @@ contract DeployABOB is Script {
 
         vm.stopBroadcast();
 
-        console.log("=== DEPLOYMENT COMPLETE ===");
+        console.log("=== TEST COMPLETED ===");
         _logDeploymentSummary();
     }
 
     // ==================== DEPLOYMENT FUNCTIONS ====================
 
     function _deployTimelock() internal {
-        console.log("\n=== 1. DEPLOYING TIMELOCK ===");
+        console.log("=== TEST COMPLETED ===");
 
         andeTimelock = new AndeTimelockController();
         timelock = address(andeTimelock);
@@ -93,7 +93,7 @@ contract DeployABOB is Script {
     }
 
     function _deployGovernance() internal {
-        console.log("\n=== 2. DEPLOYING GOVERNANCE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Deploy VotingEscrow (veANDE) - direct deployment (no proxy)
         votingEscrow = new VotingEscrow(
@@ -111,7 +111,7 @@ contract DeployABOB is Script {
     }
 
     function _deployTokens() internal {
-        console.log("\n=== 3. DEPLOYING TOKENS ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Deploy ANDE Token
         andeToken = new ANDEToken();
@@ -165,7 +165,7 @@ contract DeployABOB is Script {
     }
 
     function _deployInfrastructure() internal {
-        console.log("\n=== 4. DEPLOYING INFRASTRUCTURE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Deploy Price Oracle
         priceOracle = new PriceOracle();
@@ -208,7 +208,7 @@ contract DeployABOB is Script {
     }
 
     function _initializeEcosystem() internal {
-        console.log("\n=== 5. INITIALIZING ECOSYSTEM ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Initialize Timelock Controller only if not already initialized
         try andeTimelock.getMinDelay() returns (uint256) {
@@ -235,7 +235,7 @@ contract DeployABOB is Script {
     }
 
     function _setupCollateralTypes() internal {
-        console.log("\n=== 6. SETTING UP COLLATERAL TYPES ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Add price sources to Oracle
         priceOracle.addSource(USDC, USDC_CHAINLINK_FEED, "Chainlink USDC");
@@ -283,7 +283,7 @@ contract DeployABOB is Script {
     }
 
     function _transferToGovernance() internal {
-        console.log("\n=== 7. TRANSFERRING TO GOVERNANCE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Transfer ownership of contracts to Timelock
         andeToken.grantRole(andeToken.DEFAULT_ADMIN_ROLE(), timelock);
@@ -300,10 +300,10 @@ contract DeployABOB is Script {
     }
 
     function _saveDeploymentInfo() internal {
-        console.log("\n=== 8. SAVING DEPLOYMENT INFO ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Simple deployment info logging
-        console.log("=== DEPLOYED ADDRESSES ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("ANDEToken:", address(andeToken));
         console.log("AbobToken:", address(abobToken));
         console.log("sAbobToken:", address(sAbobTokenContract));
@@ -318,7 +318,7 @@ contract DeployABOB is Script {
     }
 
     function _logDeploymentSummary() internal {
-        console.log("\n=== DEPLOYMENT SUMMARY ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Network:", block.chainid == 1 ? "Mainnet" : block.chainid == 31337 ? "Local" : vm.toString(block.chainid));
         console.log("Deployer:", deployer);
         console.log("");

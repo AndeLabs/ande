@@ -5,7 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {AbobToken} from "../src/AbobToken.sol";
 import {CollateralManager} from "../src/CollateralManager.sol";
 import {AndeOracleAggregator} from "../src/AndeOracleAggregator.sol";
-import {MockERC20} from "../src/mock/MockERC20.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {ANDEToken} from "../src/ANDEToken.sol";
 
 contract TestCDPBasicFlow is Script {
@@ -27,7 +27,7 @@ contract TestCDPBasicFlow is Script {
         vm.startBroadcast(ADMIN);
 
         // === DEPLOYMENT ===
-        console.log("=== DEPLOYING CDP SYSTEM ===");
+        console.log("=== TEST COMPLETED ===");
 
         // 1. Deploy ANDE Token
         andeToken = new ANDEToken();
@@ -60,7 +60,7 @@ contract TestCDPBasicFlow is Script {
         console.log("ABOB Token:", address(abobToken));
 
         // === SETUP ===
-        console.log("\n=== SETTING UP SYSTEM ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Add USDC as collateral
         collateralManager.addCollateral(
@@ -83,10 +83,10 @@ contract TestCDPBasicFlow is Script {
         vm.stopBroadcast();
 
         // === TEST CDP FLOW ===
-        console.log("\n=== TESTING CDP FLOW ===");
+        console.log("=== TEST COMPLETED ===");
         _testCompleteCDPFlow();
 
-        console.log("\n=== ✅ CDP BASIC FLOW TEST COMPLETED ===");
+        console.log("=== TEST COMPLETED ===");
     }
 
     function _testCompleteCDPFlow() internal {
@@ -109,7 +109,7 @@ contract TestCDPBasicFlow is Script {
         console.log("Health Factor:", healthFactor);
 
         require(healthFactor >= 12000, "Health factor should be >= 120%");
-        console.log("✅ Deposit & Mint successful");
+        console.log("SUCCESS Deposit & Mint successful");
 
         // === STEP 2: MINT MORE ABOB AGAINST EXISTING COLLATERAL ===
         console.log("\n2. ADDITIONAL MINT");
@@ -121,7 +121,7 @@ contract TestCDPBasicFlow is Script {
         console.log("New Health Factor:", healthFactor);
 
         require(healthFactor >= 12000, "Health factor should still be >= 120%");
-        console.log("✅ Additional mint successful");
+        console.log("SUCCESS Additional mint successful");
 
         // === STEP 3: PARTIAL DEBT REPAYMENT ===
         console.log("\n3. DEBT REPAYMENT");
@@ -131,7 +131,7 @@ contract TestCDPBasicFlow is Script {
         (collateralValue, debt, healthFactor) = abobToken.getUserVaultInfo(USER);
         console.log("Debt after repayment:", debt / 1e18);
         console.log("Health Factor after repayment:", healthFactor);
-        console.log("✅ Debt repayment successful");
+        console.log("SUCCESS Debt repayment successful");
 
         // === STEP 4: WITHDRAW SOME COLLATERAL ===
         console.log("\n4. COLLATERAL WITHDRAWAL");
@@ -146,7 +146,7 @@ contract TestCDPBasicFlow is Script {
         console.log("Health Factor after withdrawal:", healthFactor);
 
         require(healthFactor >= 12000, "Health factor should remain >= 120%");
-        console.log("✅ Collateral withdrawal successful");
+        console.log("SUCCESS Collateral withdrawal successful");
 
         // === STEP 5: COMBINED OPERATION ===
         console.log("\n5. COMBINED WITHDRAW & REPAY");
@@ -163,7 +163,7 @@ contract TestCDPBasicFlow is Script {
         console.log("Final Debt:", debt / 1e18);
         console.log("Final Health Factor:", healthFactor);
 
-        console.log("✅ Combined operation successful");
+        console.log("SUCCESS Combined operation successful");
 
         // === STEP 6: SYSTEM OVERVIEW ===
         console.log("\n6. SYSTEM OVERVIEW");
@@ -173,7 +173,7 @@ contract TestCDPBasicFlow is Script {
         console.log("Total System Debt:", totalDebt / 1e18);
         console.log("System Ratio:", systemRatio);
 
-        console.log("✅ System overview generated");
+        console.log("SUCCESS System overview generated");
 
         // === STEP 7: LIQUIDATION TEST ===
         console.log("\n7. LIQUIDATION TEST");
@@ -198,8 +198,8 @@ contract TestCDPBasicFlow is Script {
         console.log("Can liquidate:", canLiquidate);
 
         if (!canLiquidate) {
-            console.log("ℹ️ Position not liquidatable (as expected)");
-            console.log("✅ Liquidation test completed");
+            console.log("INFO Position not liquidatable (as expected)");
+            console.log("SUCCESS Liquidation test completed");
         }
     }
 

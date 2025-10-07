@@ -5,7 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {P2POracle} from "../src/P2POracle.sol";
 import {ANDEToken} from "../src/ANDEToken.sol";
 import {AndeOracleAggregator} from "../src/AndeOracleAggregator.sol";
-import {MockERC20} from "../src/mock/MockERC20.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 
 contract DeployAndTestP2POracle is Script {
     P2POracle public p2pOracle;
@@ -31,7 +31,7 @@ contract DeployAndTestP2POracle is Script {
 
         // 3. Desplegar P2POracle
         console.log("3. Desplegando P2POracle...");
-        uint256 minStake = 100 * 1e18; // 100 ANDE mínimo
+        uint256 minStake = 100 * 1e18; // 100 ANDE minimo
         uint256 epochDuration = 3600; // 1 hora por epoch
 
         p2pOracle = new P2POracle();
@@ -52,7 +52,7 @@ contract DeployAndTestP2POracle is Script {
         vm.stopBroadcast();
 
         // 5. Pruebas del flujo completo
-        console.log("\n=== INICIANDO PRUEBAS ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Mint tokens de prueba
         _mintTestTokens();
@@ -69,7 +69,7 @@ contract DeployAndTestP2POracle is Script {
         // Verificar agregador
         _verifyAggregator();
 
-        console.log("\n=== ✅ PRUEBAS COMPLETADAS CON ÉXITO ===");
+        console.log("=== TEST COMPLETED ===");
     }
 
     function _mintTestTokens() internal {
@@ -77,7 +77,7 @@ contract DeployAndTestP2POracle is Script {
 
         // Mint ANDE tokens para el test address
         andeToken.mint(TEST_ADDRESS, 1000000 * 1e18);
-        console.log("   ✅ 1M ANDE tokens minteados");
+        console.log("   SUCCESS 1M ANDE tokens minteados");
 
         // Mint ANDE tokens para reporters adicionales
         address[3] memory reporters = [
@@ -88,7 +88,7 @@ contract DeployAndTestP2POracle is Script {
 
         for (uint i = 0; i < reporters.length; i++) {
             andeToken.mint(reporters[i], 100000 * 1e18);
-            console.log("   ✅ 100k ANDE tokens minteados para reporter", i + 1);
+            console.log("   SUCCESS 100k ANDE tokens minteados para reporter", i + 1);
         }
     }
 
@@ -102,7 +102,7 @@ contract DeployAndTestP2POracle is Script {
         vm.startBroadcast(TEST_PRIVATE_KEY);
         p2pOracle.register();
         vm.stopBroadcast();
-        console.log("   ✅ Reporter principal registrado");
+        console.log("   SUCCESS Reporter principal registrado");
 
         // Registrar reporters adicionales
         uint256[3] memory privateKeys = [
@@ -122,7 +122,7 @@ contract DeployAndTestP2POracle is Script {
             andeToken.approve(address(p2pOracle), 100000 * 1e18);
             p2pOracle.register();
             vm.stopBroadcast();
-            console.log("   ✅ Reporter", i + 1, "registrado");
+            console.log("   SUCCESS Reporter", i + 1, "registrado");
         }
     }
 
@@ -144,21 +144,21 @@ contract DeployAndTestP2POracle is Script {
         uint256 price1 = (1 ether * 1e18) / 6900000000000000000;
         p2pOracle.reportPrice(price1);
         vm.stopBroadcast();
-        console.log("   ✅ Reporter 1: 6.90 BOB/USD");
+        console.log("   SUCCESS Reporter 1: 6.90 BOB/USD");
 
         // Reporter 2: 6.91 BOB/USD
         vm.startBroadcast(privateKeys[1]);
         uint256 price2 = (1 ether * 1e18) / 6910000000000000000;
         p2pOracle.reportPrice(price2);
         vm.stopBroadcast();
-        console.log("   ✅ Reporter 2: 6.91 BOB/USD");
+        console.log("   SUCCESS Reporter 2: 6.91 BOB/USD");
 
         // Reporter 3: 6.92 BOB/USD
         vm.startBroadcast(privateKeys[2]);
         uint256 price3 = (1 ether * 1e18) / 6920000000000000000;
         p2pOracle.reportPrice(price3);
         vm.stopBroadcast();
-        console.log("   ✅ Reporter 3: 6.92 BOB/USD");
+        console.log("   SUCCESS Reporter 3: 6.92 BOB/USD");
     }
 
     function _finalizeEpoch() internal {
@@ -168,29 +168,29 @@ contract DeployAndTestP2POracle is Script {
         p2pOracle.finalizeCurrentEpoch();
         vm.stopBroadcast();
 
-        console.log("   ✅ Epoch finalizado");
+        console.log("   SUCCESS Epoch finalizado");
     }
 
     function _verifyAggregator() internal {
         console.log("9. Verificando AndeOracleAggregator...");
 
-        // Obtener datos del oráculo
+        // Obtener datos del oraculo
         (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator.latestRoundData();
 
-        console.log("   📊 Datos del oráculo:");
+        console.log("   DATA Datos del oraculo:");
         console.log("      Round ID:", uint256(roundId));
         console.log("      Answer:", uint256(answer));
         console.log("      Started At:", startedAt);
         console.log("      Updated At:", updatedAt);
         console.log("      Answered In Round:", uint256(answeredInRound));
 
-        // Verificar que el precio sea razonable (debería estar cerca de la mediana)
+        // Verificar que el precio sea razonable (deberia estar cerca de la mediana)
         // La mediana de [6.90, 6.91, 6.92] es 6.91
         uint256 expectedPrice = (1 ether * 1e18) / 6910000000000000000;
 
         require(uint256(answer) > expectedPrice * 99 / 100, "Price too low");
         require(uint256(answer) < expectedPrice * 101 / 100, "Price too high");
 
-        console.log("   ✅ Precio verificado dentro del rango esperado");
+        console.log("   SUCCESS Precio verificado dentro del rango esperado");
     }
 }

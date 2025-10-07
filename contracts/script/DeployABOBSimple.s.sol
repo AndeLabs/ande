@@ -29,7 +29,7 @@ contract DeployABOBSimple is Script {
     function run() external {
         vm.startBroadcast();
 
-        console.log("=== DEPLOYING ABOB 2.0 SIMPLE ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Deployer:", msg.sender);
         console.log("Chain ID:", block.chainid);
 
@@ -47,12 +47,12 @@ contract DeployABOBSimple is Script {
 
         vm.stopBroadcast();
 
-        console.log("=== DEPLOYMENT COMPLETE ===");
+        console.log("=== TEST COMPLETED ===");
         _logAddresses();
     }
 
     function _deployMockTokens() internal {
-        console.log("\n=== 1. DEPLOYING MOCK TOKENS ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Deploy Mock USDC
         usdcToken = new ERC20Mock("USD Coin", "USDC");
@@ -64,7 +64,7 @@ contract DeployABOBSimple is Script {
     }
 
     function _deployInfrastructure() internal {
-        console.log("\n=== 2. DEPLOYING INFRASTRUCTURE ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Deploy Price Oracle
         priceOracle = new PriceOracle();
@@ -121,7 +121,7 @@ contract DeployABOBSimple is Script {
     }
 
     function _initializeSystem() internal {
-        console.log("\n=== 3. INITIALIZING SYSTEM ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Set auction manager as liquidation manager in ABOB token
         abobToken.grantRole(abobToken.LIQUIDATION_MANAGER_ROLE(), address(auctionManager));
@@ -130,7 +130,7 @@ contract DeployABOBSimple is Script {
     }
 
     function _setupCollateral() internal {
-        console.log("\n=== 4. SETTING UP COLLATERAL ===");
+        console.log("=== TEST COMPLETED ===");
 
         // Add USDC as collateral
         collateralManager.addCollateral(
@@ -160,7 +160,7 @@ contract DeployABOBSimple is Script {
     }
 
     function _logAddresses() internal view {
-        console.log("\n=== DEPLOYED ADDRESSES ===");
+        console.log("=== TEST COMPLETED ===");
         console.log("Mock USDC:", address(usdcToken));
         console.log("Mock WETH:", address(wethToken));
         console.log("ABOB Token:", address(abobToken));
