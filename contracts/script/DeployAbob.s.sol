@@ -1,70 +1,352 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {Script, console} from "forge-std/Script.sol";
-import {AbobTokenV2} from "../src/AbobTokenV2.sol";
+import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ANDEToken} from "../src/ANDEToken.sol";
+import {AbobToken} from "../src/AbobToken.sol";
+import {PriceOracle} from "../src/PriceOracle.sol";
+import {CollateralManager} from "../src/CollateralManager.sol";
+import {AuctionManager} from "../src/AuctionManager.sol";
+import {sAbobToken} from "../src/sAbobToken.sol";
+import {AndeGovernor} from "../src/governance/AndeGovernor.sol";
+import {AndeTimelockController} from "../src/governance/AndeTimelockController.sol";
+import {VotingEscrow} from "../src/gauges/VotingEscrow.sol";
 
 /**
- * @title DeployAbob
- * @author Ande Labs
- * @notice This script deploys the AbobTokenV2 contract.
- * It requires the following environment variables to be set:
- * - ABOB_ADMIN_ADDRESS: The address that will be the admin of the AbobTokenV2.
- * - AUSD_TOKEN_ADDRESS: The address of the AUSD token contract.
- * - ANDE_TOKEN_ADDRESS: The address of the ANDE token contract.
- * - ANDE_PRICE_FEED_ADDRESS: The address of the ANDE/USD price feed oracle.
- * - ABOB_PRICE_FEED_ADDRESS: The address of the ABOB/USD price feed oracle.
- * - INITIAL_RATIO: The initial collateral ratio in basis points.
- * - PRIVATE_KEY: The private key of the deployer.
+ * @title DeployABOB
+ * @notice Script para desplegar el ecosistema ABOB CDP (Collateralized Debt Position)
+ * @dev Este script despliega todos los contratos principales del sistema ABOB
  */
-contract DeployAbob is Script {
-    address private abobAdminAddress;
-    address private ausdTokenAddress;
-    address private andeTokenAddress;
-    address private andePriceFeedAddress;
-    address private abobPriceFeedAddress;
-    uint256 private initialRatio;
+contract DeployABOB is Script {
+    // ==================== CONFIGURATION ====================
+    address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant USDC = 0xa0B86a33e6441B0E5c6a5D2D5f4D2d1B1e9e9E9E;
+    address constant ANDE_CHAINLINK_FEED = 0x1234567890123456789012345678901234567890;
+    address constant USDC_CHAINLINK_FEED = 0x1234567890123456789012345678901234567891;
+    address constant WETH_CHAINLINK_FEED = 0x1234567890123456789012345678901234567892;
 
-    function setUp() public {
-        abobAdminAddress = vm.envAddress("ABOB_ADMIN_ADDRESS");
-        ausdTokenAddress = vm.envAddress("AUSD_TOKEN_ADDRESS");
-        andeTokenAddress = vm.envAddress("ANDE_TOKEN_ADDRESS");
-        andePriceFeedAddress = vm.envAddress("ANDE_PRICE_FEED_ADDRESS");
-        abobPriceFeedAddress = vm.envAddress("ABOB_PRICE_FEED_ADDRESS");
-        initialRatio = vm.envUint("INITIAL_RATIO");
+    // Default deployment addresses (will be overridden by PRIVATE_KEY)
+    address private deployer;
+    address private timelock;
+    address private governor;
 
-        require(abobAdminAddress != address(0), "ABOB_ADMIN_ADDRESS env var not set");
-        require(ausdTokenAddress != address(0), "AUSD_TOKEN_ADDRESS env var not set");
-        require(andeTokenAddress != address(0), "ANDE_TOKEN_ADDRESS env var not set");
-        require(andePriceFeedAddress != address(0), "ANDE_PRICE_FEED_ADDRESS env var not set");
-        require(abobPriceFeedAddress != address(0), "ABOB_PRICE_FEED_ADDRESS env var not set");
-    }
+    // ==================== DEPLOYED CONTRACTS ====================
+    ANDEToken public andeToken;
+    AbobToken public abobToken;
+    PriceOracle public priceOracle;
+    CollateralManager public collateralManager;
+    AuctionManager public auctionManager;
+    sAbobToken public sAbobTokenContract;
+    VotingEscrow public votingEscrow;
+    AndeGovernor public andeGovernor;
+    AndeTimelockController public andeTimelock;
 
-    function run() public returns (AbobTokenV2) {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+    // ==================== RUN FUNCTION ====================
+    function run() external {
+        vm.startBroadcast();
 
-        // 1. Deploy the AbobTokenV2 implementation
-        AbobTokenV2 abobImplementation = new AbobTokenV2();
-        console.log("AbobTokenV2 implementation deployed to:", address(abobImplementation));
+        deployer = msg.sender;
 
-        // 2. Deploy the ERC1967Proxy for AbobTokenV2
-        bytes memory initData = abi.encodeWithSelector(
-            AbobTokenV2.initialize.selector,
-            abobAdminAddress,
-            ausdTokenAddress,
-            andeTokenAddress,
-            andePriceFeedAddress,
-            abobPriceFeedAddress,
-            initialRatio
-        );
-        ERC1967Proxy abobProxy = new ERC1967Proxy(address(abobImplementation), initData);
-        AbobTokenV2 abob = AbobTokenV2(address(abobProxy));
-        console.log("AbobTokenV2 proxy deployed to:", address(abob));
+        console.log("=== DEPLOYING ABOB ECOSYSTEM ===");
+        console.log("Deployer:", deployer);
+        console.log("Chain ID:", block.chainid);
+
+        // 1. Deploy Core Token Contracts first (needed for governance)
+        _deployTokens();
+
+        // 2. Deploy Timelock Controller (central point of control)
+        _deployTimelock();
+
+        // 3. Deploy Governance Contracts
+        _deployGovernance();
+
+        // 4. Deploy Infrastructure Contracts
+        _deployInfrastructure();
+
+        // 5. Initialize Ecosystem
+        _initializeEcosystem();
+
+        // 6. Setup Initial Collateral Types
+        _setupCollateralTypes();
+
+        // 7. Transfer Ownership to Governance
+        _transferToGovernance();
+
+        // 8. Save Deployment Info
+        _saveDeploymentInfo();
 
         vm.stopBroadcast();
 
-        return abob;
+        console.log("=== DEPLOYMENT COMPLETE ===");
+        _logDeploymentSummary();
+    }
+
+    // ==================== DEPLOYMENT FUNCTIONS ====================
+
+    function _deployTimelock() internal {
+        console.log("\n=== 1. DEPLOYING TIMELOCK ===");
+
+        andeTimelock = new AndeTimelockController();
+        timelock = address(andeTimelock);
+        console.log("AndeTimelock deployed at:", timelock);
+    }
+
+    function _deployGovernance() internal {
+        console.log("\n=== 2. DEPLOYING GOVERNANCE ===");
+
+        // Deploy VotingEscrow (veANDE) - direct deployment (no proxy)
+        votingEscrow = new VotingEscrow(
+            address(andeToken),
+            "veANDE",
+            "veANDE",
+            "1.0.0"
+        );
+        console.log("VotingEscrow deployed at:", address(votingEscrow));
+
+        // Deploy Governor
+        andeGovernor = new AndeGovernor();
+        governor = address(andeGovernor);
+        console.log("AndeGovernor deployed at:", governor);
+    }
+
+    function _deployTokens() internal {
+        console.log("\n=== 3. DEPLOYING TOKENS ===");
+
+        // Deploy ANDE Token
+        andeToken = new ANDEToken();
+        ERC1967Proxy andeProxy = new ERC1967Proxy(
+            address(andeToken),
+            abi.encodeWithSelector(
+                ANDEToken.initialize.selector,
+                deployer,
+                "Ande Token",
+                "ANDE",
+                timelock
+            )
+        );
+
+        andeToken = ANDEToken(address(andeProxy));
+        console.log("ANDEToken deployed at:", address(andeToken));
+
+        // Deploy ABOB Token (CDP)
+        abobToken = new AbobToken();
+        ERC1967Proxy abobProxy = new ERC1967Proxy(
+            address(abobToken),
+            abi.encodeWithSelector(
+                AbobToken.initialize.selector,
+                timelock, // Default admin
+                timelock, // Pauser
+                timelock, // Governance
+                address(0), // Price oracle (will be set after deployment)
+                address(0), // Collateral manager (will be set after deployment)
+                address(0)  // Liquidation manager (will be set after deployment)
+            )
+        );
+
+        abobToken = AbobToken(payable(address(abobProxy)));
+        console.log("AbobToken deployed at:", address(abobToken));
+
+        // Deploy sABOB Token (Yield Vault)
+        sAbobTokenContract = new sAbobToken();
+        ERC1967Proxy sAbobProxy = new ERC1967Proxy(
+            address(sAbobTokenContract),
+            abi.encodeWithSelector(
+                sAbobToken.initialize.selector,
+                address(abobToken), // Underlying ABOB token
+                timelock,
+                "Staked ABOB",
+                "sABOB"
+            )
+        );
+
+        sAbobTokenContract = sAbobToken(address(sAbobProxy));
+        console.log("sAbobToken deployed at:", address(sAbobTokenContract));
+    }
+
+    function _deployInfrastructure() internal {
+        console.log("\n=== 4. DEPLOYING INFRASTRUCTURE ===");
+
+        // Deploy Price Oracle
+        priceOracle = new PriceOracle();
+        ERC1967Proxy oracleProxy = new ERC1967Proxy(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.initialize.selector)
+        );
+
+        priceOracle = PriceOracle(address(oracleProxy));
+        console.log("PriceOracle deployed at:", address(priceOracle));
+
+        // Deploy Collateral Manager
+        collateralManager = new CollateralManager();
+        ERC1967Proxy collateralProxy = new ERC1967Proxy(
+            address(collateralManager),
+            abi.encodeWithSelector(
+                CollateralManager.initialize.selector,
+                timelock,
+                address(priceOracle)
+            )
+        );
+
+        collateralManager = CollateralManager(address(collateralProxy));
+        console.log("CollateralManager deployed at:", address(collateralManager));
+
+        // Deploy Auction Manager
+        auctionManager = new AuctionManager();
+        ERC1967Proxy auctionProxy = new ERC1967Proxy(
+            address(auctionManager),
+            abi.encodeWithSelector(
+                AuctionManager.initialize.selector,
+                timelock,
+                address(abobToken),
+                address(collateralManager)
+            )
+        );
+
+        auctionManager = AuctionManager(address(auctionProxy));
+        console.log("AuctionManager deployed at:", address(auctionManager));
+    }
+
+    function _initializeEcosystem() internal {
+        console.log("\n=== 5. INITIALIZING ECOSYSTEM ===");
+
+        // Initialize Timelock Controller only if not already initialized
+        try andeTimelock.getMinDelay() returns (uint256) {
+            console.log("Timelock already initialized");
+        } catch {
+            uint256 minDelay = 2 days; // 2 days delay for governance actions
+            address[] memory proposers = new address[](1);
+            address[] memory executors = new address[](1);
+            proposers[0] = governor;
+            executors[0] = address(0); // Anyone can execute
+            andeTimelock.initialize(minDelay, proposers, executors, deployer);
+
+            // Set up Timelock roles
+            andeTimelock.grantRole(andeTimelock.PROPOSER_ROLE(), governor);
+            andeTimelock.grantRole(andeTimelock.EXECUTOR_ROLE(), address(0));
+            andeTimelock.grantRole(andeTimelock.CANCELLER_ROLE(), governor);
+            console.log("Timelock initialized successfully");
+        }
+
+        // Grant roles to Auction Manager
+        abobToken.grantRole(abobToken.LIQUIDATION_MANAGER_ROLE(), address(auctionManager));
+
+        console.log("Ecosystem initialized");
+    }
+
+    function _setupCollateralTypes() internal {
+        console.log("\n=== 6. SETTING UP COLLATERAL TYPES ===");
+
+        // Add price sources to Oracle
+        priceOracle.addSource(USDC, USDC_CHAINLINK_FEED, "Chainlink USDC");
+        priceOracle.addSource(WETH, WETH_CHAINLINK_FEED, "Chainlink WETH");
+        priceOracle.addSource(address(andeToken), ANDE_CHAINLINK_FEED, "Chainlink ANDE");
+
+        // Add USDC as collateral
+        collateralManager.addCollateral(
+            USDC,
+            15000, // 150% over-collateralization ratio
+            12500, // 125% liquidation threshold
+            5_000_000 * 1e6, // 5M USDC debt ceiling
+            100 * 1e6,      // 100 USDC minimum deposit
+            address(priceOracle)
+        );
+
+        // Add WETH as collateral
+        collateralManager.addCollateral(
+            WETH,
+            16000, // 160% over-collateralization ratio (more volatile)
+            13000, // 130% liquidation threshold
+            2_000 * 1e18,   // 2K WETH debt ceiling
+            1 * 1e17,       // 0.1 WETH minimum deposit
+            address(priceOracle)
+        );
+
+        // Add ANDE as collateral
+        collateralManager.addCollateral(
+            address(andeToken),
+            20000, // 200% over-collateralization ratio (native token, higher risk)
+            15000, // 150% liquidation threshold
+            1_000_000 * 1e18, // 1M ANDE debt ceiling
+            1000 * 1e18,      // 1000 ANDE minimum deposit
+            address(priceOracle)
+        );
+
+        // Add supported collaterals to ABOB Token
+        abobToken.addSupportedCollateral(USDC);
+        abobToken.addSupportedCollateral(WETH);
+        abobToken.addSupportedCollateral(address(andeToken));
+
+        console.log("USDC added as collateral");
+        console.log("WETH added as collateral");
+        console.log("ANDE added as collateral");
+    }
+
+    function _transferToGovernance() internal {
+        console.log("\n=== 7. TRANSFERRING TO GOVERNANCE ===");
+
+        // Transfer ownership of contracts to Timelock
+        andeToken.grantRole(andeToken.DEFAULT_ADMIN_ROLE(), timelock);
+        abobToken.grantRole(abobToken.DEFAULT_ADMIN_ROLE(), timelock);
+        sAbobTokenContract.grantRole(sAbobTokenContract.DEFAULT_ADMIN_ROLE(), timelock);
+        priceOracle.transferOwnership(timelock);
+        collateralManager.transferOwnership(timelock);
+        auctionManager.transferOwnership(timelock);
+
+        // Renounce deployer's role in Timelock
+        andeTimelock.renounceRole(andeTimelock.DEFAULT_ADMIN_ROLE(), deployer);
+
+        console.log("Ownership transferred to governance");
+    }
+
+    function _saveDeploymentInfo() internal {
+        console.log("\n=== 8. SAVING DEPLOYMENT INFO ===");
+
+        // Simple deployment info logging
+        console.log("=== DEPLOYED ADDRESSES ===");
+        console.log("ANDEToken:", address(andeToken));
+        console.log("AbobToken:", address(abobToken));
+        console.log("sAbobToken:", address(sAbobTokenContract));
+        console.log("PriceOracle:", address(priceOracle));
+        console.log("CollateralManager:", address(collateralManager));
+        console.log("AuctionManager:", address(auctionManager));
+        console.log("VotingEscrow:", address(votingEscrow));
+        console.log("AndeGovernor:", address(andeGovernor));
+        console.log("AndeTimelock:", address(andeTimelock));
+
+        console.log("Deployment info logged to console");
+    }
+
+    function _logDeploymentSummary() internal {
+        console.log("\n=== DEPLOYMENT SUMMARY ===");
+        console.log("Network:", block.chainid == 1 ? "Mainnet" : block.chainid == 31337 ? "Local" : vm.toString(block.chainid));
+        console.log("Deployer:", deployer);
+        console.log("");
+        console.log("TOKENS:");
+        console.log("  ANDE Token:", address(andeToken));
+        console.log("  ABOB Token:", address(abobToken));
+        console.log("  sABOB Token:", address(sAbobTokenContract));
+        console.log("");
+        console.log("INFRASTRUCTURE:");
+        console.log("  Price Oracle:", address(priceOracle));
+        console.log("  Collateral Manager:", address(collateralManager));
+        console.log("  Auction Manager:", address(auctionManager));
+        console.log("");
+        console.log("GOVERNANCE:");
+        console.log("  Voting Escrow:", address(votingEscrow));
+        console.log("  Governor:", address(andeGovernor));
+        console.log("  Timelock:", address(andeTimelock));
+        console.log("");
+        console.log("SUPPORTED COLLATERALS:");
+        console.log("  USDC:", USDC);
+        console.log("  WETH:", WETH);
+        console.log("  ANDE:", address(andeToken));
+        console.log("");
+        console.log("NEXT STEPS:");
+        console.log("1. Verify contracts on Etherscan");
+        console.log("2. Fund price oracle adapters with ETH");
+        console.log("3. Initialize price feeds");
+        console.log("4. Set up frontend integrations");
+        console.log("5. Start marketing and user onboarding");
     }
 }
