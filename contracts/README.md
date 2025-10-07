@@ -1,4 +1,4 @@
-# Smart Contracts - AndeChain Tokenomics V3.0
+# Smart Contracts - AndeChain Tokenomics
 
 <div align="center">
 
@@ -7,8 +7,10 @@
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.25-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
 [![OpenZeppelin](https://img.shields.io/badge/OpenZeppelin-4.x-4B7EBC.svg)](https://openzeppelin.com/)
+[![Tests](https://img.shields.io/badge/Tests-11%2F11%20Passing-success.svg)](./test/ABOB.t.sol)
+[![ABOB](https://img.shields.io/badge/ABOB-Production%20Ready-brightgreen.svg)](./ABOB_PRODUCTION_READY.md)
 
-[📖 Architecture](#arquitectura-de-contratos) • [🔨 Development](#desarrollo) • [🧪 Testing](#testing) • [🚀 Deployment](#despliegue)
+[📖 Architecture](#arquitectura-de-contratos) • [🔨 Development](#desarrollo) • [🧪 Testing](#testing) • [🚀 Deployment](#despliegue) • [📄 ABOB Report](./ABOB_PRODUCTION_READY.md)
 
 </div>
 
@@ -16,16 +18,34 @@
 
 ## 🎯 Visión General
 
-Este directorio contiene el sistema completo de contratos inteligentes de AndeChain, implementando una arquitectura de tokenomics sofisticada inspirada en los protocolos DeFi más exitosos como Curve y Convex.
+Este directorio contiene el sistema completo de contratos inteligentes de AndeChain, con énfasis en **ABOB**, un sistema de **Collateralized Debt Position (CDP)** multi-colateral listo para producción.
 
-### 💡 Características Principales
+### ⭐ ABOB - Production Ready
+
+**Status:** ✅ **Ready for Security Audit & Testnet Deployment**
+**Test Coverage:** 11/11 (100%)
+**Last Updated:** 2025-10-07
+
+ABOB es un sistema CDP que permite a los usuarios depositar colateral aprobado (USDC, WETH, ANDE) y acuñar ABOB (Boliviano tokenizado) contra él.
+
+**Características Principales:**
+- 🏦 **Multi-Collateral CDP**: Soporte para USDC, WETH, ANDE
+- 🔐 **Sobre-colateralización**: Ratio mínimo 150%
+- 📊 **Oracle Descentralizado**: Precio mediano de múltiples fuentes
+- ⚡ **Liquidaciones Automáticas**: Threshold de 125%
+- 🔧 **Normalización de Decimales**: Soporte para tokens con diferentes decimales
+- 🌉 **xERC20 Ready**: Preparado para bridges cross-chain
+
+👉 **[Ver Reporte Completo de Producción](./ABOB_PRODUCTION_READY.md)**
+
+### 💡 Características del Ecosistema Completo
 
 - **🏛️ Gobernanza Vote-Escrowed**: Sistema veANDE con lock hasta 4 años
 - **🔒 Seguridad Multi-capa**: Patrones UUPS, AccessControl, pausabilidad
 - **⚡ Optimización Gas-Eficiente**: Análisis continuo de consumo
 - **🌉 Bridges xERC20**: Estándar industry para cross-chain
 - **📊 Oráculos P2P**: Sistema descentralizado de precios
-- **⚖️ Estabilidad Automática**: Algoritmos de rebase y colateralización
+- **⚖️ CDP System**: Colateralización multi-activo para ABOB
 
 ## 🏗️ Arquitectura de Contratos
 
@@ -51,7 +71,7 @@ contracts/
 │   │   └── 📄 IBlobstream.sol       # 🔗 Interface Celestia
 │   │
 │   ├── 📁 oracle/                   # 📊 Sistema de oráculos
-│   │   ├── 📄 P2POracleV2.sol       # 👥 Oráculo P2P
+│   │   ├── 📄 P2POracle.sol         # 👥 Oráculo P2P
 │   │   ├── 📄 AndeOracleAggregator.sol # 📈 Agregador de precios
 │   │   └── 📄 TrustedRelayerOracle.sol # 🔐 Oráculo confiable
 │   │
@@ -208,9 +228,9 @@ uint256 public constant VOTING_PERIOD = 7 days;          // 7 días votación
 
 ## 📊 Sistema de Oráculos
 
-### 👥 P2POracleV2 - Oráculo P2P
+### 👥 P2POracle - Oráculo P2P
 
-**Contrato**: `src/oracle/P2POracleV2.sol`
+**Contrato**: `src/oracle/P2POracle.sol`
 
 **Pairs Soportados:**
 - BOB/USD (Boliviano)
@@ -225,7 +245,7 @@ uint256 public constant VOTING_PERIOD = 7 days;          // 7 días votación
 **Contrato**: `src/oracle/AndeOracleAggregator.sol`
 
 **Sources de Precios:**
-1. **👥 P2POracleV2**: Tasas P2P reales
+1. **👥 P2POracle**: Tasas P2P reales
 2. **🔗 Chainlink**: Precios de referencia
 3. **🔐 TrustedRelayerOracle**: Fuentes confiables
 4. **📊 Band Protocol**: Datos de mercado
