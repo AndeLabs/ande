@@ -69,21 +69,23 @@ Estás mezclando conceptos de rollup soberano puro con arquitecturas híbridas q
 ### 2. **SISTEMA DE STABLECOIN: ARQUITECTURA "ABOB 2.0 - PROTOCOLO DE DEUDA COLATERALIZADA"**
 
 #### Evolución del Concepto:
-Hemos adoptado un modelo de **Protocolo de Deuda Colateralizada (CDP)**, inspirado en los líderes de la industria como MakerDAO. Este sistema permite a los usuarios acuñar ABOB contra un colateral diverso depositado en sus propias bóvedas (`Vaults`), creando un sistema resiliente y sobre-colateralizado.
+Adoptamos un modelo de **Protocolo de Deuda Colateralizada (CDP)**, inspirado en los líderes de la industria como MakerDAO. Este sistema permite a los usuarios acuñar ABOB contra un colateral diverso depositado en sus propias bóvedas (`Vaults`), creando un sistema resiliente y sobre-colateralizado.
 
 #### Solución Arquitectónica Superior: **Sistema Híbrido y Multi-Colateral**
 
 **Componentes Clave:**
 
-1.  **Vaults de Usuario Individuales:** Cada usuario gestiona su propia posición de deuda y colateral, aislando el riesgo.
+1.  **Token Nativo (`ANDE`) con Dualidad (Token Duality):** Para una experiencia de usuario superior, `ANDE` funciona simultáneamente como token nativo para gas y como un token ERC-20 estándar a través de un precompile a nivel de cliente. Esto **elimina la necesidad de un `WANDE` (Wrapped ANDE)**, simplificando drásticamente las interacciones para usuarios y desarrolladores.
 
-2.  **Registro de Colaterales Dinámico:** La gobernanza puede aprobar una canasta diversa de activos (`USDC`, `wETH`, `ANDE`, etc.), cada uno con sus propios parámetros de riesgo.
+2.  **Vaults de Usuario Individuales:** Cada usuario gestiona su propia posición de deuda y colateral, aislando el riesgo.
 
-3.  **Oráculo de Precios Híbrido y Adaptativo:** Para reflejar con precisión el "precio de calle" P2P, el sistema utiliza un oráculo multi-capa que agrega datos de **reporteros ciudadanos (P2P)**, **secuenciadores** y **APIs externas**. Utiliza un **Medianizer** para resistir la manipulación y un sistema **IQR dinámico** para adaptarse a la volatilidad del mercado, asegurando un precio robusto y fiable.
+3.  **Registro de Colaterales Dinámico:** La gobernanza puede aprobar una canasta diversa de activos (`USDC`, `wETH`, `ANDE`, etc.), cada uno con sus propios parámetros de riesgo.
 
-4.  **Liquidaciones por Subasta Holandesa (Dutch Auctions):** Un sistema justo y eficiente que asegura el mejor precio de mercado para el colateral liquidado, devolviendo el excedente al dueño del vault.
+4.  **Oráculo de Precios Híbrido y Adaptativo:** Para reflejar con precisión el "precio de calle" P2P, el sistema utiliza un oráculo multi-capa que agrega datos de **reporteros ciudadanos (P2P)**, **secuenciadores** y **APIs externas**. Utiliza un **Medianizer** para resistir la manipulación y un sistema **IQR dinámico** para adaptarse a la volatilidad del mercado, asegurando un precio robusto y fiable.
 
-5.  **Gobernanza con Incentivos a Largo Plazo (`veANDE`):** El poder de voto se basa en el modelo `Vote-Escrow`, alineando la gobernanza con la salud a largo plazo del protocolo.
+5.  **Liquidaciones por Subasta Holandesa (Dutch Auctions):** Un sistema justo y eficiente que asegura el mejor precio de mercado para el colateral liquidado, devolviendo el excedente al dueño del vault.
+
+6.  **Gobernanza con Incentivos a Largo Plazo (`veANDE`):** El poder de voto se basa en el modelo `Vote-Escrow`, alineando la gobernanza con la salud a largo plazo del protocolo.
 
 **Flujo conceptual de acuñación (minting):**
 

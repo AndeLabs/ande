@@ -153,10 +153,11 @@ Este roadmap está organizado por **CAPACIDADES**, no por tiempo. Cada fase cons
 #### Smart Contracts Core
 ```
 ANDEToken.sol
+  ├─ Token Duality (Nativo + ERC-20 via Precompile)
+  ├─ Elimina la necesidad de "Wrapped ANDE" (WANDE)
   ├─ ERC20Votes (gobernanza)
   ├─ ERC20Permit (gasless approvals)
-  ├─ Burnable & Pausable
-  └─ Role-based access control
+  └─ Burnable & Pausable
 
 AusdToken.sol
   ├─ Multi-collateral vault
@@ -560,6 +561,16 @@ Linear decay:
 **Optimizar costos, velocidad y experiencia de usuario del sistema.**
 
 ### 📦 Componentes
+
+#### Abstracción de Comisiones (Fee Abstraction)
+
+Inspirado en una de las características más potentes de Celo, implementaremos la capacidad de que los usuarios paguen las comisiones de transacción en tokens ERC-20 aprobados por la gobernanza, como nuestra propia stablecoin `ABOB` o `USDC`.
+
+**Beneficio Principal:** Elimina el problema del "huevo y la gallina" para los nuevos usuarios. Podrán llegar a AndeChain con un stablecoin popular y empezar a operar inmediatamente, sin la necesidad de adquirir `ANDE` primero para pagar el gas. Esta es una mejora radical en la experiencia de usuario y un pilar para la adopción masiva.
+
+**Arquitectura:**
+- Se utilizará un tipo de transacción especial (similar a CIP-64 de Celo) que especifica la moneda de pago.
+- Un contrato `FeeCurrencyDirectory` gestionado por la gobernanza mantendrá la lista de tokens aceptados y sus oráculos de precio contra ANDE.
 
 #### MEV Protection
 
