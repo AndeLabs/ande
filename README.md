@@ -74,11 +74,12 @@
 
 | 🎯 **Característica** | 🌟 **Impacto** |
 |:-------------------:|:------------:|
-| **🪙 ANDE Token** | Gas nativo para soberanía económica |
-| **🇧🇴 Stablecoins Locales** | ABOB (Boliviano) y más monedas regionales |
-| **🌉 Puentes a BSC** | Conectividad con el ecosistema más usado en LATAM |
-| **📊 Oráculos P2P** | Tasas de cambio justas y descentralizadas |
-| **🏛️ Gobernanza veANDE** | Democracia on-chain para decisiones estratégicas |
+| **🪙 Token Dual Nativo/ERC-20** | **Experiencia de Usuario Superior.** ANDE funciona para gas y en dApps sin necesidad de "wrapped tokens", eliminando una capa de complejidad para el usuario. |
+| **💸 Abstracción de Comisiones** | **Adopción sin Fricción.** Los usuarios pueden pagar comisiones en tokens como ABOB o USDC, eliminando la necesidad de adquirir ANDE para empezar a operar. |
+| **🇧🇴 Stablecoins Locales** | ABOB (Boliviano) y más monedas regionales para protegerse de la devaluación y facilitar el comercio. |
+| **🌉 Puentes a Ecosistemas Clave** | Conectividad con el ecosistema más usado en LATAM (como BSC) y el más robusto (Ethereum). |
+| **📊 Oráculos P2P** | Tasas de cambio justas y descentralizadas que reflejan la realidad del mercado local. |
+| **🏛️ Gobernanza veANDE** | Democracia on-chain donde el poder recae en los holders más comprometidos a largo plazo. |
 
 ---
 

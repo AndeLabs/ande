@@ -70,6 +70,27 @@ El sistema se descompone en varios contratos modulares e interconectados:
 | **`veANDE.sol`** | Contrato de Vote-Escrow que gestiona el poder de voto de los usuarios. | ERC20, VotingEscrow |
 | **`sABOB.sol`** | Vault de rendimiento (ERC4626) que acumula los ingresos del protocolo. | ERC4626 |
 
+### 2.1 Arquitectura del Token Nativo ANDE (Token Duality)
+
+Para proporcionar una experiencia de usuario y de desarrollador superior, AndeChain implementa el patrón "Token Duality" para su token nativo `ANDE`, eliminando la necesidad de una versión "envuelta" (`WANDE`).
+
+**Concepto Técnico:**
+El token `ANDE` existe simultáneamente como el activo nativo para el pago de gas y como un token que cumple con el estándar ERC-20, sin duplicación de balances.
+
+**Mecanismo de Implementación:**
+
+1.  **Contrato `ANDEToken.sol` (Interfaz ERC-20):** Se despliega un contrato ERC-20 que actúa como una "interfaz" o "control remoto" para el token nativo. Este contrato no posee un `mapping` de balances como un ERC-20 tradicional.
+    *   **Función `balanceOf(address)`:** En lugar de consultar un `mapping` interno, esta función utiliza código de bajo nivel para leer el **balance nativo** de la cuenta consultada (`account.balance`).
+    *   **Función `transfer(address, uint)`:** En lugar de modificar un `mapping`, esta función codifica los parámetros de la transferencia y realiza una llamada a un **contrato precompilado (precompile)**.
+
+2.  **Precompile de Transferencia (en `ev-reth`):**
+    *   Se introduce una modificación a nivel del cliente de ejecución (`ev-reth`) para registrar un nuevo precompile en una dirección designada (ej. `0x...fd`).
+    *   Este precompile, escrito en Rust, tiene acceso directo a la base de datos de estado de la blockchain.
+    *   Al ser llamado por el contrato `ANDEToken.sol`, el precompile ejecuta una transferencia de balance nativo, restando `ANDE` del emisor y sumándolo al receptor.
+    *   Una verificación de seguridad crítica dentro del precompile asegura que solo pueda ser invocado por la dirección oficial del contrato `ANDEToken.sol`.
+
+**Resultado:** Una transferencia iniciada a través de la interfaz ERC-20 del contrato resulta en una transferencia nativa real. Esto permite que las dApps interactúen con `ANDE` como si fuera un ERC-20 cualquiera, mientras que los usuarios solo ven y gestionan un único token `ANDE` en sus wallets.
+
 ---
 
 ## 3. El Modelo de Vaults (CDP)
