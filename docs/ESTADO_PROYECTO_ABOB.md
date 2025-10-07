@@ -1,18 +1,18 @@
 # 🇧🇴 ANDE LABS - Estado del Proyecto Sistema Stablecoin Boliviano (ABOB)
-**Fecha de Actualización:** 6 de Octubre, 2025
-**Branch Actual:** `feature/xerc20-implementation`
-**Objetivo Principal:** Sistema de moneda estable vinculada al Boliviano boliviano (ABOB)
+**Fecha de Actualización:** 7 de Octubre, 2025
+**Branch Actual:** `develop`
+**Objetivo Principal:** Protocolo de Deuda Colateralizada (CDP) multi-activo para ABOB
 
 ---
 
 ## 📊 RESUMEN EJECUTIVO
 
-**AndeChain** es un rollup soberano EVM en Celestia diseñado para resolver la fragmentación financiera en América Latina. El componente central es **ABOB (Andean Boliviano)**, una stablecoin híbrida algorítmica vinculada a monedas locales.
+**AndeChain** es un rollup soberano EVM en Celestia diseñado para resolver la fragmentación financiera en América Latina. El componente central es **ABOB (Andean Boliviano)**, un token CDP multi-colateral inspirado en MakerDAO.
 
-### Visión Final del Sistema ABOB
+### Visión Final del Sistema ABOB 2.0
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  ECOSISTEMA ABOB - Stablecoin del Boliviano Boliviano  │
+│   ABOB 2.0 - Protocolo CDP Multi-Colateral            │
 └─────────────────────────────────────────────────────────┘
                          │
         ┌────────────────┼────────────────┐
@@ -23,9 +23,9 @@
    └────┬─────┘    └────┬─────┘    └────┬─────┘
         │                │                │
         │                │                │
-   Colateral      Generación       Cross-chain
-   Dual           de Yield         Interoperability
-   (AUSD+ANDE)    (ERC-4626)       (Multi-cadena)
+   Sobre-         Generación       Cross-chain
+   colateral      de Yield         Interoperability
+   Multi-activo   (ERC-4626)       (Multi-cadena)
 ```
 
 ---
@@ -74,33 +74,37 @@ DEFAULT_ADMIN    → Multi-sig governance
 
 #### B. ABOB Token (`AbobToken.sol`) - NÚCLEO DEL PROYECTO
 **Ubicación:** `/contracts/src/AbobToken.sol`
-**Estado:** ✅ Implementado - Sistema de Colateral Dual
+**Estado:** ✅ Implementado - Sistema CDP Multi-Colateral
 
-**Mecanismo de Estabilidad Híbrida:**
+**Mecanismo CDP Multi-Colateral:**
 ```
-Usuario deposita → Mint ABOB
+Usuario deposita colateral → Mint ABOB (deuda)
     ↓
-Colateral Dual:
-├─ AUSD (Stablecoin USD) → Parte estable
-└─ ANDE (Token nativo)   → Parte algorítmica
+Colateral Aceptado:
+├─ USDC (Stablecoin USD) → 150% ratio
+├─ wETH (ETH)             → 125% ratio
+├─ ANDE (Token nativo)    → 175% ratio
+└─ Otros activos aprobados por gobernanza
 
-Ratio configurable por gobernanza (ej: 70% AUSD / 30% ANDE)
+Sistema de Vaults personales con liquidaciones por subasta holandesa
 ```
 
 **Funciones Core Implementadas:**
 ```solidity
-// Acuñar ABOB depositando colateral dual
-mint(uint256 _abobAmountToMint)
-  → Calcula AUSD requerido según collateralRatio
-  → Calcula ANDE requerido según precio de oráculos
-  → Transfiere ambos colaterales al contrato
+// Crear vault y mintear ABOB
+depositAndMint(address[] _collaterals, uint256[] _amounts, uint256 _abobToMint)
+  → Verifica que colateral sea soportado
+  → Valora colateral vía oráculos
+  → Verifica ratio de sobre-colateralización
+  → Crea/actualiza vault del usuario
   → Acuña ABOB al usuario
 
-// Redimir ABOB por colateral
-redeem(uint256 _abobAmountToBurn)
+// Saldar deuda y recuperar colateral
+burnAndWithdraw(uint256 _abobAmount, address[] _collaterals, uint256[] _amounts)
   → Quema ABOB del usuario
-  → Devuelve AUSD + ANDE proporcionales
-  → Ajustado por precio actual de oráculos
+  → Verifica health ratio del vault
+  → Transfiere colateral solicitado
+  → Actualiza vault del usuario
 ```
 
 **Características de Seguridad:**
@@ -117,14 +121,14 @@ redeem(uint256 _abobAmountToBurn)
 
 **Variables de Gobernanza:**
 ```solidity
-collateralRatio → Proporción AUSD vs ANDE (ajustable)
-andePriceFeed   → Oracle de precio ANDE
-abobPriceFeed   → Oracle de precio ABOB/BOB
+collateralSettings → Configuración por tipo de colateral
+priceOracle        → Oráculo agregador de precios
+liquidationManager → Gestor de subastas holandesas
 ```
 
 ---
 
-#### C. sABOB Token (`sAbobToken.sol`) - Yield-Bearing Stablecoin
+#### C. sABOB Token (`sAbobToken.sol`) - Yield-Bearing CDP Vault
 **Ubicación:** `/contracts/src/sAbobToken.sol`
 **Estado:** ✅ Implementado - ERC-4626 Vault
 
@@ -133,10 +137,10 @@ abobPriceFeed   → Oracle de precio ABOB/BOB
 Usuario deposita ABOB → Recibe sABOB shares
     ↓
 Yield generado por:
-├─ Trading fees del DEX
-├─ Intereses de lending
-├─ Bridge fees
-└─ Otras fuentes de revenue
+├─ Stability fees del CDP system
+├─ Liquidation bonuses (excedente de subastas)
+├─ Intereses de colateral (ej: ETH staking)
+└─ Protocol fees (bridge, etc.)
 
 Contratos con YIELD_DEPOSITOR_ROLE depositan ganancias
 → Aumenta el valor de sABOB shares automáticamente
@@ -155,40 +159,9 @@ depositYield(uint256 amount)  // Solo YIELD_DEPOSITOR_ROLE
 ```
 
 **Ventaja Clave:**
-- Los holders de sABOB ganan yield pasivo sin perder exposición a la stablecoin
+- Los holders de sABOB ganan yield generado por el sistema CDP
 - Compatible con DeFi (puede usarse como colateral en otros protocolos)
-
----
-
-#### D. AUSD Token (`AusdToken.sol`) - Stablecoin USD Colateralizada
-**Ubicación:** `/contracts/src/AusdToken.sol`
-**Estado:** ✅ Implementado - Multi-Collateral Vault
-
-**Mecanismo:**
-```
-Usuario deposita colateral aprobado (USDC, USDT, etc.)
-    ↓
-Colateral valorado por oráculos
-    ↓
-Mint AUSD con over-collateralization ratio
-(Ejemplo: 150% → deposita $150 USDC, recibe 100 AUSD)
-```
-
-**Características:**
-- ✅ Multi-collateral support (múltiples tipos de colateral)
-- ✅ Oráculos de precio por tipo de colateral
-- ✅ Ratios de colateralización configurables por asset
-- ✅ Cálculos precisos con normalización de decimales
-- ✅ Funciones privilegiadas para integración con StabilityEngine
-
-**Funciones Admin:**
-```solidity
-addCollateralType(address _collateral, uint128 _ratio, address _priceFeed)
-updateCollateralRatio(address _collateral, uint128 _newRatio)
-```
-
-**Integración con ABOB:**
-AUSD es el componente "estable" del colateral dual de ABOB, proporcionando resistencia a volatilidad.
+- Share del revenue del protocolo ABOB
 
 ---
 
@@ -218,7 +191,9 @@ Precio finalizado → usado por contratos (ABOB, AUSD, etc.)
 - ✅ Compatible con interfaz IOracle (Chainlink-like)
 
 **Uso en el Ecosistema:**
-- Precio ANDE/USD → usado en mint/redeem de ABOB
+- Precio USDC/USD → valoración de colateral principal
+- Precio wETH/USD → valoración de colateral ETH
+- Precio ANDE/USD → valoración de colateral nativo
 - Precio ABOB/BOB → vinculación al Boliviano
 
 ---
@@ -230,6 +205,7 @@ Precio finalizado → usado por contratos (ABOB, AUSD, etc.)
 **Características:**
 - Agrega múltiples fuentes de oráculos
 - Proporciona resistencia contra fallas de un oracle single-point
+- Cálculo de mediana con IQR para detección de anomalías
 
 ---
 
@@ -241,17 +217,17 @@ Precio finalizado → usado por contratos (ABOB, AUSD, etc.)
 
 ---
 
-### 4. StabilityEngine - Motor de Estabilidad ✅
-**Ubicación:** `/contracts/src/StabilityEngine.sol`
+### 4. Sistema de Liquidación (Subastas Holandesas) ✅
+**Ubicación:** `/contracts/src/AuctionManager.sol`
 **Estado:** ✅ Implementado
 
 **Función:**
-- Sistema alternativo para mint/burn de AUSD usando solo ANDE como colateral
-- Complementa el sistema multi-collateral de AusdToken
-- Ratio de colateralización configurable
+- Gestiona liquidaciones de vaults con health ratio bajo
+- Subastas holandesas para venta eficiente de colateral
+- Distribución justa de excedentes a dueños de vaults
 
 **Relación con ABOB:**
-Permite generar AUSD (componente del colateral de ABOB) usando solo ANDE, cerrando el loop del ecosistema.
+Protege la solvencia del sistema CDP liquidando posiciones de riesgo cuando el colateral cae por debajo del ratio mínimo.
 
 ---
 
@@ -281,11 +257,10 @@ Quarterly Burns:
 
 **Tests Completos:**
 - ✅ `ANDEToken.t.sol` - Cobertura completa del token ANDE
-- ✅ `AbobToken.t.sol` - Tests de mint/redeem ABOB con colateral dual
-- ✅ `AusdToken.t.sol` - Tests de multi-collateral vault
+- ✅ `AbobToken.t.sol` - Tests de sistema CDP multi-colateral
 - ✅ `sAbobToken.t.sol` - Tests de ERC-4626 yield vault
 - ✅ `P2POracleV2.t.sol` - Tests de oracle descentralizado
-- ✅ `StabilityEngine.t.sol` - Tests de motor de estabilidad
+- ✅ `AuctionManager.t.sol` - Tests de sistema de liquidación
 - ✅ `DualTrackBurnEngine.t.sol` - Tests de mecanismo deflacionario
 
 **Cómo ejecutar:**
@@ -733,7 +708,7 @@ Privacy L3:
              │
     ┌────────▼───────────┐
     │  Smart Contracts   │
-    │    ABOB System     │
+    │    ABOB CDP System │
     └────────┬───────────┘
              │
       ┌──────┴──────┐
@@ -741,37 +716,40 @@ Privacy L3:
 ┌─────▼─────┐  ┌───▼────┐
 │   ABOB    │  │ sABOB  │
 │  Token    │  │ Vault  │
+│ (Deuda)   │  │ Yield  │
 └─────┬─────┘  └───┬────┘
       │            │
-      │ Colateral  │ Yield
-      │ Dual       │ Generation
+      │ Colateral  │ Protocol
+      │ Multi-     │ Revenue
+      │ Activo     │ (fees, liquidaciones)
       │            │
 ┌─────▼─────┐  ┌───▼────────┐
-│   AUSD    │  │  Revenue   │
-│(Stable)   │  │  Sources:  │
-└─────┬─────┘  │ - DEX fees │
-      │        │ - Lending  │
-┌─────▼─────┐  │ - Bridges  │
-│   ANDE    │  └────────────┘
-│(Volatile) │
+│   USDC    │  │  Revenue   │
+│ wETH etc. │  │  Sources:  │
+└─────┬─────┘  │ - Stability fees │
+      │        │ - Liquidation    │
+┌─────▼─────┐  │   bonuses        │
+│   ANDE    │  │ - Bridge fees    │
+│(Native)   │  └──────────────────┘
 └─────┬─────┘
       │
       │ Precio
       │ Oracle
       │
 ┌─────▼──────┐
-│ P2POracle  │
-│   V2       │
+│ AndeOracle │
+│ Aggregator │
 └────────────┘
       │
       │ Reporters
-      │ Staking ANDE
+      │ Multi-fuente
       │
 ┌─────▼──────────┐
 │  Price Feeds:  │
+│ - USDC/USD     │
+│ - wETH/USD     │
 │ - ANDE/USD     │
 │ - ABOB/BOB     │
-│ - USDC/USD     │
 └────────────────┘
 ```
 
