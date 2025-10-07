@@ -1,0 +1,51 @@
+{
+  "name": "@andechain/aa-bundler",
+  "version": "1.0.0",
+  "description": "Account Abstraction Bundler para AndeChain",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "account-abstraction",
+    "erc4337",
+    "bundler",
+    "andechain",
+    "blockchain"
+  ],
+  "author": "Ande Labs",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.13.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "winston": "^3.13.0",
+    "uuid": "^9.0.1",
+    "joi": "^17.13.3",
+    "async": "^3.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/uuid": "^9.0.8",
+    "@types/jest": "^29.5.12",
+    "@typescript-eslint/eslint-plugin": "^7.16.1",
+    "@typescript-eslint/parser": "^7.16.1",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
