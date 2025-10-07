@@ -242,11 +242,12 @@ docker compose -f sequencer.yml up -d
 andechain/
 ├── 📁 contracts/                    # 🔨 Smart Contracts (Foundry)
 │   ├── 📁 src/                      # 📄 Código fuente
-│   │   ├── 📁 tokens/               # 🪙 Tokens (ANDE, ABOB, AUSD)
+│   │   ├── 📁 tokens/               # 🪙 Tokens (ANDE, ABOB, sABOB)
 │   │   ├── 📁 governance/           # 🏛️ Gobernanza (Governor, Timelock)
 │   │   ├── 📁 bridge/               # 🌉 Bridges (AndeChain ↔ BSC)
 │   │   ├── 📁 oracle/               # 📊 Oráculos P2P
-│   │   └── 📁 stability/            # ⚖️ Motor de estabilidad
+│   │   ├── 📁 gauges/               # 📊 Sistema veANDE
+│   │   └── 📁 burn/                 # 🔥 Mecanismos deflacionarios
 │   ├── 📁 test/                     # 🧪 Tests
 │   └── 📁 script/                   # 🚀 Scripts de deploy
 │
