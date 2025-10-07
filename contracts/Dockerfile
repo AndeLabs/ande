@@ -35,14 +35,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     rm -rf /var/lib/apt/lists/*
 USER foundry
 
-# Create CI scripts directory
-RUN mkdir -p .github/scripts
-
-# Copy CI scripts (will be mounted as volume in CI)
-COPY .github/scripts/ .github/scripts/
-
-# Make scripts executable
-RUN chmod +x .github/scripts/*.js .github/scripts/*.py
+# Note: CI scripts handled in CI/CD pipeline, not in local development
 
 # Set permissions back to foundry user
 USER foundry
