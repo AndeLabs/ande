@@ -56,8 +56,7 @@ contracts/
 ├── 📁 src/                          # 🔨 Código fuente principal
 │   ├── 📁 tokens/                   # 🪙 Tokens del ecosistema
 │   │   ├── 📄 ANDEToken.sol         # 🔥 Token nativo + gobernanza
-│   │   ├── 📄 AusdToken.sol         # 💵 Stablecoin algorítmica
-│   │   ├── 📄 AbobToken.sol         # 🇧🇴 Boliviano tokenizado
+│   │   ├── 📄 AbobToken.sol         # 🇧🇴 Boliviano tokenizado (CDP)
 │   │   └── 📄 sAbobToken.sol        # 💰 ABOB staked con yield
 │   │
 │   ├── 📁 governance/               # 🏛️ Sistema de gobernanza
@@ -75,8 +74,12 @@ contracts/
 │   │   ├── 📄 AndeOracleAggregator.sol # 📈 Agregador de precios
 │   │   └── 📄 TrustedRelayerOracle.sol # 🔐 Oráculo confiable
 │   │
-│   ├── 📁 stability/                # ⚖️ Motor de estabilidad
-│   │   ├── 📄 StabilityEngine.sol   # 🎯 Motor principal
+│   ├── 📁 gauges/                   # 📊 Sistema de gauges (veANDE)
+│   │   ├── 📄 VotingEscrow.sol      # 🗳️ veANDE vote-escrow
+│   │   ├── 📄 GaugeController.sol   # 📊 Controlador de gauges
+│   │   └── 📄 LiquidityGaugeV1.sol  # 💰 Gauge de liquidez
+
+│   ├── 📁 burn/                     # 🔥 Mecanismos de deflación
 │   │   └── 📄 DualTrackBurnEngine.sol # 🔥 Quema dual
 │   │
 │   ├── 📁 xERC20/                   # 🔐 Estándar xERC20
@@ -138,24 +141,24 @@ PAUSER_ROLE    // Admin - emergencias
 DEFAULT_ADMIN_ROLE  // Gobernanza - actualizaciones
 ```
 
-### 💵 AusdToken - Stablecoin Algorítmica
-
-**Contrato**: `src/tokens/AusdToken.sol`
-
-**Características:**
-- **🎯 Peg al USD**: Mantenido por StabilityEngine
-- **🔄 Rebase Mechanism**: Ajustes automáticos de supply
-- **📊 Oracle-Based**: Precios de colateralización via oráculos
-- **⚖️ Collateral Ratio**: Mantenimiento de ratio saludable
-
-### 🇧🇴 AbobToken - Boliviano Tokenizado
+### 🏦 CDP System - Multi-Collateral Vaults
 
 **Contrato**: `src/tokens/AbobToken.sol`
 
 **Características:**
-- **🎯 1:1 BOB Peg**: Tokenizado 1:1 con Boliviano
-- **🏦 Banking Integration**: Conectividad con sistema bancario
-- **📈 Yield Generation**: Intereses vía sAbobToken
+- **🎯 Multi-Colateral**: USDC, wETH, ANDE y otros activos
+- **⚖️ Sobre-colateralización**: Ratios mínimos configurables
+- **📊 Oracle-Based**: Valoración vía oráculos descentralizados
+- **🔨 Liquidation System**: Subastas holandesas automáticas
+
+### 🇧🇴 ABOB - Boliviano Tokenizado
+
+**Contrato**: `src/tokens/AbobToken.sol`
+
+**Características:**
+- **🎯 1:1 BOB Peg**: Vinculado 1:1 con Boliviano
+- **🏦 CDP System**: Emitido contra colateral depositado
+- **📈 Yield Generation**: Yield vía sABOB y fees del protocolo
 - **🔄 Bridge Support**: Compatible con xERC20
 
 ### 💰 sAbobToken - Staked ABOB con Yield
@@ -252,19 +255,19 @@ uint256 public constant VOTING_PERIOD = 7 days;          // 7 días votación
 
 ## ⚖️ Motor de Estabilidad
 
-### 🎯 StabilityEngine - Motor Principal
+### 🗳️ veANDE System - Vote-Escrowed Governance
 
-**Contrato**: `src/stability/StabilityEngine.sol`
+**Contrato**: `src/gauges/VotingEscrow.sol`
 
 **Funciones:**
-- **📊 Collateral Monitoring**: Monitoreo de colateralización
-- **🔄 Rebase Adjustment**: Ajustes automáticos de supply
-- **🏦 Treasury Management**: Gestión de reservas
-- **⚠️ Emergency Actions**: Acciones de emergencia
+- **🔒 Token Locking**: Lock de ANDE hasta 4 años
+- **📊 Voting Power**: Poder basado en cantidad y tiempo
+- **📈 Decay Linear**: Decaimiento lineal del poder
+- **🎯 Gauge Voting**: Votación por distribuciones de rewards
 
 ### 🔥 DualTrackBurnEngine - Quema Dual
 
-**Contrato**: `src/stability/DualTrackBurnEngine.sol`
+**Contrato**: `src/burn/DualTrackBurnEngine.sol`
 
 **Mecanismos de Quema:**
 1. **⚡ Real-time Burn**: Quema inmediata de fees
