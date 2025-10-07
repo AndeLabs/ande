@@ -246,14 +246,35 @@ Yield generado por:
 └─ Protocol revenue
 ```
 
-#### Oráculos de Precio (Medianizer)
+#### Oráculos de Precio (Modelo Híbrido y Progresivo)
 
-**Arquitectura Mejorada:**
-- **Múltiples Fuentes:** Se utilizan varios oráculos para cada activo.
-- **Medianizer:** En lugar de un promedio, el sistema calcula la **mediana** de los precios reportados. Esto lo hace extremadamente resistente a un oráculo malicioso o erróneo.
+**Principio Rector:** El oráculo logrará la trifecta de **Resiliencia, Precisión y Descentralización**. Combinará la alta disponibilidad de los secuenciadores, la sabiduría de la comunidad P2P y la referencia de APIs externas.
 
-**Precios Necesarios:**
-- `USDC/USD`, `wETH/USD`, `ANDE/USD` para valorar el colateral.
+**Arquitectura Multi-capa:**
+```
+                                     ┌──────────────────────────┐
+                                     │ AndeOracleAggregator.sol │
+                                     │      (La Mediana + IQR)  │
+                                     └────────────┬─────────────┘
+                                                  │
+      ┌───────────────────────────────────────────┴───────────────────────────────────┐
+      │                                           │                                   │
+      ▼                                           ▼                                   ▼
+┌──────────────────┐                  ┌──────────────────────────┐            ┌──────────────────┐
+│   Oráculo P2P    │                  │  Oráculo de Secuenciadores │            │ Oráculo de APIs  │
+│ (Comunidad Stake)│                  │   (Secuenciadores Stake)   │            │  (Chainlink, etc)│
+└──────────────────┘                  └──────────────────────────┘            └──────────────────┘
+```
+
+**Componentes del Sistema "Inteligente":**
+- **Agregación por Mediana:** Defensa principal contra precios atípicos y manipulación.
+- **Detección Dinámica de Anomalías (IQR):** El sistema se autoajusta a la volatilidad del mercado para definir un "rango de precios razonable" en tiempo real y marcar valores atípicos para posible `slashing`.
+- **Gobernanza como Supervisor:** Actúa como árbitro final para ajustar parámetros de sensibilidad y resolver disputas.
+
+**Estrategia de Descentralización Progresiva:**
+1.  **Fase 1 (Bootstrap):** Los **Secuenciadores** actúan como el conjunto inicial de reporteros, proveyendo una base de precios estable y permanente desde el día cero.
+2.  **Fase 2 (Expansión):** Se abre la participación a **reporteros ciudadanos** a través de un sistema de `stake` y una "lista blanca" gestionada por la gobernanza.
+3.  **Fase 3 (Madurez):** El sistema se vuelve totalmente permisionado (`permissionless`), donde el `stake` es el único requisito para participar.
 
 ### ✅ Criterios de Éxito
 

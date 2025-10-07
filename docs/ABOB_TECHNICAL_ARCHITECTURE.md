@@ -110,18 +110,53 @@ mapping(address => UserVault) public vaults;
 
 ---
 
-## 4. Sistema de Oráculos (Medianizer)
+## 4. Sistema de Oráculos (Híbrido, Progresivo y Adaptativo)
 
-Para evitar la manipulación de precios, no confiamos en una sola fuente.
+Para reflejar con precisión el "precio de calle" P2P, que es inherentemente volátil y descentralizado, se abandona un modelo de oráculo simple en favor de un **sistema híbrido, multi-capa y progresivamente descentralizado**. El objetivo es lograr resiliencia y precisión combinando múltiples fuentes de verdad y utilizando agregación estadística robusta.
 
-#### Arquitectura del `PriceOracle.sol`
+### Arquitectura Multi-Capa del `PriceOracle.sol`
 
-1.  **Fuentes Múltiples:** Para cada activo (ej. `ANDE/USD`), la gobernanza registra múltiples direcciones de oráculos (ej. Chainlink, Pyth, P2POracle).
-2.  **Reporte de Precios:** Los oráculos autorizados (o cualquiera, en un modelo abierto) reportan precios al contrato.
-3.  **Cálculo de la Mediana:** En lugar de un promedio, el contrato ordena los precios reportados y elige el valor del medio. Esto es inmune a valores atípicos extremos.
-4.  **Validación de Frescura:** El contrato se asegura de que los precios no sean demasiado antiguos (ej. más de 1 hora) antes de considerarlos válidos.
+El contrato `PriceOracle.sol` (nuestro `AndeOracleAggregator`) no confía en una única fuente, sino que agrega datos de tres tipos de reporteros distintos:
 
-**Ventaja:** Un atacante necesitaría comprometer a más de la mitad de las fuentes de precios para manipular el precio final, un vector de ataque mucho más costoso y difícil.
+```
+                                     ┌──────────────────────────┐
+                                     │ AndeOracleAggregator.sol │
+                                     │      (La Mediana + IQR)  │
+                                     └────────────┬─────────────┘
+                                                  │
+      ┌───────────────────────────────────────────┴───────────────────────────────────┐
+      │                                           │                                   │
+      ▼                                           ▼                                   ▼
+┌──────────────────┐                  ┌──────────────────────────┐            ┌──────────────────┐
+│   Oráculo P2P    │                  │  Oráculo de Secuenciadores │            │ Oráculo de APIs  │
+│ (Comunidad Stake)│                  │   (Secuenciadores Stake)   │            │  (Chainlink, etc)│
+└──────────────────┘                  └──────────────────────────┘            └──────────────────┘
+```
+
+1.  **Capa 1: Oráculo P2P (Comunidad):** La base de la descentralización. Ciudadanos y traders, con `ANDE` en `stake`, reportan el precio que observan en mercados P2P. Su incentivo es ganar recompensas y evitar el `slashing` de su `stake`.
+2.  **Capa 2: Oráculo de Secuenciadores (Estabilidad):** Los secuenciadores de la red, con su infraestructura de alta disponibilidad, actúan como reporteros profesionales. Proporcionan un flujo de datos constante y fiable, pero su reporte es solo un voto más en el sistema, no una dictadura.
+3.  **Capa 3: Oráculo de APIs (Referencia):** Se pueden integrar fuentes de datos automatizadas (como Chainlink o APIs directas de exchanges) como un reportero más. Esto provee un punto de referencia de mercados centralizados.
+
+### El Sistema "Inteligente" de Agregación
+
+El `PriceOracle.sol` utiliza dos mecanismos estadísticos para procesar los datos y obtener un precio final seguro:
+
+1.  **Agregación por Mediana:** Es la defensa principal. Al ordenar todos los precios reportados en una ventana de tiempo y elegir el valor central, el sistema es inmune a valores atípicos extremos, ya sean errores o ataques maliciosos. Un atacante necesitaría corromper al 50%+1 de los reporteros para influir en el precio.
+
+2.  **Detección de Anomalías por Rango Intercuartílico (IQR):** Para manejar la alta variabilidad del "precio de calle" y detectar malos actores de forma justa, el sistema es adaptativo:
+    *   En cada ventana, el contrato calcula el rango en el que se encuentra el 50% central de los precios reportados (IQR).
+    *   Este IQR se usa para definir dinámicamente las "bandas de aceptación". Si el mercado está volátil y los precios dispersos, las bandas se ensanchan. Si el mercado está estable, se estrechan.
+    *   Cualquier reporte que caiga fuera de estas bandas dinámicas es automáticamente marcado como anómalo y candidato a `slashing`, sujeto a la supervisión final de la gobernanza.
+
+### Estrategia de Descentralización Progresiva
+
+El despliegue del oráculo seguirá un plan por fases para garantizar la estabilidad inicial y la descentralización a largo plazo:
+
+1.  **Fase 1 (Bootstrap):** El sistema se lanza utilizando únicamente a los **Secuenciadores** como reporteros para garantizar un flujo de precios estable y fiable desde el día cero.
+2.  **Fase 2 (Expansión):** Se activa la infraestructura para los **reporteros ciudadanos (P2P)**. La participación se gestiona a través de un `stake` mínimo de `ANDE` y una "lista blanca" controlada por la gobernanza para asegurar la calidad de los nuevos participantes.
+3.  **Fase 3 (Madurez):** El sistema se abre por completo, eliminando la "lista blanca". La seguridad descansa enteramente en los incentivos económicos del `stake` y el `slashing`, logrando una verdadera descentralización.
+
+**Ventaja:** Este diseño híbrido y progresivo es la única forma de reflejar fielmente un mercado P2P real, adaptándose a su volatilidad mientras se protege contra ataques y se construye confianza gradualmente.
 
 ---
 
