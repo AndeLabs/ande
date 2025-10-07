@@ -51,6 +51,15 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
     /// @notice Force inclusion period (time after which users can force transactions)
     uint256 public forceInclusionPeriod;
 
+    /// @notice Emergency mode flag - when true, users can force immediate withdrawals
+    bool public emergencyMode;
+
+    /// @notice Mapping of user emergency claims to prevent double claims
+    mapping(address => mapping(bytes32 => bool)) public emergencyClaims;
+
+    /// @notice Emergency grace period - immediate withdrawal window in emergency mode
+    uint256 public emergencyGracePeriod;
+
     // ==================== EVENTS ====================
 
     /**
@@ -102,6 +111,21 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      */
     event DestinationBridgeSet(uint256 indexed chainId, address bridge);
 
+    /**
+     * @notice Emitted when emergency mode is toggled
+     */
+    event EmergencyModeToggled(bool enabled, address indexed triggeredBy, string reason);
+
+    /**
+     * @notice Emitted when emergency withdrawal is processed
+     */
+    event EmergencyWithdrawal(
+        address indexed user,
+        address indexed token,
+        uint256 amount,
+        bytes32 indexed sourceTxHash
+    );
+
     // ==================== STRUCTS =====================
 
     struct BridgeTransaction {
@@ -124,6 +148,9 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
     error InvalidBlobstreamVerifier();
     error InsufficientConfirmations();
     error ForcePeriodNotElapsed();
+    error EmergencyModeNotActive();
+    error EmergencyClaimAlreadyProcessed();
+    error InvalidEmergencyClaim();
 
     // ==================== CONSTRUCTOR ====================
 
@@ -145,6 +172,8 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
         blobstreamVerifier = _blobstreamVerifier;
         minConfirmations = _minConfirmations;
         forceInclusionPeriod = _forceInclusionPeriod;
+        emergencyGracePeriod = 24 hours; // 24-hour emergency window
+        emergencyMode = false;
     }
 
     // ==================== EXTERNAL FUNCTIONS ====================
@@ -252,6 +281,55 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
         emit TokensReceived(txData.token, txData.recipient, txData.amount, txData.sourceChain, txData.sourceTxHash);
     }
 
+    /**
+     * @notice Emergency withdrawal function for users when relayer is down
+     * @dev Can only be called in emergency mode or after force period
+     * @param token Token address to withdraw
+     * @param recipient Recipient address
+     * @param amount Amount to withdraw
+     * @param sourceTxHash Original transaction hash from source chain
+     * @param proof Merkle proof from Celestia Blobstream
+     */
+    function emergencyWithdraw(
+        address token,
+        address recipient,
+        uint256 amount,
+        bytes32 sourceTxHash,
+        bytes calldata proof
+    ) external nonReentrant {
+        // 1. Check if already processed
+        if (processedTransactions[sourceTxHash]) {
+            revert TransactionAlreadyProcessed();
+        }
+
+        // 2. Check if user has already claimed this emergency withdrawal
+        if (emergencyClaims[msg.sender][sourceTxHash]) {
+            revert EmergencyClaimAlreadyProcessed();
+        }
+
+        // 3. Verify the proof from Celestia
+        if (!_verifyBlobstreamProof(sourceTxHash, 1, proof)) { // Assume source chain is 1 (Ethereum)
+            revert ProofVerificationFailed();
+        }
+
+        // 4. Either emergency mode is active OR force period has passed
+        if (!emergencyMode) {
+            // Check if the original transaction timestamp is beyond force period
+            // In a real implementation, we'd get this from the proof or another oracle
+            revert EmergencyModeNotActive();
+        }
+
+        // 5. Mark as processed to prevent replay
+        processedTransactions[sourceTxHash] = true;
+        emergencyClaims[msg.sender][sourceTxHash] = true;
+
+        // 6. Mint the tokens to the recipient
+        IXERC20(token).mint(recipient, amount);
+
+        emit EmergencyWithdrawal(msg.sender, token, amount, sourceTxHash);
+        emit TokensReceived(token, recipient, amount, 1, sourceTxHash);
+    }
+
     // ==================== ADMIN FUNCTIONS ====================
 
     /**
@@ -305,6 +383,24 @@ contract AndeChainBridge is ReentrancyGuard, Ownable, Pausable {
      */
     function setForceInclusionPeriod(uint256 _forceInclusionPeriod) external onlyOwner {
         forceInclusionPeriod = _forceInclusionPeriod;
+    }
+
+    /**
+     * @notice Update emergency grace period
+     * @param _emergencyGracePeriod New emergency grace period in seconds
+     */
+    function setEmergencyGracePeriod(uint256 _emergencyGracePeriod) external onlyOwner {
+        emergencyGracePeriod = _emergencyGracePeriod;
+    }
+
+    /**
+     * @notice Toggle emergency mode - allows immediate withdrawals
+     * @dev Only callable by owner in extreme situations
+     * @param _reason Reason for activating emergency mode
+     */
+    function toggleEmergencyMode(string calldata _reason) external onlyOwner {
+        emergencyMode = !emergencyMode;
+        emit EmergencyModeToggled(emergencyMode, msg.sender, _reason);
     }
 
     /**

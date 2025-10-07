@@ -80,13 +80,17 @@ contract P2POracle is
 
     /// @notice Emitted when a new reporter stakes tokens and registers.
     event ReporterRegistered(address indexed reporter, uint256 stake);
-    /// @notice Emitted when a reporter unregisters and withdraws their stake (functionality not yet implemented).
+    /// @notice Emitted when a reporter unregisters and withdraws their stake.
     event ReporterUnregistered(address indexed reporter, uint256 returnedStake);
+    /// @notice Emitted when a reporter increases their stake.
+    event StakeIncreased(address indexed reporter, uint256 amount, uint256 newTotalStake);
+    /// @notice Emitted when a reporter decreases their stake.
+    event StakeDecreased(address indexed reporter, uint256 amount, uint256 newTotalStake);
     /// @notice Emitted when a reporter successfully submits a price for an epoch.
     event PriceReported(uint256 indexed epoch, address indexed reporter, uint256 price);
     /// @notice Emitted when an epoch is finalized with a median price.
     event EpochFinalized(uint256 indexed epoch, uint256 price, uint256 reporters);
-    /// @notice Emitted when a reporter's stake is slashed (functionality not yet implemented).
+    /// @notice Emitted when a reporter's stake is slashed.
     event ReporterSlashed(address indexed reporter, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -204,6 +208,39 @@ contract P2POracle is
         andeToken.safeTransfer(msg.sender, stakeToReturn);
 
         emit ReporterUnregistered(msg.sender, stakeToReturn);
+    }
+
+    /**
+     * @notice Allows a registered reporter to increase their stake by adding more ANDE tokens.
+     * @dev The reporter must approve the contract to spend the additional amount.
+     * @param additionalAmount The amount of additional ANDE tokens to stake.
+     */
+    function increaseStake(uint256 additionalAmount) external nonReentrant {
+        require(additionalAmount > 0, "Amount must be greater than 0");
+        Reporter storage reporter = reporters[msg.sender];
+        require(reporter.isRegistered, "Not a registered reporter");
+
+        reporter.stake += additionalAmount;
+        andeToken.safeTransferFrom(msg.sender, address(this), additionalAmount);
+
+        emit StakeIncreased(msg.sender, additionalAmount, reporter.stake);
+    }
+
+    /**
+     * @notice Allows a registered reporter to decrease their stake by withdrawing ANDE tokens.
+     * @dev The reporter must maintain at least the minimum stake.
+     * @param withdrawalAmount The amount of ANDE tokens to withdraw.
+     */
+    function decreaseStake(uint256 withdrawalAmount) external nonReentrant {
+        require(withdrawalAmount > 0, "Amount must be greater than 0");
+        Reporter storage reporter = reporters[msg.sender];
+        require(reporter.isRegistered, "Not a registered reporter");
+        require(reporter.stake - withdrawalAmount >= minStake, "Cannot withdraw below minimum stake");
+
+        reporter.stake -= withdrawalAmount;
+        andeToken.safeTransfer(msg.sender, withdrawalAmount);
+
+        emit StakeDecreased(msg.sender, withdrawalAmount, reporter.stake);
     }
 
     /**

@@ -32,6 +32,15 @@ interface ICollateralManager {
     function getSupportedCollaterals() external view returns (address[] memory tokens);
 }
 
+interface IAuctionManager {
+    function startLiquidationAuction(
+        address vaultOwner,
+        address collateralToken,
+        uint256 collateralAmount,
+        uint256 totalDebt
+    ) external returns (uint256 auctionId);
+}
+
 /**
  * @title AbobToken
  * @notice CDP (Collateralized Debt Position) vault manager for ABOB token
@@ -596,7 +605,8 @@ contract AbobToken is
     }
 
     /**
-     * @notice Liquidate an undercollateralized vault
+     * @notice Liquidate an undercollateralized vault (direct liquidation)
+     * @dev This is a fallback mechanism. Primary liquidations should use AuctionManager
      */
     function liquidateVault(address _user) external whenNotPaused nonReentrant {
         require(canLiquidate(_user), "Vault cannot be liquidated");
@@ -633,6 +643,56 @@ contract AbobToken is
         totalSystemDebt -= totalDebt;
 
         emit LiquidationTriggered(_user, msg.sender, debtToRepay, totalCollateralValue);
+    }
+
+    /**
+     * @notice Start auction liquidation for an undercollateralized vault
+     * @dev Preferred liquidation method using AuctionManager
+     */
+    function startAuctionLiquidation(address _user) external onlyLiquidationManager whenNotPaused {
+        require(canLiquidate(_user), "Vault cannot be liquidated");
+
+        UserVault storage vault = vaults[_user];
+        require(vault.isActive, "Vault not active");
+
+        // Find the primary collateral (largest amount)
+        address primaryCollateral;
+        uint256 maxAmount = 0;
+
+        for (uint256 i = 0; i < collateralList.length; i++) {
+            address collateral = collateralList[i];
+            uint256 amount = vault.collateralAmounts[collateral];
+            if (amount > maxAmount) {
+                maxAmount = amount;
+                primaryCollateral = collateral;
+            }
+        }
+
+        require(primaryCollateral != address(0), "No collateral found");
+        require(liquidationManager != address(0), "No liquidation manager set");
+
+        // Transfer collateral to AuctionManager
+        IERC20(primaryCollateral).transfer(liquidationManager, maxAmount);
+
+        // Update vault state
+        vault.collateralAmounts[primaryCollateral] = 0;
+        supportedCollaterals[primaryCollateral].totalDeposited -= maxAmount;
+
+        // Start auction through AuctionManager
+        try IAuctionManager(liquidationManager).startLiquidationAuction(
+            _user,
+            primaryCollateral,
+            maxAmount,
+            vault.totalDebt
+        ) returns (uint256 auctionId) {
+            emit AuctionCreated(auctionId, _user, primaryCollateral, maxAmount, 0);
+        } catch Error(string memory reason) {
+            // Revert collateral if auction fails
+            IERC20(primaryCollateral).transferFrom(liquidationManager, address(this), maxAmount);
+            vault.collateralAmounts[primaryCollateral] = maxAmount;
+            supportedCollaterals[primaryCollateral].totalDeposited += maxAmount;
+            revert(string(abi.encodePacked("Auction failed: ", reason)));
+        }
     }
 
     // ==================== REDEMPTION ====================
