@@ -154,6 +154,7 @@ Este roadmap está organizado por **CAPACIDADES**, no por tiempo. Cada fase cons
 ```
 ANDEToken.sol
   ├─ Token Duality (Nativo + ERC-20 via Precompile)
+  │  └─ 📖 Documentación: docs/token-duality/
   ├─ Elimina la necesidad de "Wrapped ANDE" (WANDE)
   ├─ ERC20Votes (gobernanza)
   ├─ ERC20Permit (gasless approvals)
@@ -2018,6 +2019,7 @@ ABOB en 2035:
 - Arquitectura: `ABOB_TECHNICAL_ARCHITECTURE.md`
 - Plan con Fechas: `AndeChainPlanMaestro.md`
 - Próximos Pasos: `NEXT_STEPS_ROADMAP.md`
+- **Token Duality (FASE 0):** `token-duality/` - Implementación de ANDE dual (nativo + ERC-20)
 
 **Community:**
 - Discord: https://discord.gg/andechain
