@@ -215,6 +215,15 @@ contract GaugeController is ReentrancyGuard {
         return uint256(point.slope);
     }
 
+    /**
+     * @notice Get the weight of a gauge at current time.
+     * @param _gauge_addr Address of the gauge.
+     * @return The weight of the gauge.
+     */
+    function get_gauge_weight(address _gauge_addr) external view returns (uint256) {
+        return _get_gauge_weight(_gauge_addr, block.timestamp);
+    }
+
     // --- Internal Functions ---
 
     /**
