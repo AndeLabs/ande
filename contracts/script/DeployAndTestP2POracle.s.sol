@@ -13,7 +13,7 @@ contract DeployAndTestP2POracle is Script {
     AndeOracleAggregator public aggregator;
     MockERC20 public mockUsdc;
 
-    address public constant TEST_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    uint256 public constant TEST_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
     address public constant TEST_ADDRESS = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
     function run() external {
@@ -131,7 +131,7 @@ contract DeployAndTestP2POracle is Script {
 
         // Precio de ejemplo: 6.91 BOB por USD
         // El contrato espera el precio de 1 BOB en USD con 18 decimales
-        uint256 price = (1 ether * 1e18) / 6910000000000000000; // 1/6.91 * 1e18
+        // Simplified: just use whole numbers
 
         uint256[3] memory privateKeys = [
             uint256(0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d),
@@ -139,23 +139,23 @@ contract DeployAndTestP2POracle is Script {
             uint256(0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a)
         ];
 
-        // Reporter 1: 6.90 BOB/USD
+        // Reporter 1: 6.90 BOB/USD (1 BOB = 0.1449 USD)
         vm.startBroadcast(privateKeys[0]);
-        uint256 price1 = (1 ether * 1e18) / 6900000000000000000;
+        uint256 price1 = 144900000000000000; // 0.1449 * 1e18
         p2pOracle.reportPrice(price1);
         vm.stopBroadcast();
         console.log("   SUCCESS Reporter 1: 6.90 BOB/USD");
 
-        // Reporter 2: 6.91 BOB/USD
+        // Reporter 2: 6.91 BOB/USD (1 BOB = 0.1447 USD)
         vm.startBroadcast(privateKeys[1]);
-        uint256 price2 = (1 ether * 1e18) / 6910000000000000000;
+        uint256 price2 = 144700000000000000; // 0.1447 * 1e18
         p2pOracle.reportPrice(price2);
         vm.stopBroadcast();
         console.log("   SUCCESS Reporter 2: 6.91 BOB/USD");
 
-        // Reporter 3: 6.92 BOB/USD
+        // Reporter 3: 6.92 BOB/USD (1 BOB = 0.1445 USD)
         vm.startBroadcast(privateKeys[2]);
-        uint256 price3 = (1 ether * 1e18) / 6920000000000000000;
+        uint256 price3 = 144500000000000000; // 0.1445 * 1e18
         p2pOracle.reportPrice(price3);
         vm.stopBroadcast();
         console.log("   SUCCESS Reporter 3: 6.92 BOB/USD");
@@ -185,11 +185,11 @@ contract DeployAndTestP2POracle is Script {
         console.log("      Answered In Round:", uint256(answeredInRound));
 
         // Verificar que el precio sea razonable (deberia estar cerca de la mediana)
-        // La mediana de [6.90, 6.91, 6.92] es 6.91
-        uint256 expectedPrice = (1 ether * 1e18) / 6910000000000000000;
+        // La mediana de [6.90, 6.91, 6.92] es 6.91 (1 BOB = 0.1447 USD)
+        uint256 expectedPrice = 144700000000000000; // 0.1447 * 1e18
 
-        require(uint256(answer) > expectedPrice * 99 / 100, "Price too low");
-        require(uint256(answer) < expectedPrice * 101 / 100, "Price too high");
+        require(uint256(answer) > (expectedPrice * 99) / 100, "Price too low");
+        require(uint256(answer) < (expectedPrice * 101) / 100, "Price too high");
 
         console.log("   SUCCESS Precio verificado dentro del rango esperado");
     }

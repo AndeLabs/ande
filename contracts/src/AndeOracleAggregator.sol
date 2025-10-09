@@ -61,10 +61,38 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         __Ownable_init(msg.sender);
     }
 
-    // ============ SOURCE MANAGEMENT ============
-    function addSource(bytes32 pairId, address oracle, uint256 weight, uint256 priority, string calldata name)
+    function initialize(address owner, address p2pOracle) public initializer {
+        __Ownable_init(owner);
+        // Add P2P Oracle as default source for BOB/USD pair
+        bytes32 pairId = keccak256(abi.encodePacked("BOB", "USD"));
+        _addSourceInternal(pairId, p2pOracle, 10000, 1, "P2P Oracle");
+    }
+
+    // ============ CHAINLINK COMPATIBILITY ============
+    function latestRoundData()
         external
-        onlyOwner
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+    {
+        bytes32 pairId = keccak256(abi.encodePacked("BOB", "USD"));
+        (uint256 price, uint256 confidence, uint256 sourcesUsed) = _aggregatePrice(pairId);
+
+        return (
+            uint80(block.timestamp), // roundId
+            int256(price), // answer
+            block.timestamp, // startedAt
+            block.timestamp, // updatedAt
+            uint80(sourcesUsed) // answeredInRound
+        );
+    }
+
+    function decimals() external view returns (uint8) {
+        return 18;
+    }
+
+    // ============ SOURCE MANAGEMENT ============
+    function _addSourceInternal(bytes32 pairId, address oracle, uint256 weight, uint256 priority, string memory name)
+        internal
     {
         if (weight == 0 || weight > 10000) revert InvalidWeight();
 
@@ -76,6 +104,13 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         pairSources.push(OracleSource({oracle: oracle, weight: weight, isActive: true, priority: priority, name: name}));
 
         emit SourceAdded(pairId, oracle, weight, name);
+    }
+
+    function addSource(bytes32 pairId, address oracle, uint256 weight, uint256 priority, string calldata name)
+        external
+        onlyOwner
+    {
+        _addSourceInternal(pairId, oracle, weight, priority, name);
     }
 
     function updateSourceWeight(bytes32 pairId, address oracle, uint256 newWeight) external onlyOwner {
@@ -126,9 +161,40 @@ contract AndeOracleAggregator is Initializable, OwnableUpgradeable {
         view
         returns (uint256 finalPrice, uint256 confidence, uint256 sourcesUsed)
     {
-        // TODO: Refactor this function to use the new IOracle interface with latestRoundData.
-        // Temporarily disabled to allow compilation of other contracts.
-        return (0, 0, 0);
+        OracleSource[] storage pairSources = sources[pairId];
+
+        if (pairSources.length == 0) revert NoSourcesAvailable();
+
+        uint256[] memory validPrices = new uint256[](pairSources.length);
+        uint256 validCount = 0;
+
+        for (uint256 i = 0; i < pairSources.length; i++) {
+            if (pairSources[i].isActive) {
+                try IOracle(pairSources[i].oracle).latestRoundData() returns (
+                    uint80,
+                    int256 answer,
+                    uint256,
+                    uint256,
+                    uint80
+                ) {
+                    if (answer > 0) {
+                        validPrices[validCount] = uint256(answer);
+                        validCount++;
+                    }
+                } catch {
+                    // Skip failed oracle calls
+                    continue;
+                }
+            }
+        }
+
+        if (validCount == 0) revert InsufficientSources();
+
+        // For now, return the first valid price (simplified aggregation)
+        // TODO: Implement proper weighted median aggregation
+        finalPrice = validPrices[0];
+        confidence = 5000; // 50% confidence
+        sourcesUsed = validCount;
     }
 
     function getSourcesForPair(bytes32 pairId) external view returns (OracleSource[] memory) {
