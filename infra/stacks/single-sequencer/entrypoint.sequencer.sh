@@ -62,11 +62,15 @@ if [ ! -f "$CONFIG_HOME/config/node_key.json" ]; then
 	# --- BEGIN ANDE TOKEN PATCH ---
 	# Modify genesis to use 'aande' as the native gas token and pre-fund the dev account
 	log "INIT" "Patching genesis.json to set 'aande' as the native gas token and fund dev account"
-	
-	# Use jq to perform a more robust modification
-	jq '.app_state.evm.accounts["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"].balance = "0x21E19E0C9BAB2400000" | .app_state.staking.params.bond_denom = "aande" | .app_state.crisis.constant_fee.denom = "aande" | .app_state.gov.params.min_deposit[0].denom = "aande" | .app_state.mint.params.mint_denom = "aande"' "$CONFIG_HOME/config/genesis.json" > "$CONFIG_HOME/config/genesis.tmp.json" && mv "$CONFIG_HOME/config/genesis.tmp.json" "$CONFIG_HOME/config/genesis.json"
 
-	log "SUCCESS" "Genesis patched successfully. 'aande' is now the fee token and dev account is funded."
+	# First, get the validator address from priv_validator_key.json
+	PROPOSER_ADDRESS=$(jq -r '.address' "$CONFIG_HOME/config/priv_validator_key.json")
+	log "INFO" "Retrieved proposer address: $PROPOSER_ADDRESS"
+
+	# Use jq to perform a more robust modification including proposer_address
+	jq --arg proposer "$PROPOSER_ADDRESS" '.app_state.evm.accounts["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"].balance = "0x21E19E0C9BAB2400000" | .app_state.staking.params.bond_denom = "aande" | .app_state.crisis.constant_fee.denom = "aande" | .app_state.gov.params.min_deposit[0].denom = "aande" | .app_state.mint.params.mint_denom = "aande" | .consensus.validators[0].address = $proposer' "$CONFIG_HOME/config/genesis.json" > "$CONFIG_HOME/config/genesis.tmp.json" && mv "$CONFIG_HOME/config/genesis.tmp.json" "$CONFIG_HOME/config/genesis.json"
+
+	log "SUCCESS" "Genesis patched successfully. 'aande' is now the fee token, dev account is funded, and proposer address is set."
 	# --- END ANDE TOKEN PATCH ---
 
 else
