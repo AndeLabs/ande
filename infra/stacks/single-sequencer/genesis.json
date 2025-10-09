@@ -21,17 +21,13 @@
   "nonce": "0x0",
   "timestamp": "0x0",
   "extraData": "0x",
-  "proposer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "gasLimit": "0x1c9c38000",
   "difficulty": "0x0",
   "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "coinbase": "0x0000000000000000000000000000000000000000",
   "alloc": {
-    "0x95c8f96C7F012e422fB089619223315C25fB8857": {
-      "balance": "0x52B7D2DCC80CD2E4000000"
-    },
     "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {
-      "balance": "0x52B7D2DCC80CD2E4000000"
+      "balance": "0x21E19E0C9BAB2400000"
     }
   },
   "number": "0x0",

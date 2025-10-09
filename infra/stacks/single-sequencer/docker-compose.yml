@@ -1,6 +1,5 @@
----
 services:
-  # JWT initialization service (unchanged)
+  # JWT initialization service
   jwt-init-sequencer:
     container_name: jwt-init-sequencer
     image: alpine:3.22.0
@@ -18,80 +17,70 @@ services:
         openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex;
       fi"
 
-  # 🆕 CUSTOM ev-reth-sequencer con ANDE Token Duality
+  # ev-reth-sequencer con ANDE Token Duality
   ev-reth-sequencer:
     container_name: ev-reth-sequencer
     build:
-      context: ../../../..
-      dockerfile: andechain/Dockerfile.evm
+      context: ../../..
+      dockerfile: Dockerfile.evm
     depends_on:
       jwt-init-sequencer:
         condition: service_completed_successfully
     env_file:
       - .env
-      - ../../.env.ande
+      - .env.ande
     ports:
-      - $SEQUENCER_EV_RETH_PROMETHEUS_PORT:9001
       - "8545:8545"
+      - "9001:9001"
     restart: always
     volumes:
-      # Montamos nuestro archivo de génesis
-      - ./genesis.final.json:/root/genesis.json:ro
-      # Montamos el secreto JWT
+      - ./genesis.json:/root/genesis.json:ro
       - jwttoken-sequencer:/root/jwt:ro
-      # Persistencia de datos
       - ev-reth-sequencer-data:/root/reth
     entrypoint: /bin/sh -c
     command:
       - |
-          echo "🚀 Starting ANDE-enabled ev-reth for AndeChain..."
-          echo "📍 Precompile Address: 0x00000000000000000000000000000000000000FD"
-          echo "🔗 ANDE Integration: v0.3.0 - Type alias pattern"
-          echo ""
+        echo "🚀 Starting ANDE-enabled ev-reth for AndeChain..."
+        echo "📍 Precompile Address: 0x00000000000000000000000000000000000000FD"
+        echo "🔗 ANDE Integration: Type alias pattern"
+        echo ""
 
-          ev-reth node \
-          --ev-reth.enable \
-          --chain /root/genesis.json \
-          --metrics 0.0.0.0:9001 \
-          --log.file.directory /root/logs \
-          --authrpc.addr 0.0.0.0 \
-          --authrpc.port 8551 \
-          --authrpc.jwtsecret /root/jwt/jwt.hex \
-          --http --http.addr 0.0.0.0 --http.port 8545 \
-          --http.api "admin,eth,net,web3,txpool,debug" \
-          --http.corsdomain "*" \
-          --disable-discovery \
-          --txpool.pending-max-count 200000 \
-          --txpool.pending-max-size 200 \
-          --txpool.queued-max-count 200000 \
-          --txpool.queued-max-size 200 \
-          --txpool.max-account-slots 2048 \
-          --txpool.max-new-txns 2048 \
-          --txpool.additional-validation-tasks 16 \
-          --datadir /root/reth \
-          --dev
+        ev-reth node \
+        --chain /root/genesis.json \
+        --metrics 0.0.0.0:9001 \
+        --log.file.directory /root/logs \
+        --authrpc.addr 0.0.0.0 \
+        --authrpc.port 8551 \
+        --authrpc.jwtsecret /root/jwt/jwt.hex \
+        --http --http.addr 0.0.0.0 --http.port 8545 \
+        --http.api "admin,eth,net,web3,txpool,debug" \
+        --http.corsdomain "*" \
+        --disable-discovery \
+        --txpool.pending-max-count 200000 \
+        --datadir /root/reth \
+        --dev
     networks:
-      - evstack_shared
+      - ande-network
 
-  # Local DA service for data availability
+  # Local DA service
   local-da:
     build:
-      context: ../../stacks/da-local/ev-node
+      context: ../da-local/ev-node
       dockerfile: ./da/cmd/local-da/Dockerfile
     container_name: local-da
     restart: unless-stopped
     ports:
       - "7980:7980"
     networks:
-      - evstack_shared
+      - ande-network
 
-  # Single sequencer (unchanged)
+  # Single sequencer
   single-sequencer:
     container_name: single-sequencer
     image: ghcr.io/evstack/ev-node-evm-single:main
     env_file: .env
     ports:
-      - $SEQUENCER_EV_NODE_PROMETHEUS_PORT:26660
+      - "26660:26660"
     restart: always
     depends_on:
       ev-reth-sequencer:
@@ -119,12 +108,12 @@ services:
       - DA_BLOCK_TIME=30s
       - DA_ADDRESS=http://local-da:7980
     networks:
-      - evstack_shared
+      - ande-network
 
 networks:
-  evstack_shared:
-    name: evstack_shared
-    external: true
+  ande-network:
+    name: ande-network
+    driver: bridge
 
 volumes:
   jwttoken-sequencer:
