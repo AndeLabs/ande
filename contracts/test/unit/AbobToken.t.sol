@@ -42,7 +42,7 @@ contract AbobTokenCDPTest is Test {
         priceOracle = new PriceOracle();
         ERC1967Proxy oracleProxy = new ERC1967Proxy(
             address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.initialize.selector)
+            abi.encodeWithSelector(PriceOracle.initialize.selector, admin)
         );
         priceOracle = PriceOracle(address(oracleProxy));
 
@@ -73,7 +73,11 @@ contract AbobTokenCDPTest is Test {
         abobToken = AbobToken(payable(address(proxy)));
 
         // 4. Setup price feeds
+        vm.startPrank(admin);
         priceOracle.addSource(address(usdcToken), address(mockOracle), "Mock USDC Oracle");
+        vm.stopPrank();
+
+        // MockOracle owner is this test contract, so call setPrice directly
         mockOracle.setPrice(1e6); // $1 USDC (6 decimals)
 
         // 5. Add USDC as collateral
@@ -117,7 +121,8 @@ contract AbobTokenCDPTest is Test {
         abobToken.depositCollateral(address(usdcToken), depositAmount);
 
         (uint256 collateralValue, uint256 debt,) = abobToken.getUserVaultInfo(user);
-        assertEq(collateralValue, depositAmount); // 1:1 price mock
+        // Value should be normalized to 18 decimals: 1000 USDC * 10^12 * $1 / 10^18 = 1000e18
+        assertEq(collateralValue, 1000e18); // 1000 USDC worth of value, normalized to 18 decimals
         assertEq(debt, 0);
     }
 

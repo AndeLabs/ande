@@ -506,7 +506,6 @@ contract AbobToken is
         require(vault.totalDebt >= _debtAmount, "Insufficient debt");
 
         // Check if withdrawal would leave vault undercollateralized
-        uint256 newCollateralAmount = vault.collateralAmounts[_collateral] - _collateralAmount;
         uint256 newTotalDebt = vault.totalDebt - _debtAmount;
 
         if (newTotalDebt > 0) {
@@ -552,9 +551,15 @@ contract AbobToken is
         // Check if withdrawal would leave vault undercollateralized
         if (vault.totalDebt > 0) {
             uint256 remainingValue = getTotalCollateralValue(msg.sender) - getCollateralTokenValue(_collateral, _amount);
-            // Get collateral ratio from CollateralManager
-            (bool isSupported, uint256 collateralRatio,,) = ICollateralManager(collateralManager).getCollateralInfo(_collateral);
-            require(isSupported, "Collateral not supported");
+            // Get collateral ratio from CollateralManager or fallback to local
+            uint256 collateralRatio;
+            if (collateralManager != address(0)) {
+                (bool isSupported, uint256 ratio,,) = ICollateralManager(collateralManager).getCollateralInfo(_collateral);
+                require(isSupported, "Collateral not supported");
+                collateralRatio = ratio;
+            } else {
+                collateralRatio = supportedCollaterals[_collateral].collateralRatio;
+            }
             uint256 requiredValue = (vault.totalDebt * collateralRatio) / BASIS_POINTS;
             require(remainingValue >= requiredValue, "Undercollateralized after withdrawal");
         }
