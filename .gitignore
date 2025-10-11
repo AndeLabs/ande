@@ -44,54 +44,63 @@ ai-summary.md
 # ========================================
 # MARKDOWN DOCUMENTATION STRATEGY
 # ========================================
-# Ignore temporary/generated reports by default
+# Ignore ALL markdown by default, only track essentials
 *.md
 
 # ----------------------------------------
-# ESSENTIAL PROJECT DOCUMENTATION (Always tracked)
+# 🏗️ CORE PROJECT DOCUMENTATION (Always tracked)
 # ----------------------------------------
-!README.md
-!CHANGELOG.md
-!CODE_OF_CONDUCT.md
-!SECURITY.md
-!GIT_WORKFLOW.md
+!README.md                           # Main project README
+!CHANGELOG.md                       # Version history
+!CODE_OF_CONDUCT.md                  # Community guidelines
+!SECURITY.md                        # Security policy
+!CONTRIBUTING.md                    # Contribution guidelines
 
 # ----------------------------------------
-# DEVELOPER GUIDES (Always tracked)
+# 👥 DEVELOPER ONBOARDING (Always tracked)
 # ----------------------------------------
-!ONBOARDING.md
-!QUICK_START.md
-!HEALTH_CHECK.md
-!DOCS_INDEX.md
+!docs/ONBOARDING.md                 # Complete developer guide
 
 # ----------------------------------------
-# PROJECT PLANNING (Always tracked)
+# 📁 ARCHIVE (Historical - tracked but organized)
 # ----------------------------------------
-!ROADMAP.md
-
-# ----------------------------------------
-# TECHNICAL SPECS (Always tracked)
-# ----------------------------------------
-!NATIVE_ANDE_MIGRATION.md
-!FAUCET.md
-
-# ----------------------------------------
-# REPORTS & FIXES (Temporary - Ignored)
-# ----------------------------------------
-# BLOCKSCOUT_*.md - Integration reports (archive after completion)
-# *_REPORT.md - Health check and test reports (temporary)
-# FIXES_APPLIED.md - Fix tracking (can be archived)
-# TEST_COVERAGE_*.md - Coverage reports (regenerate as needed)
-
-# ----------------------------------------
-# SUBDIRECTORY DOCUMENTATION (Always tracked)
-# ----------------------------------------
-!**/README.md
-!docs/**/*.md
-
-# Exception: Ignore archived reports
-docs/archive/**/*.md
+!docs/archive/**/*.md
 !docs/archive/**/README.md
+
+# ----------------------------------------
+# 📦 COMPONENT READMEs (Always tracked)
+# ----------------------------------------
+!**/README.md                       # Component-specific documentation
+
+# ----------------------------------------
+# ❌ ALL OTHER MARKDOWN (Always ignored)
+# ----------------------------------------
+# AI-generated content
+**/CLAUDE.md
+**/GEMINI.md
+contracts/GEMINI.md
+
+# External planning and technical specs
+docs/AndeChainPlanMaestro.md
+docs/Khipu_YIELD_ROADMAP.md
+docs/ROADMAP_CONCEPTUAL.md
+docs/VEANDE_MODEL.md
+docs/BRIDGE_ESCAPE_HATCHES.md
+docs/ABOB_TECHNICAL_ARCHITECTURE.md
+docs/TECHNICAL_SPECS/**/*.md
+docs/DOCS_INDEX.md
+
+# Progress reports and fix tracking
+FASE_*.md
+FIXES_APPLIED.md
+FIX_TOKEN_DUALITY.md
+
+# GitHub templates
+.github/PULL_REQUEST_TEMPLATE.md
+
+# External dependency documentation
+infra/CHANGELOG.md
+bundler/README.md
 
 # ----------------------------------------
 # IDE & OS

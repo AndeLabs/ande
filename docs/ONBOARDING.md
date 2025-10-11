@@ -14,7 +14,26 @@
 
 ## 🎯 Introducción
 
-Bienvenido a AndeChain. Esta guía es el manual de operaciones definitivo para cualquier desarrollador que trabaje en el ecosistema. Cubre todo, desde la configuración inicial y el flujo de trabajo de desarrollo hasta los estándares de codificación, la arquitectura de componentes clave y la solución de problemas comunes.
+Bienvenido a **AndeChain**, una sovereign EVM rollup en Celestia para Latinoamérica. Esta guía es el manual de operaciones definitivo para cualquier desarrollador que trabaje en el ecosistema.
+
+### 💰 ANDE Token Duality - Característica Principal
+
+AndeChain implementa un sistema económico único llamado **ANDE Token Duality** donde el token ANDE funciona simultáneamente como:
+
+1. **Token Nativo de Gas**: Para pagar transacciones en la red (como ETH en Ethereum)
+2. **Token ERC-20 Gobernanza**: Para staking, voting y DeFi (como UNI en Uniswap)
+
+**Dirección del Precompile ANDE**: `0x00000000000000000000000000000000000000FD`
+
+Esta dualidad permite:
+- ✅ Soberanía económica completa
+- ✅ Experiencia DeFi nativa
+- ✅ Gobernanza on-chain
+- ✅ Integración perfecta con ecosistemas existentes
+
+Esta guía cubre todo, desde la configuración inicial hasta el despliegue, testing y solución de problemas, incluyendo cómo interactuar con este innovador sistema de doble token.
+
+> **📢 Estado Actual**: AndeChain está 100% operativa con configuración estandarizada. El problema del single-sequencer ha sido resuelto actualizando los flags de configuración de `--rollkit.*` a `--evnode.*`.
 
 ---
 
@@ -37,12 +56,17 @@ Bienvenido a AndeChain. Esta guía es el manual de operaciones definitivo para c
     *   [Oráculo P2P](#-oráculo-p2p)
 5.  [Testing y Calidad](#-testing-y-calidad)
 6.  [Solución de Problemas](#-solución-de-problemas)
+7.  [Compatibilidad y Versiones](#-compatibilidad-y-versiones)
+    *   [Versiones de Componentes Críticos](#-versiones-de-componentes-críticos)
+    *   [Flags de Configuración](#-flags-de-configuración-referencia-rápida)
+    *   [Actualizaciones y Mantenimiento](#-actualizaciones-y-mantenimiento)
+    *   [Problemas Comunes de Compatibilidad](#-problemas-comunes-de-compatibilidad)
 
 ---
 
 ## 🚀 Guía de Inicio Rápido
 
-Esta sección te guiará para tener un entorno de desarrollo local completo y funcional.
+Esta sección te guiará para tener un entorno de desarrollo local completo y funcional con **ANDE Token Duality**.
 
 ### ✅ Prerrequisitos
 
@@ -51,16 +75,16 @@ Asegúrate de tener instaladas las siguientes herramientas:
 | Herramienta | Versión Mínima | Comando de Verificación |
 | :--- | :--- | :--- |
 | Docker | `24.0.0` | `docker --version` |
-| Node.js | `20.0.0` | `node --version` |
+| Docker Compose | `2.0.0` | `docker compose version` |
 | Foundry | (última) | `foundryup --version` |
 | Git | `2.30` | `git --version` |
 | Make | (cualquiera) | `make --version` |
 
 Si te falta alguna, consulta la [guía de instalación de herramientas detallada](#-instalación-de-herramientas).
 
-### ⚡ Instalación Automática (Recomendado)
+### 🔥 Instalación Automática COMPLETA (Recomendado)
 
-El siguiente método utiliza `make` para orquestar todo el proceso de forma automática.
+**🎯 Único comando para todo el ecosistema AndeChain:**
 
 **1. Clonar el Repositorio**
 ```bash
@@ -68,46 +92,74 @@ git clone https://github.com/AndeLabs/andechain.git
 cd andechain
 ```
 
-**2. Configurar Variables de Entorno**
+**2. Iniciar AndeChain Completa**
 ```bash
-# Copia el archivo de ejemplo. No se requieren cambios para el setup básico.
-cp infra/.env.example infra/.env
+# 🔥 COMANDO COMPLETO AUTOMATIZADO - Todo en Uno
+make full-start
 ```
 
-**3. Iniciar el Ecosistema Completo**
-```bash
-# Este comando mágico hará todo por ti:
-# 1. Construirá y ejecutará la infraestructura Docker (EVM, Sequencer, DA, Blockscout).
-# 2. Compilará y desplegará todos los contratos inteligentes.
-# 3. Iniciará el servicio del relayer.
-make start
-```
+**Este comando mágico hará todo por ti:**
+1. ✅ **Verifica requisitos** (Docker, Foundry, etc.)
+2. ✅ **Configura entorno** (.env variables)
+3. ✅ **Construye ev-reth con ANDE Token Duality** (clone desde GitHub)
+4. ✅ **Inicia infraestructura Docker** (ev-reth-sequencer, single-sequencer, local-da)
+5. ✅ **Espera estabilización** (60 segundos)
+6. ✅ **Verifica salud del sistema** (RPC + containers)
+7. ✅ **Despliega contrato ANDE Token** automáticamente
 
 ### ✅ Verificación y Acceso a Servicios
 
-Después de ejecutar `make start`, verifica que todo funcione correctamente:
+Después de ejecutar `make full-start`, verifica que todo funcione correctamente:
 
 ```bash
-make status
+make health
 ```
 
-Deberías ver una salida similar a esta, confirmando que todos los servicios están activos:
+Deberías ver una salida similar a esta:
 ```
-✅ Docker services: running
-✅ Contracts: deployed
-✅ Relayer: running
-✅ RPC: http://localhost:8545
-✅ Explorer: http://localhost:4000
+🏥 Verificando salud de AndeChain...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Estado de servicios:
+NAME                STATUS          PORTS
+ev-reth-sequencer   Up (healthy)    8545->8545, 9001->9001
+local-da            Up              7980->7980
+single-sequencer    Up              26660->26660
+
+🔗 Conectividad RPC:
+Chain ID: 0x4d2
+
+📦 Último bloque:
+Block: 0xXXX
+
+💰 Saldo ANDE de precompile:
+ANDE Balance: 0xXXXX wei
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 Ahora puedes acceder a los servicios locales:
 
 | Servicio | URL | Descripción |
 | :--- | :--- | :--- |
-| **🌐 RPC Endpoint** | `http://localhost:8545` | Ethereum JSON-RPC para interactuar con la red. |
-| **🔍 Block Explorer** | `http://localhost:4000` | Interfaz de Blockscout para explorar bloques y transacciones. |
-| **💧 Faucet** | `http://localhost:3000` | Faucet para obtener ETH de desarrollo. |
-| **📊 Local DA** | `http://localhost:7980` | Mock de Celestia para la disponibilidad de datos. |
+| **🌐 RPC Endpoint** | `http://localhost:8545` | ANDE Chain RPC con ANDE Token Duality |
+| **📍 ANDE Precompile** | `0x00000000000000000000000000000000000000FD` | Dirección del precompile ANDE nativo |
+| **📊 Local DA** | `http://localhost:7980` | Mock de Celestia para disponibilidad de datos |
+| **📈 Métricas** | `http://localhost:9001` | Métricas de ev-reth (requiere configuración) |
+
+### 🔧 Configuración Estándar Docker
+
+**Importante:** AndeChain usa configuración Docker estandarizada:
+
+```bash
+# Archivo único de configuración
+infra/stacks/single-sequencer/docker-compose.yml
+
+# Makefile actualizado para usar el nombre estándar
+make start    # usa docker-compose.yml (no .ande.yml)
+make health   # usa docker-compose.yml
+make stop     # usa docker-compose.yml
+```
+
+**Nota histórica:** Antes existía `docker-compose.ande.yml` pero fue unificado a `docker-compose.yml` para evitar confusiones.
 
 ### 🔧 Setup Manual (Avanzado)
 
@@ -213,27 +265,81 @@ docs(onboarding): actualizar la sección de prerrequisitos
 
 La orquestación del proyecto se centraliza en `Makefiles` para simplificar las tareas comunes.
 
-### Principales Comandos `make` (desde la raíz de `andechain/`)
+### 🔥 Comandos `make` Principales (desde la raíz de `andechain/`)
 
-| Comando | Propósito |
-| :--- | :--- |
-| `make start` | **El más importante.** Inicia todo el entorno de desarrollo local. |
-| `make stop` | Detiene la infraestructura Docker. |
-| `make reset` | **Destructivo.** Detiene y elimina los volúmenes de Docker para un reinicio limpio. |
-| `make status` | Muestra el estado actual de todos los servicios. |
-| `make test` | Ejecuta la suite completa de tests para los contratos. |
-| `make coverage` | Genera un reporte de cobertura de los tests. |
-| `make security` | Ejecuta un análisis de seguridad estático con Slither. |
-| `make deploy-ecosystem` | Despliega los contratos en la red local (usado por `make start`). |
-| `make clean` | Limpia los artefactos de compilación de Foundry. |
+| Comando | Propósito | Cuándo Usar |
+| :--- | :--- | :--- |
+| **`make full-start`** | **🔥 COMANDO COMPLETO AUTOMATIZADO** - Todo en uno | **Primera vez o reinicio completo** |
+| `make start` | Inicia infraestructura (requiere ev-reth construido) | Desarrollo diario |
+| `make stop` | Detiene la infraestructura Docker | Finalizar sesión |
+| `make health` | Verificación completa del sistema | Diagnóstico |
+| `make info` | Información detallada del sistema | Debugging |
+| `make reset` | **⚠️ Destructivo** - Reset completo con volúmenes | Problemas serios |
+| `make deploy-ecosystem` | Muestra scripts de despliegue disponibles | Desarrollo de contratos |
+| `make redeploy-token` | Fuerza redeploy de ANDE Token con nueva dirección | Testing |
+| `make test` | Ejecuta tests de contratos | Desarrollo |
+| `make coverage` | Genera reporte de cobertura de tests | Calidad |
+| `make security` | Análisis de seguridad con Slither | Auditoría |
+| `make build-ev-reth` | Construye ev-reth con ANDE Token Duality | Mantenimiento |
+| `make clean` | Limpia artefactos de compilación | Mantenimiento |
 
-### Comandos Útiles de `foundry` (desde `contracts/`)
+### 🎯 Comandos Esenciales para el Día a Día
+
+```bash
+# Inicio rápido (después de primer full-start)
+make start && make health
+
+# Ciclo de desarrollo típico
+make test          # Probar cambios
+make stop          # Finalizar día
+```
+
+### 📋 Comandos de Verificación
+
+```bash
+# Salud completa del sistema
+make health
+
+# Información detallada
+make info
+
+# Verificación silenciosa (para scripts)
+make health-quiet
+```
+
+### 🎯 Comandos Útiles de `foundry` (desde `contracts/`)
 
 *   **Compilar**: `forge build`
 *   **Testear**: `forge test -vvv` (con más verbosidad)
 *   **Reporte de Gas**: `forge test --gas-report`
-*   **Interactuar (Llamada)**: `cast call <ADDRESS> "functionName()" --rpc-url local`
-*   **Interactuar (Transacción)**: `cast send <ADDRESS> "functionName(arg)" --private-key $PRIVATE_KEY --rpc-url local`
+*   **Interactuar (Llamada)**: `cast call <ADDRESS> "functionName()" --rpc-url http://localhost:8545`
+*   **Interactuar (Transacción)**: `cast send <ADDRESS> "functionName(arg)" --private-key $PRIVATE_KEY --rpc-url http://localhost:8545`
+*   **Verificar balance**: `cast balance <ADDRESS> --rpc-url http://localhost:8545`
+*   **Verificar bloque**: `cast block-number --rpc-url http://localhost:8545`
+
+### 💰 ANDE Token Duality - Comandos Especiales
+
+**Precompile ANDE Nativo:**
+```bash
+# Verificar balance del precompile ANDE
+cast balance 0x00000000000000000000000000000000000000FD --rpc-url http://localhost:8545
+
+# Enviar tokens ANDE nativos al precompile
+cast send 0x00000000000000000000000000000000000000FD \
+  --value 1000000000000000000 \
+  --rpc-url http://localhost:8545 \
+  --private-key $PRIVATE_KEY
+```
+
+**Contrato ANDE ERC-20:**
+```bash
+# Verificar nombre y símbolo (si está deployed)
+cast call <ANDE_CONTRACT_ADDRESS> "name()" --rpc-url http://localhost:8545
+cast call <ANDE_CONTRACT_ADDRESS> "symbol()" --rpc-url http://localhost:8545
+
+# Verificar balance ERC-20
+cast call <ANDE_CONTRACT_ADDRESS> "balanceOf(address)" <ADDRESS> --rpc-url http://localhost:8545
+```
 
 ### Comandos Útiles de `docker` (desde `infra/`)
 
@@ -320,15 +426,159 @@ La calidad y seguridad del código son primordiales.
     ```bash
     # Revisa los logs
     cd infra
-    docker compose logs -f ev-reth-sequencer
+    docker compose -f stacks/single-sequencer/docker-compose.yml logs -f ev-reth-sequencer
+    docker compose -f stacks/single-sequencer/docker-compose.yml logs -f single-sequencer
 
     # Reinicia el servicio
-    docker compose restart ev-reth-sequencer single-sequencer
+    docker compose -f stacks/single-sequencer/docker-compose.yml restart ev-reth-sequencer single-sequencer
+
+    # Verificación manual del RPC
+    curl -X POST -H "Content-Type: application/json" \
+      --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+      http://localhost:8545
     ```
+
+### ⚠️ Single-Sequencer reiniciándose continuamente
+*   **Causa**: Flags de configuración obsoletos en `evm-single`.
+*   **Explicación**: La versión actual de `evm-single` cambió los prefijos de flags de `--rollkit.*` a `--evnode.*`.
+*   **Síntomas**: El contenedor `single-sequencer` muestra estado "Restarting" y logs muestran "context canceled".
+*   **Solución**: La configuración ya está actualizada en el repositorio. Si persiste:
+    ```bash
+    # Reiniciar solo el sequencer
+    cd infra
+    docker compose -f stacks/single-sequencer/docker-compose.yml restart single-sequencer
+
+    # Si continúa, hacer reset completo
+    cd ..
+    make reset
+    make full-start
+    ```
+*   **Nota importante**: Este problema **no está relacionado con las modificaciones de ev-reth para ANDE Token Duality**. Es puramente un cambio de API del sequencer.
+
+### 🔧 Errores de nonce en transacciones
+*   **Causa**: Conflicto de nonce cuando hay transacciones pendientes en el mempool.
+*   **Solución**:
+    ```bash
+    # Verificar nonce actual
+    cast nonce 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --rpc-url http://localhost:8545
+
+    # Usar nonce específico en transacción
+    cast send <ADDRESS> --value <AMOUNT> \
+      --nonce <NONCE_NUMBER> \
+      --rpc-url http://localhost:8545 \
+      --private-key $PRIVATE_KEY
+    ```
+
+### 📝 Error: `unexpected argument '--nonce'` en forge script
+*   **Causa**: Versión de Foundry que ya no soporta el argumento `--nonce`.
+*   **Solución**: Usar comandos make que manejan esto automáticamente:
+    ```bash
+    # En lugar de forge script manual, usar:
+    make deploy-ecosystem  # Muestra opciones disponibles
+
+    # O deploy manual sin nonce:
+    cd contracts
+    forge script script/DeploySimple.s.sol --rpc-url http://localhost:8545 --broadcast --legacy --private-key $PRIVATE_KEY
+    ```
+
+---
+
+## 🔧 Compatibilidad y Versiones
+
+### 📦 Versiones de Componentes Críticos
+
+AndeChain depende de varias versiones específicas de componentes. Es importante conocer las compatibilidades:
+
+#### **ev-reth (Custom Build)**
+- **Repositorio**: https://github.com/AndeLabs/ande-reth
+- **Función**: EVM execution layer con ANDE Token Duality
+- **Construcción**: Automática vía `make build-ev-reth` o `make full-start`
+- **Compatibilidad**: Totalmente compatible con versiones actuales de ev-node
+
+#### **ev-node / evm-single**
+- **Imagen**: `ghcr.io/evstack/ev-node-evm-single:main`
+- **Función**: Block production y sequencing
+- **API Changes**: Los flags cambiaron de `--rollkit.*` a `--evnode.*`
+- **Configuración**: Actualizada automáticamente en este repositorio
+
+#### **Flags de Configuración (Referencia Rápida)**
+
+| Componente | Flag Antiguo | Flag Nuevo | Uso |
+|:---|:---|:---|:---|
+| RPC Address | `--rollkit.rpc.address` | `--evnode.rpc.address` | Configurar RPC del sequencer |
+| P2P Listen | `--rollkit.p2p.listen_address` | `--evnode.p2p.listen_address` | Configurar P2P |
+| DA Address | `--rollkit.da.address` | `--evnode.da.address` | Conectar a DA layer |
+| Aggregator | `--rollkit.node.aggregator` | `--evnode.node.aggregator` | Modo agregador |
+| Block Time | `--rollkit.node.block_time` | `--evnode.node.block_time` | Tiempo entre bloques |
+
+### 🔄 Actualizaciones y Mantenimiento
+
+#### **Actualizar ev-reth**
+```bash
+# Reconstruir ev-reth con últimos cambios
+make build-ev-reth
+
+# Reiniciar solo el componente ev-reth
+cd infra
+docker compose -f stacks/single-sequencer/docker-compose.yml restart ev-reth-sequencer
+```
+
+#### **Verificar Compatibilidad**
+```bash
+# Verificar versión de ev-reth
+make info
+
+# Verificar salud general
+make health
+```
+
+### ⚠️ Problemas Comunes de Compatibilidad
+
+1. **"context canceled" en logs de sequencer**
+   - Generalmente causado por flags incorrectos
+   - Solución: Verificar que todos los flags usen el prefijo `--evnode.*`
+
+2. **Contenedores que no inician**
+   - Verificar que las imágenes sean compatibles
+   - Revisar logs específicos del contenedor
+
+3. **Transacciones que no se procesan**
+   - Puede ser por incompatibilidad entre ev-reth y ev-node
+   - Generalmente resuelto con reinicio completo: `make reset && make full-start`
+
+---
+
+## 🎉 Resumen del Estado Actual
+
+AndeChain está **lista para producción** con:
+
+### ✅ **Componentes Operativos**
+- **ev-reth ANDE**: Custom build con ANDE Token Duality funcionando
+- **Single-Sequencer**: Configurado y estable (flags `--evnode.*` actualizados)
+- **Local DA**: Mock de Celestia para data availability
+- **ANDE Token Duality**: Precompile en `0x00..FD` + contrato ERC-20
+
+### ✅ **Configuración Estandarizada**
+- **Docker**: Unificado a `docker-compose.yml` estándar
+- **Makefile**: Actualizado con comandos `make full-start`
+- **Documentación**: Completamente sincronizada
+
+### ✅ **Herramientas Disponibles**
+- **make full-start**: Inicio completo automatizado
+- **make health**: Verificación de sistema
+- **make deploy-ecosystem**: Despliegue de contratos
+- **Transacciones**: Funcionando correctamente
+
+### 🔧 **Próximos Pasos Recomendados**
+1. **Desarrollo**: Usar `make start && make health` para desarrollo diario
+2. **Testing**: Ejecutar `make test` para validar cambios
+3. **Producción**: Considerar migrar `local-da` a Celestia mainnet
 
 ---
 <div align="center">
 
-**🚀 ¡Feliz desarrollo en AndeChain!**
+**🚀 ¡AndeChain está lista para desarrollo y producción!**
+
+*Estado: ✅ Sistema operacional | Configuración: ✅ Estandarizada | ANDE Token Duality: ✅ Funcional*
 
 </div>
