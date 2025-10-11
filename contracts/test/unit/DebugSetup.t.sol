@@ -39,13 +39,14 @@ contract DebugSetupTest is Test {
         priceOracle = new PriceOracle();
         ERC1967Proxy oracleProxy = new ERC1967Proxy(
             address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.initialize.selector)
+            abi.encodeWithSelector(PriceOracle.initialize.selector, admin)
         );
         priceOracle = PriceOracle(address(oracleProxy));
         console.log("PriceOracle owner:", priceOracle.owner());
 
         // 3. Test PriceOracle owner
         console.log("=== 3. TESTING PRICE ORACLE OWNER ===");
+        vm.startPrank(admin);
         try priceOracle.addSource(address(usdcToken), address(mockOracle), "Mock USDC Oracle") {
             console.log("PriceOracle.addSource succeeded");
         } catch Error(string memory reason) {
@@ -53,6 +54,10 @@ contract DebugSetupTest is Test {
         } catch {
             console.log("PriceOracle.addSource failed with unknown error");
         }
+        vm.stopPrank();
+
+        // Set mock oracle price (owner is test contract)
+        mockOracle.setPrice(1e6);
 
         // 4. Deploy CollateralManager
         console.log("=== 4. DEPLOYING COLLATERAL MANAGER ===");
