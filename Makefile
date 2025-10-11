@@ -45,7 +45,7 @@ help:
 # Inicia el entorno completo con ANDE Token Duality
 start: build-ev-reth
 	@echo "🚀 Iniciando AndeChain con ANDE Token Duality..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml up -d --build
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml up -d --build
 	@echo "⏳ Esperando 30 segundos para que la cadena se estabilice..."
 	@sleep 30
 	@echo "✅ AndeChain está lista!"
@@ -80,7 +80,7 @@ full-start:
 	@$(MAKE) build-ev-reth
 	@echo ""
 	@echo "🐳 4. Iniciando infraestructura Docker..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml up -d
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml up -d
 	@echo ""
 	@echo "⏳ 5. Esperando estabilización de la red (60 segundos)..."
 	@sleep 60
@@ -117,18 +117,18 @@ full-start:
 
 # Health check sin output decorativo (para usar en scripts)
 health-quiet:
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml ps | grep -q "Up" && echo "✅ Containers running" || echo "❌ Containers not running"
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml ps | grep -q "Up" && echo "✅ Containers running" || echo "❌ Containers not running"
 	@curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 | grep -q "0x" && echo "✅ RPC responding" || echo "❌ RPC not responding"
 
 # Detiene la infraestructura
 stop:
 	@echo "Deteniendo infraestructura ANDE..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml down
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml down
 
 # Reset completo (borra todo)
 reset:
 	@echo "🔄 Reset completo de AndeChain..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml down -v
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml down -v
 	@rm -rf contracts/out contracts/cache contracts/broadcast
 	@echo "✅ Sistema reseteado. Ejecuta 'make start' para comenzar de nuevo."
 
@@ -236,7 +236,7 @@ health:
 	@echo "🏥 Verificando salud de AndeChain..."
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "📊 Estado de servicios:"
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml ps
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml ps
 	@echo ""
 	@echo "🔗 Conectividad RPC:"
 	@curl -s -X POST -H "Content-Type: application/json" \
@@ -259,7 +259,7 @@ info:
 	@echo "📋 Información de AndeChain - ANDE Token Duality"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "🔗 Versión de ev-reth:"
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.ande.yml exec ev-reth-sequencer ev-reth --version 2>/dev/null || echo "ev-reth no disponible"
+	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml exec ev-reth-sequencer ev-reth --version 2>/dev/null || echo "ev-reth no disponible"
 	@echo ""
 	@echo "📍 Dirección de precompile ANDE: 0x00000000000000000000000000000000000000FD"
 	@echo "⚙️  Configuración: Type alias pattern (AndeEvmConfig = EthEvmConfig)"

@@ -40,7 +40,7 @@ if [ ! -f "$CONFIG_HOME/config/node_key.json" ]; then
     init_flags="--home=$CONFIG_HOME"
     
     if [ -n "${EVM_SIGNER_PASSPHRASE:-}" ]; then
-        init_flags="$init_flags --rollkit.node.aggregator=true --rollkit.signer.passphrase $EVM_SIGNER_PASSPHRASE"
+        init_flags="$init_flags --evnode.node.aggregator=true --evnode.signer.passphrase $EVM_SIGNER_PASSPHRASE"
         log "DEBUG" "EVM_SIGNER_PASSPHRASE is set, enabling aggregator mode"
     fi
     
@@ -154,23 +154,23 @@ if [ -n "${EVM_ETH_URL:-}" ]; then
 fi
 
 if [ -n "${EVM_BLOCK_TIME:-}" ]; then
-    default_flags="$default_flags --rollkit.node.block_time $EVM_BLOCK_TIME"
+    default_flags="$default_flags --evnode.node.block_time $EVM_BLOCK_TIME"
     log "DEBUG" "Added block time flag: $EVM_BLOCK_TIME"
 fi
 
 if [ -n "${EVM_SIGNER_PASSPHRASE:-}" ]; then
-    default_flags="$default_flags --rollkit.node.aggregator=true --rollkit.signer.passphrase $EVM_SIGNER_PASSPHRASE"
+    default_flags="$default_flags --evnode.node.aggregator=true --evnode.signer.passphrase $EVM_SIGNER_PASSPHRASE"
     log "DEBUG" "Added aggregator and signer passphrase flags"
 fi
 
 # DA configuration
 if [ -n "${DA_ADDRESS:-}" ]; then
-    default_flags="$default_flags --rollkit.da.address $DA_ADDRESS"
+    default_flags="$default_flags --evnode.da.address $DA_ADDRESS"
     log "DEBUG" "Added DA address flag: $DA_ADDRESS"
 fi
 
 if [ -n "${DA_AUTH_TOKEN:-}" ]; then
-    default_flags="$default_flags --rollkit.da.auth_token $DA_AUTH_TOKEN"
+    default_flags="$default_flags --evnode.da.auth_token $DA_AUTH_TOKEN"
     log "DEBUG" "Added DA auth token flag"
 fi
 
