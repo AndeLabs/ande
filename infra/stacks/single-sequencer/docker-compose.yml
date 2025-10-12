@@ -64,9 +64,7 @@ services:
 
   # Local DA service
   local-da:
-    build:
-      context: ../da-local/ev-node
-      dockerfile: ./da/cmd/local-da/Dockerfile
+    image: ghcr.io/andelabs/andechain-local-da:develop
     container_name: local-da
     restart: unless-stopped
     ports:
