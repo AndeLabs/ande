@@ -1,0 +1,1296 @@
+'forge clean' running (wd: /Users/munay/dev/ande-labs/andechain/contracts)
+'forge config --json' running
+'forge build --build-info --skip */test/** */script/** --force' running (wd: /Users/munay/dev/ande-labs/andechain/contracts)
+
+AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701) uses arbitrary from in transferFrom: IERC20(primaryCollateral).transferFrom(liquidationManager,address(this),maxAmount) (src/AbobToken.sol#696)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#arbitrary-from-in-transferfrom
+
+AbobToken.depositCollateralAndMint(address,uint256,uint256) (src/AbobToken.sol#367-428) ignores return value by IERC20(_collateral).transferFrom(msg.sender,address(this),_collateralAmount) (src/AbobToken.sol#411)
+AbobToken.depositCollateral(address,uint256) (src/AbobToken.sol#433-455) ignores return value by IERC20(_collateral).transferFrom(msg.sender,address(this),_amount) (src/AbobToken.sol#447)
+AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256) (src/AbobToken.sol#496-536) ignores return value by IERC20(_collateral).transfer(msg.sender,_collateralAmount) (src/AbobToken.sol#522)
+AbobToken.withdrawCollateral(address,uint256) (src/AbobToken.sol#541-575) ignores return value by IERC20(_collateral).transfer(msg.sender,_amount) (src/AbobToken.sol#567)
+AbobToken.liquidateVault(address) (src/AbobToken.sol#616-651) ignores return value by IERC20(collateral).transfer(msg.sender,amount) (src/AbobToken.sol#640)
+AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701) ignores return value by IERC20(primaryCollateral).transfer(liquidationManager,maxAmount) (src/AbobToken.sol#680)
+AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701) ignores return value by IERC20(primaryCollateral).transferFrom(liquidationManager,address(this),maxAmount) (src/AbobToken.sol#696)
+AbobToken.redeemAbob(uint256) (src/AbobToken.sol#708-752) ignores return value by IERC20(collateral_scope_1).transfer(msg.sender,collateralAmounts[i_scope_0]) (src/AbobToken.sol#743)
+AuctionManager.placeBid(uint256,uint256) (src/AuctionManager.sol#204-235) ignores return value by abobToken.transfer(auction.highestBidder,auction.highestBidAmount) (src/AuctionManager.sol#224)
+AuctionManager.placeBid(uint256,uint256) (src/AuctionManager.sol#204-235) ignores return value by abobToken.transferFrom(msg.sender,address(this),bidAmount) (src/AuctionManager.sol#228)
+AuctionManager._processSuccessfulAuction(uint256) (src/AuctionManager.sol#269-300) ignores return value by abobToken.transfer(auction.highestBidder,refund) (src/AuctionManager.sol#290)
+AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472) ignores return value by abobToken.transfer(auction.highestBidder,auction.highestBidAmount) (src/AuctionManager.sol#467)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-transfer
+
+AndeOracleAggregator.sources (src/AndeOracleAggregator.sol#32) is never initialized. It is used in:
+	- AndeOracleAggregator._addSourceInternal(bytes32,address,uint256,uint256,string) (src/AndeOracleAggregator.sol#94-107)
+	- AndeOracleAggregator.updateSourceWeight(bytes32,address,uint256) (src/AndeOracleAggregator.sol#116-127)
+	- AndeOracleAggregator.deactivateSource(bytes32,address) (src/AndeOracleAggregator.sol#129-138)
+	- AndeOracleAggregator._aggregatePrice(bytes32) (src/AndeOracleAggregator.sol#159-198)
+	- AndeOracleAggregator.getSourcesForPair(bytes32) (src/AndeOracleAggregator.sol#200-202)
+GaugeController.changes_weight (src/gauges/GaugeController.sol#64) is never initialized. It is used in:
+	- GaugeController._get_weight(address,uint256) (src/gauges/GaugeController.sol#168-175)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-state-variables
+
+AbobToken.redeemAbob(uint256) (src/AbobToken.sol#708-752) performs a multiplication on the result of a division:
+	- proportionalValue = (collateralValue * redeemAmount) / totalSystemDebt (src/AbobToken.sol#738)
+	- collateralAmounts[i_scope_0] = (proportionalValue * 1e18) / getCollateralPrice(collateral_scope_1) (src/AbobToken.sol#739)
+GaugeController.vote(address,uint256) (src/gauges/GaugeController.sol#127-164) performs a multiplication on the result of a division:
+	- gauge_time = (block.timestamp / WEEK) * WEEK (src/gauges/GaugeController.sol#153)
+GaugeController.vote(address,uint256) (src/gauges/GaugeController.sol#127-164) performs a multiplication on the result of a division:
+	- type_time = (block.timestamp / WEEK) * WEEK (src/gauges/GaugeController.sol#158)
+GaugeController._get_gauge_weight(address,uint256) (src/gauges/GaugeController.sol#206-210) performs a multiplication on the result of a division:
+	- time = (_time / WEEK) * WEEK (src/gauges/GaugeController.sol#207)
+GaugeController._get_type_total_weight(int256,uint256) (src/gauges/GaugeController.sol#212-216) performs a multiplication on the result of a division:
+	- time = (_time / WEEK) * WEEK (src/gauges/GaugeController.sol#213)
+VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType) (src/gauges/VotingEscrow.sol#364-395) performs a multiplication on the result of a division:
+	- unlock_time = (_unlock_time / WEEK) * WEEK (src/gauges/VotingEscrow.sol#378)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) uses a dangerous strict equality:
+	- _amount == 0 (src/AbobToken.sol#985)
+P2POracle.latestRoundData() (src/P2POracle.sol#149-169) uses a dangerous strict equality:
+	- currentEpochNumber == 0 (src/P2POracle.sol#155)
+TrustedRelayerOracle.getAggregatedPrice(bytes32) (src/TrustedRelayerOracle.sol#141-146) uses a dangerous strict equality:
+	- data.price == 0 (src/TrustedRelayerOracle.sol#143)
+TrustedRelayerOracle.getPrice(bytes32) (src/TrustedRelayerOracle.sol#124-129) uses a dangerous strict equality:
+	- data.price == 0 (src/TrustedRelayerOracle.sol#126)
+VotingEscrow._checkpoint(address,VotingEscrow.LockedBalance,VotingEscrow.LockedBalance) (src/gauges/VotingEscrow.sol#269-354) uses a dangerous strict equality:
+	- g_epoch == 0 (src/gauges/VotingEscrow.sol#300)
+VotingEscrow.totalSupplyAt(uint256) (src/gauges/VotingEscrow.sol#229-259) uses a dangerous strict equality:
+	- _epoch == 0 (src/gauges/VotingEscrow.sol#232)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+
+Contract locking ether found:
+	Contract NativeTransferPrecompileMock (src/mocks/NativeTransferPrecompileMock.sol#20-184) has payable functions:
+	 - NativeTransferPrecompileMock.receive() (src/mocks/NativeTransferPrecompileMock.sol#181-183)
+	But does not have a function to withdraw the ether
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#contracts-that-lock-ether
+
+Reentrancy in AbobToken.depositCollateral(address,uint256) (src/AbobToken.sol#433-455):
+	External calls:
+	- IERC20(_collateral).transferFrom(msg.sender,address(this),_amount) (src/AbobToken.sol#447)
+	State variables written after the call(s):
+	- supportedCollaterals[_collateral].totalDeposited += _amount (src/AbobToken.sol#452)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- vault.collateralAmounts[_collateral] += _amount (src/AbobToken.sol#449)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastCollateralUpdate[_collateral] = block.timestamp (src/AbobToken.sol#450)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastInteraction = block.timestamp (src/AbobToken.sol#451)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reentrancy in AbobToken.depositCollateralAndMint(address,uint256,uint256) (src/AbobToken.sol#367-428):
+	External calls:
+	- IERC20(_collateral).transferFrom(msg.sender,address(this),_collateralAmount) (src/AbobToken.sol#411)
+	State variables written after the call(s):
+	- supportedCollaterals[_collateral].totalDeposited += _collateralAmount (src/AbobToken.sol#420)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- totalSystemDebt += _abobAmount (src/AbobToken.sol#421)
+	AbobToken.totalSystemDebt (src/AbobToken.sol#134) can be used in cross function reentrancies:
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.totalSystemDebt (src/AbobToken.sol#134)
+	- vault.collateralAmounts[_collateral] += _collateralAmount (src/AbobToken.sol#414)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastCollateralUpdate[_collateral] = block.timestamp (src/AbobToken.sol#415)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.totalDebt += _abobAmount (src/AbobToken.sol#416)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastInteraction = block.timestamp (src/AbobToken.sol#417)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reentrancy in AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472):
+	External calls:
+	- abobToken.transfer(auction.highestBidder,auction.highestBidAmount) (src/AuctionManager.sol#467)
+	State variables written after the call(s):
+	- auction.isActive = false (src/AuctionManager.sol#470)
+	AuctionManager.auctions (src/AuctionManager.sol#73) can be used in cross function reentrancies:
+	- AuctionManager.auctions (src/AuctionManager.sol#73)
+	- AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472)
+	- AuctionManager.getAuction(uint256) (src/AuctionManager.sol#349-351)
+	- AuctionManager.getCurrentPrice(uint256) (src/AuctionManager.sol#358-362)
+	- AuctionManager.getMinimumBid(uint256) (src/AuctionManager.sol#369-376)
+Reentrancy in AuctionManager.endAuction(uint256) (src/AuctionManager.sol#241-265):
+	External calls:
+	- _processSuccessfulAuction(auctionId) (src/AuctionManager.sol#256)
+		- require(bool,string)(abobToken.transferFrom(address(this),address(this),totalToBurn),ABOB transfer failed) (src/AuctionManager.sol#278-281)
+		- abobToken.transfer(auction.highestBidder,refund) (src/AuctionManager.sol#290)
+	- _processFailedAuction(auctionId) (src/AuctionManager.sol#261)
+		- abobToken.liquidateVault(auction.vaultOwner,auction.totalDebt) (src/AuctionManager.sol#306-311)
+	State variables written after the call(s):
+	- auction.isActive = false (src/AuctionManager.sol#264)
+	AuctionManager.auctions (src/AuctionManager.sol#73) can be used in cross function reentrancies:
+	- AuctionManager.auctions (src/AuctionManager.sol#73)
+	- AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472)
+	- AuctionManager.getAuction(uint256) (src/AuctionManager.sol#349-351)
+	- AuctionManager.getCurrentPrice(uint256) (src/AuctionManager.sol#358-362)
+	- AuctionManager.getMinimumBid(uint256) (src/AuctionManager.sol#369-376)
+Reentrancy in AbobToken.liquidateVault(address) (src/AbobToken.sol#616-651):
+	External calls:
+	- IERC20(collateral).transfer(msg.sender,amount) (src/AbobToken.sol#640)
+	State variables written after the call(s):
+	- supportedCollaterals[collateral].totalDeposited -= amount (src/AbobToken.sol#641)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- vault.totalDebt = 0 (src/AbobToken.sol#646)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastInteraction = block.timestamp (src/AbobToken.sol#647)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reentrancy in ANDETokenDuality.mint(address,uint256) (src/ANDETokenDuality.sol#254-266):
+	External calls:
+	- (success,None) = _nativeTransferPrecompile.call(abi.encodeWithSignature(depositNativeBalance(address,uint256),to,amount)) (src/ANDETokenDuality.sol#258-259)
+	- _update(address(0),to,amount) (src/ANDETokenDuality.sol#265)
+		- (success,returnData) = _nativeTransferPrecompile.call(input) (src/ANDETokenDuality.sol#204)
+	State variables written after the call(s):
+	- _update(address(0),to,amount) (src/ANDETokenDuality.sol#265)
+		- $ = PausableStorageLocation (lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol#29)
+	PausableUpgradeable.PausableStorageLocation (lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol#25) can be used in cross function reentrancies:
+	- PausableUpgradeable._getPausableStorage() (lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol#27-31)
+Reentrancy in AuctionManager.placeBid(uint256,uint256) (src/AuctionManager.sol#204-235):
+	External calls:
+	- abobToken.transfer(auction.highestBidder,auction.highestBidAmount) (src/AuctionManager.sol#224)
+	- abobToken.transferFrom(msg.sender,address(this),bidAmount) (src/AuctionManager.sol#228)
+	State variables written after the call(s):
+	- auction.highestBidder = msg.sender (src/AuctionManager.sol#230)
+	AuctionManager.auctions (src/AuctionManager.sol#73) can be used in cross function reentrancies:
+	- AuctionManager.auctions (src/AuctionManager.sol#73)
+	- AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472)
+	- AuctionManager.getAuction(uint256) (src/AuctionManager.sol#349-351)
+	- AuctionManager.getCurrentPrice(uint256) (src/AuctionManager.sol#358-362)
+	- AuctionManager.getMinimumBid(uint256) (src/AuctionManager.sol#369-376)
+	- auction.highestBidAmount = bidAmount (src/AuctionManager.sol#231)
+	AuctionManager.auctions (src/AuctionManager.sol#73) can be used in cross function reentrancies:
+	- AuctionManager.auctions (src/AuctionManager.sol#73)
+	- AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472)
+	- AuctionManager.getAuction(uint256) (src/AuctionManager.sol#349-351)
+	- AuctionManager.getCurrentPrice(uint256) (src/AuctionManager.sol#358-362)
+	- AuctionManager.getMinimumBid(uint256) (src/AuctionManager.sol#369-376)
+Reentrancy in AbobToken.redeemAbob(uint256) (src/AbobToken.sol#708-752):
+	External calls:
+	- IERC20(collateral_scope_1).transfer(msg.sender,collateralAmounts[i_scope_0]) (src/AbobToken.sol#743)
+	State variables written after the call(s):
+	- supportedCollaterals[collateral_scope_1].totalDeposited -= collateralAmounts[i_scope_0] (src/AbobToken.sol#744)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- totalSystemDebt -= _abobAmount (src/AbobToken.sol#749)
+	AbobToken.totalSystemDebt (src/AbobToken.sol#134) can be used in cross function reentrancies:
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.totalSystemDebt (src/AbobToken.sol#134)
+Reentrancy in AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701):
+	External calls:
+	- IERC20(primaryCollateral).transfer(liquidationManager,maxAmount) (src/AbobToken.sol#680)
+	State variables written after the call(s):
+	- vault.collateralAmounts[primaryCollateral] = 0 (src/AbobToken.sol#683)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reentrancy in AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701):
+	External calls:
+	- IERC20(primaryCollateral).transfer(liquidationManager,maxAmount) (src/AbobToken.sol#680)
+	- auctionId = IAuctionManager(liquidationManager).startLiquidationAuction(_user,primaryCollateral,maxAmount,vault.totalDebt) (src/AbobToken.sol#687-700)
+	- IERC20(primaryCollateral).transferFrom(liquidationManager,address(this),maxAmount) (src/AbobToken.sol#696)
+	State variables written after the call(s):
+	- supportedCollaterals[primaryCollateral].totalDeposited += maxAmount (src/AbobToken.sol#698)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- vault.collateralAmounts[primaryCollateral] = maxAmount (src/AbobToken.sol#697)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reentrancy in AbobToken.withdrawCollateral(address,uint256) (src/AbobToken.sol#541-575):
+	External calls:
+	- IERC20(_collateral).transfer(msg.sender,_amount) (src/AbobToken.sol#567)
+	State variables written after the call(s):
+	- supportedCollaterals[_collateral].totalDeposited -= _amount (src/AbobToken.sol#572)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- vault.collateralAmounts[_collateral] -= _amount (src/AbobToken.sol#569)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastCollateralUpdate[_collateral] = block.timestamp (src/AbobToken.sol#570)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastInteraction = block.timestamp (src/AbobToken.sol#571)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reentrancy in AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256) (src/AbobToken.sol#496-536):
+	External calls:
+	- IERC20(_collateral).transfer(msg.sender,_collateralAmount) (src/AbobToken.sol#522)
+	State variables written after the call(s):
+	- supportedCollaterals[_collateral].totalDeposited -= _collateralAmount (src/AbobToken.sol#531)
+	AbobToken.supportedCollaterals (src/AbobToken.sol#144) can be used in cross function reentrancies:
+	- AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address) (src/AbobToken.sol#280-312)
+	- AbobToken.addSupportedCollateral(address) (src/AbobToken.sol#1066-1094)
+	- AbobToken.getCollateralInfo(address) (src/AbobToken.sol#923-942)
+	- AbobToken.getSystemInfo() (src/AbobToken.sol#882-918)
+	- AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.supportedCollaterals (src/AbobToken.sol#144)
+	- AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256) (src/AbobToken.sol#317-335)
+	- vault.collateralAmounts[_collateral] -= _collateralAmount (src/AbobToken.sol#525)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastCollateralUpdate[_collateral] = block.timestamp (src/AbobToken.sol#526)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.totalDebt = newTotalDebt (src/AbobToken.sol#527)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+	- vault.lastInteraction = block.timestamp (src/AbobToken.sol#528)
+	AbobToken.vaults (src/AbobToken.sol#140) can be used in cross function reentrancies:
+	- AbobToken.canLiquidate(address) (src/AbobToken.sol#602-610)
+	- AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045)
+	- AbobToken.getCollateralValue(address,address) (src/AbobToken.sol#976-979)
+	- AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971)
+	- AbobToken.getUserVaultInfo(address) (src/AbobToken.sol#855-877)
+	- AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701)
+	- AbobToken.vaults (src/AbobToken.sol#140)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+
+VotingEscrow._checkpoint(address,VotingEscrow.LockedBalance,VotingEscrow.LockedBalance).u_old (src/gauges/VotingEscrow.sol#270) is a local variable never initialized
+AbobToken.getTotalCollateralValue(address).collaterals (src/AbobToken.sol#951) is a local variable never initialized
+AbobToken.getSystemInfo().collaterals (src/AbobToken.sol#894) is a local variable never initialized
+AbobToken.startAuctionLiquidation(address).primaryCollateral (src/AbobToken.sol#664) is a local variable never initialized
+VotingEscrow._checkpoint(address,VotingEscrow.LockedBalance,VotingEscrow.LockedBalance).u_new (src/gauges/VotingEscrow.sol#271) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables
+
+AbobToken.depositCollateralAndMint(address,uint256,uint256) (src/AbobToken.sol#367-428) ignores return value by (None,ratio,None,ceiling) = ICollateralManager(collateralManager).getCollateralInfo(_collateral) (src/AbobToken.sol#391)
+AbobToken.withdrawCollateral(address,uint256) (src/AbobToken.sol#541-575) ignores return value by (isSupported,ratio,None,None) = ICollateralManager(collateralManager).getCollateralInfo(_collateral) (src/AbobToken.sol#557)
+AbobToken.validCollateral(address) (src/AbobToken.sol#201-212) ignores return value by (isSupported,None,None,None) = ICollateralManager(collateralManager).getCollateralInfo(_collateral) (src/AbobToken.sol#205)
+AndeOracleAggregator._aggregatePrice(bytes32) (src/AndeOracleAggregator.sol#159-198) ignores return value by (answer) = IOracle(pairSources[i].oracle).latestRoundData() (src/AndeOracleAggregator.sol#173-187)
+AuctionManager.startLiquidationAuction(address,address,uint256,uint256) (src/AuctionManager.sol#162-197) ignores return value by (isSupported,None,None,None) = collateralManager.getCollateralInfo(collateralToken) (src/AuctionManager.sol#171)
+AuctionManager.canStartAuction(address,address) (src/AuctionManager.sol#409-424) ignores return value by (isSupported,None,None,None) = collateralManager.getCollateralInfo(collateralToken) (src/AuctionManager.sol#414)
+PriceOracle._getSourcePrice(address) (src/PriceOracle.sol#340-354) ignores return value by (None,answer,None,None,None) = IOracle(oracle).latestRoundData() (src/PriceOracle.sol#342)
+PriceOracle.updatePrice(address) (src/PriceOracle.sol#380-410) ignores return value by (answer,updatedAt) = IOracle(source.oracle).latestRoundData() (src/PriceOracle.sol#388-401)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+
+AbobToken.getCollateralTokenValue(address,uint256).decimals (src/AbobToken.sol#990) shadows:
+	- ERC20Upgradeable.decimals() (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol#97-99) (function)
+	- IERC20Metadata.decimals() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#25) (function)
+AndeOracleAggregator.initialize(address,address).owner (src/AndeOracleAggregator.sol#64) shadows:
+	- OwnableUpgradeable.owner() (lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol#73-76) (function)
+LiquidityGaugeV1.reward_per_token()._totalSupply (src/gauges/LiquidityGaugeV1.sol#126) shadows:
+	- ERC20._totalSupply (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#34) (state variable)
+MockERC20.constructor(string,string,uint8).name (src/mocks/MockERC20.sol#10) shadows:
+	- ERC20.name() (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#52-54) (function)
+	- IERC20Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#15) (function)
+MockERC20.constructor(string,string,uint8).symbol (src/mocks/MockERC20.sol#10) shadows:
+	- ERC20.symbol() (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#60-62) (function)
+	- IERC20Metadata.symbol() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#20) (function)
+WAndeVault.constructor(IERC20)._asset (src/vaults/WAndeVault.sol#23) shadows:
+	- ERC4626._asset (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol#51) (state variable)
+XERC20.initialize(string,string,address).name (src/xERC20/XERC20.sol#64) shadows:
+	- ERC20Upgradeable.name() (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol#70-73) (function)
+	- IERC20Metadata.name() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#15) (function)
+XERC20.initialize(string,string,address).symbol (src/xERC20/XERC20.sol#64) shadows:
+	- ERC20Upgradeable.symbol() (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol#79-82) (function)
+	- IERC20Metadata.symbol() (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#20) (function)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing
+
+AndeChainBridge.setMinConfirmations(uint256) (src/bridge/AndeChainBridge.sol#376-378) should emit an event for: 
+	- minConfirmations = newMinConfirmations (src/bridge/AndeChainBridge.sol#377) 
+AndeChainBridge.setForceInclusionPeriod(uint256) (src/bridge/AndeChainBridge.sol#384-386) should emit an event for: 
+	- forceInclusionPeriod = _forceInclusionPeriod (src/bridge/AndeChainBridge.sol#385) 
+LiquidityGaugeV1.notifyRewardAmount(uint256) (src/gauges/LiquidityGaugeV1.sol#109-121) should emit an event for: 
+	- reward_rate = _amount / WEEK (src/gauges/LiquidityGaugeV1.sol#113) 
+	- reward_rate = (_amount + leftover_rewards) / WEEK (src/gauges/LiquidityGaugeV1.sol#117) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic
+
+ANDETokenDuality.balanceOf(address).account (src/ANDETokenDuality.sol#131) lacks a zero-check on :
+		- (success,returnData) = _nativeTransferPrecompile.staticcall(abi.encodeWithSignature(getNativeBalance(address),account)) (src/ANDETokenDuality.sol#133-134)
+ANDETokenDuality.mint(address,uint256).to (src/ANDETokenDuality.sol#254) lacks a zero-check on :
+		- (success,None) = _nativeTransferPrecompile.call(abi.encodeWithSignature(depositNativeBalance(address,uint256),to,amount)) (src/ANDETokenDuality.sol#258-259)
+XERC20.setLockbox(address)._lockbox (src/xERC20/XERC20.sol#79) lacks a zero-check on :
+		- lockbox = _lockbox (src/xERC20/XERC20.sol#80)
+AbobToken.initialize(address,address,address,address,address,address)._governance (src/AbobToken.sol#229) lacks a zero-check on :
+		- governance = _governance (src/AbobToken.sol#251)
+AbobToken.initialize(address,address,address,address,address,address)._priceOracle (src/AbobToken.sol#230) lacks a zero-check on :
+		- priceOracle = _priceOracle (src/AbobToken.sol#252)
+AbobToken.initialize(address,address,address,address,address,address)._collateralManager (src/AbobToken.sol#231) lacks a zero-check on :
+		- collateralManager = _collateralManager (src/AbobToken.sol#253)
+AbobToken.initialize(address,address,address,address,address,address)._liquidationManager (src/AbobToken.sol#232) lacks a zero-check on :
+		- liquidationManager = _liquidationManager (src/AbobToken.sol#254)
+AbobToken.enableMigration(address)._target (src/AbobToken.sol#827) lacks a zero-check on :
+		- migrationTarget = _target (src/AbobToken.sol#829)
+CollateralManager.initialize(address,address)._defaultPriceOracle (src/CollateralManager.sol#87) lacks a zero-check on :
+		- defaultPriceOracle = _defaultPriceOracle (src/CollateralManager.sol#92)
+P2POracle.initialize(address,address,uint256,uint256).defaultAdmin (src/P2POracle.sol#110) lacks a zero-check on :
+		- treasury = defaultAdmin (src/P2POracle.sol#126)
+GaugeController.constructor(address,address)._token (src/gauges/GaugeController.sol#82) lacks a zero-check on :
+		- token = _token (src/gauges/GaugeController.sol#83)
+LiquidityGaugeV1.constructor(address,address,address)._minter (src/gauges/LiquidityGaugeV1.sol#39) lacks a zero-check on :
+		- minter = _minter (src/gauges/LiquidityGaugeV1.sol#41)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+
+Modifier WithdrawalPattern.nonReentrant() (src/security/Utils.sol#165) does not always execute _; or revert
+Modifier MultiSigProtected.requiresMultiSig(string) (src/security/Utils.sol#179-193) does not always execute _; or revert
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-modifier
+
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.mintAbob(uint256)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.mintAbob(uint256)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.mintAbob(uint256)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.withdrawCollateral(address,uint256)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.withdrawCollateral(address,uint256)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.withdrawCollateral(address,uint256)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.liquidateVault(address)
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.liquidateVault(address)
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.liquidateVault(address)
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.liquidateVault(address) (src/AbobToken.sol#616-651) has external calls inside a loop: IERC20(collateral).transfer(msg.sender,amount) (src/AbobToken.sol#640)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.startAuctionLiquidation(address)
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.startAuctionLiquidation(address)
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.startAuctionLiquidation(address)
+		AbobToken.canLiquidate(address)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.redeemAbob(uint256)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.redeemAbob(uint256)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.redeemAbob(uint256)
+AbobToken.redeemAbob(uint256) (src/AbobToken.sol#708-752) has external calls inside a loop: IERC20(collateral_scope_1).transfer(msg.sender,collateralAmounts[i_scope_0]) (src/AbobToken.sol#743)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.getUserVaultInfo(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.getUserVaultInfo(address)
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.getUserVaultInfo(address)
+		AbobToken.getTotalCollateralValue(address)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.getSystemInfo()
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.getSystemInfo()
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.getSystemInfo()
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: oracle = ICollateralManager(collateralManager).getPriceOracle(_collateral) (src/AbobToken.sol#1013-1019)
+	Calls stack containing the loop:
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralPrice(address) (src/AbobToken.sol#1007-1029) has external calls inside a loop: price = IPriceOracle(collateralOracle).getMedianPrice(_collateral) (src/AbobToken.sol#1023-1028)
+	Calls stack containing the loop:
+		AbobToken.getTotalCollateralValue(address)
+		AbobToken.getCollateralTokenValue(address,uint256)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) has external calls inside a loop: decimals = IERC20Metadata(_collateral).decimals() (src/AbobToken.sol#990)
+	Calls stack containing the loop:
+		AbobToken.getTotalCollateralValue(address)
+AndeOracleAggregator._aggregatePrice(bytes32) (src/AndeOracleAggregator.sol#159-198) has external calls inside a loop: (answer) = IOracle(pairSources[i].oracle).latestRoundData() (src/AndeOracleAggregator.sol#173-187)
+	Calls stack containing the loop:
+		AndeOracleAggregator.latestRoundData()
+AndeOracleAggregator._aggregatePrice(bytes32) (src/AndeOracleAggregator.sol#159-198) has external calls inside a loop: (answer) = IOracle(pairSources[i].oracle).latestRoundData() (src/AndeOracleAggregator.sol#173-187)
+	Calls stack containing the loop:
+		AndeOracleAggregator.getPrice(bytes32)
+AndeOracleAggregator._aggregatePrice(bytes32) (src/AndeOracleAggregator.sol#159-198) has external calls inside a loop: (answer) = IOracle(pairSources[i].oracle).latestRoundData() (src/AndeOracleAggregator.sol#173-187)
+	Calls stack containing the loop:
+		AndeOracleAggregator.getPriceWithConfidence(bytes32)
+AndeOracleAggregator._aggregatePrice(bytes32) (src/AndeOracleAggregator.sol#159-198) has external calls inside a loop: (answer) = IOracle(pairSources[i].oracle).latestRoundData() (src/AndeOracleAggregator.sol#173-187)
+	Calls stack containing the loop:
+		AndeOracleAggregator.updateCache(bytes32)
+PriceOracle._getAggregatedPrice(address) (src/PriceOracle.sol#260-308) has external calls inside a loop: price = this._getSourcePrice(source.oracle) (src/PriceOracle.sol#274-290)
+	Calls stack containing the loop:
+		PriceOracle.getMedianPrice(address)
+PriceOracle._getAggregatedPrice(address) (src/PriceOracle.sol#260-308) has external calls inside a loop: price = this._getSourcePrice(source.oracle) (src/PriceOracle.sol#274-290)
+	Calls stack containing the loop:
+		PriceOracle.getPriceWithConfidence(address)
+PriceOracle.updatePrice(address) (src/PriceOracle.sol#380-410) has external calls inside a loop: (answer,updatedAt) = IOracle(source.oracle).latestRoundData() (src/PriceOracle.sol#388-401)
+PriceOracle._getAggregatedPrice(address) (src/PriceOracle.sol#260-308) has external calls inside a loop: price = this._getSourcePrice(source.oracle) (src/PriceOracle.sol#274-290)
+	Calls stack containing the loop:
+		PriceOracle.updatePrice(address)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+
+Reentrancy in AndeChainBridge.bridgeTokens(address,address,uint256,uint256) (src/bridge/AndeChainBridge.sol#189-208):
+	External calls:
+	- IXERC20(token).burn(msg.sender,amount) (src/bridge/AndeChainBridge.sol#204)
+	State variables written after the call(s):
+	- TokensBridged(token,msg.sender,recipient,amount,destinationChain,nonce ++) (src/bridge/AndeChainBridge.sol#207)
+Reentrancy in AbobToken.depositCollateralAndMint(address,uint256,uint256) (src/AbobToken.sol#367-428):
+	External calls:
+	- IERC20(_collateral).transferFrom(msg.sender,address(this),_collateralAmount) (src/AbobToken.sol#411)
+	State variables written after the call(s):
+	- _mint(msg.sender,_abobAmount) (src/AbobToken.sol#424)
+		- $ = ERC20StorageLocation (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol#48)
+Reentrancy in AuctionManager.endAuction(uint256) (src/AuctionManager.sol#241-265):
+	External calls:
+	- _processSuccessfulAuction(auctionId) (src/AuctionManager.sol#256)
+		- require(bool,string)(abobToken.transferFrom(address(this),address(this),totalToBurn),ABOB transfer failed) (src/AuctionManager.sol#278-281)
+		- abobToken.transfer(auction.highestBidder,refund) (src/AuctionManager.sol#290)
+	State variables written after the call(s):
+	- successfulAuctions ++ (src/AuctionManager.sol#257)
+	- totalDebtRecovered += Math.min(auction.highestBidAmount,auction.totalDebt) (src/AuctionManager.sol#258)
+Reentrancy in AbobToken.liquidateVault(address) (src/AbobToken.sol#616-651):
+	External calls:
+	- IERC20(collateral).transfer(msg.sender,amount) (src/AbobToken.sol#640)
+	State variables written after the call(s):
+	- totalSystemDebt -= totalDebt (src/AbobToken.sol#648)
+Reentrancy in AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701):
+	External calls:
+	- IERC20(primaryCollateral).transfer(liquidationManager,maxAmount) (src/AbobToken.sol#680)
+	State variables written after the call(s):
+	- supportedCollaterals[primaryCollateral].totalDeposited -= maxAmount (src/AbobToken.sol#684)
+Reentrancy in AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256) (src/AbobToken.sol#496-536):
+	External calls:
+	- IERC20(_collateral).transfer(msg.sender,_collateralAmount) (src/AbobToken.sol#522)
+	State variables written after the call(s):
+	- totalSystemDebt = newTotalDebt (src/AbobToken.sol#532)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+
+Reentrancy in ANDETokenDuality._update(address,address,uint256) (src/ANDETokenDuality.sol#178-222):
+	External calls:
+	- (success,returnData) = _nativeTransferPrecompile.call(input) (src/ANDETokenDuality.sol#204)
+	Event emitted after the call(s):
+	- Transfer(from,to,value) (src/ANDETokenDuality.sol#221)
+Reentrancy in AuctionManager.emergencyCancelAuction(uint256,string) (src/AuctionManager.sol#461-472):
+	External calls:
+	- abobToken.transfer(auction.highestBidder,auction.highestBidAmount) (src/AuctionManager.sol#467)
+	Event emitted after the call(s):
+	- AuctionCancelled(auctionId,reason) (src/AuctionManager.sol#471)
+Reentrancy in ANDETokenDuality.mint(address,uint256) (src/ANDETokenDuality.sol#254-266):
+	External calls:
+	- (success,None) = _nativeTransferPrecompile.call(abi.encodeWithSignature(depositNativeBalance(address,uint256),to,amount)) (src/ANDETokenDuality.sol#258-259)
+	- _update(address(0),to,amount) (src/ANDETokenDuality.sol#265)
+		- (success,returnData) = _nativeTransferPrecompile.call(input) (src/ANDETokenDuality.sol#204)
+	Event emitted after the call(s):
+	- DelegateVotesChanged(from,oldValue,newValue) (lib/openzeppelin-contracts-upgradeable/contracts/governance/utils/VotesUpgradeable.sol#228)
+		- _update(address(0),to,amount) (src/ANDETokenDuality.sol#265)
+	- DelegateVotesChanged(to,oldValue_scope_0,newValue_scope_1) (lib/openzeppelin-contracts-upgradeable/contracts/governance/utils/VotesUpgradeable.sol#236)
+		- _update(address(0),to,amount) (src/ANDETokenDuality.sol#265)
+	- Transfer(from,to,value) (src/ANDETokenDuality.sol#221)
+		- _update(address(0),to,amount) (src/ANDETokenDuality.sol#265)
+Reentrancy in AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701):
+	External calls:
+	- IERC20(primaryCollateral).transfer(liquidationManager,maxAmount) (src/AbobToken.sol#680)
+	- auctionId = IAuctionManager(liquidationManager).startLiquidationAuction(_user,primaryCollateral,maxAmount,vault.totalDebt) (src/AbobToken.sol#687-700)
+	Event emitted after the call(s):
+	- AuctionCreated(auctionId,_user,primaryCollateral,maxAmount,0) (src/AbobToken.sol#693)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+
+AbobToken.depositCollateralAndMint(address,uint256,uint256) (src/AbobToken.sol#367-428) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(currentCollateralValue + newCollateralValue >= requiredCollateralValue,Insufficient collateral) (src/AbobToken.sol#408)
+AbobToken.mintAbob(uint256) (src/AbobToken.sol#460-491) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,Vault not active) (src/AbobToken.sol#465)
+AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256) (src/AbobToken.sol#496-536) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,Vault not active) (src/AbobToken.sol#504)
+	- require(bool,string)(vault.collateralAmounts[_collateral] >= _collateralAmount,Insufficient collateral) (src/AbobToken.sol#505)
+	- require(bool,string)(vault.totalDebt >= _debtAmount,Insufficient debt) (src/AbobToken.sol#506)
+	- require(bool,string)(remainingValue >= requiredValue,Undercollateralized after withdrawal) (src/AbobToken.sol#514)
+AbobToken.withdrawCollateral(address,uint256) (src/AbobToken.sol#541-575) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,Vault not active) (src/AbobToken.sol#548)
+	- require(bool,string)(vault.collateralAmounts[_collateral] >= _amount,Insufficient collateral) (src/AbobToken.sol#549)
+	- require(bool,string)(remainingValue >= requiredValue,Undercollateralized after withdrawal) (src/AbobToken.sol#564)
+AbobToken.repayDebt(uint256) (src/AbobToken.sol#580-595) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,Vault not active) (src/AbobToken.sol#584)
+	- require(bool,string)(vault.totalDebt >= _amount,Insufficient debt) (src/AbobToken.sol#585)
+AbobToken.liquidateVault(address) (src/AbobToken.sol#616-651) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,Vault not active) (src/AbobToken.sol#620)
+AbobToken.startAuctionLiquidation(address) (src/AbobToken.sol#657-701) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,Vault not active) (src/AbobToken.sol#661)
+AbobToken.redeemAbob(uint256) (src/AbobToken.sol#708-752) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(block.timestamp >= lastStabilityFeeCollection + redemptionCooldown,Redemption cooldown active) (src/AbobToken.sol#714)
+	- deposited > 0 && totalCollateralValue > 0 (src/AbobToken.sol#736)
+	- collateralAmounts[i_scope_0] > 0 (src/AbobToken.sol#742)
+AbobToken.acceptGovernance() (src/AbobToken.sol#770-782) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(block.timestamp >= governanceTransferInitiated + governanceTransferDelay,Delay not met) (src/AbobToken.sol#772)
+AbobToken.migratePosition() (src/AbobToken.sol#835-848) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(vault.isActive,No active position) (src/AbobToken.sol#840)
+AbobToken.getTotalCollateralValue(address) (src/AbobToken.sol#947-971) uses timestamp for comparisons
+	Dangerous comparisons:
+	- amount > 0 (src/AbobToken.sol#965)
+AbobToken.getCollateralTokenValue(address,uint256) (src/AbobToken.sol#984-1002) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _amount == 0 (src/AbobToken.sol#985)
+AbobToken.getCollateralDebt(address) (src/AbobToken.sol#1034-1045) uses timestamp for comparisons
+	Dangerous comparisons:
+	- vaults[user].collateralAmounts[_collateral] > 0 (src/AbobToken.sol#1039)
+AndeOracleAggregator.getPrice(bytes32) (src/AndeOracleAggregator.sol#141-149) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp - cached.timestamp < CACHE_DURATION (src/AndeOracleAggregator.sol#143)
+AuctionManager.placeBid(uint256,uint256) (src/AuctionManager.sol#204-235) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > auction.startTime + auction.duration (src/AuctionManager.sol#208)
+	- bidAmount < requiredBid (src/AuctionManager.sol#218)
+	- bidAmount > auction.highestBidAmount (src/AuctionManager.sol#221)
+	- auction.highestBidder != address(0) (src/AuctionManager.sol#223)
+AuctionManager.endAuction(uint256) (src/AuctionManager.sol#241-265) uses timestamp for comparisons
+	Dangerous comparisons:
+	- auctionExpired = block.timestamp > auction.startTime + auction.duration (src/AuctionManager.sol#247)
+	- ! auctionExpired && ! hasWinner (src/AuctionManager.sol#250)
+AuctionManager._getCurrentPrice(AuctionManager.Auction) (src/AuctionManager.sol#331-340) uses timestamp for comparisons
+	Dangerous comparisons:
+	- decayRate > (BASIS_POINTS * 80 / 100) (src/AuctionManager.sol#335)
+	- currentPrice > auction.endPrice (src/AuctionManager.sol#339)
+DualTrackBurnEngine.scheduledBurn() (src/DualTrackBurnEngine.sol#53-60) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(block.timestamp >= lastScheduledBurnTimestamp + SCHEDULE_PERIOD,Scheduled burn period not yet passed) (src/DualTrackBurnEngine.sol#54)
+P2POracle.latestRoundData() (src/P2POracle.sol#149-169) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentEpochNumber == 0 (src/P2POracle.sol#155)
+P2POracle.unregister() (src/P2POracle.sol#202-211) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reporter.isRegistered,Not a registered reporter) (src/P2POracle.sol#204)
+P2POracle.increaseStake(uint256) (src/P2POracle.sol#218-227) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reporter.isRegistered,Not a registered reporter) (src/P2POracle.sol#221)
+P2POracle.decreaseStake(uint256) (src/P2POracle.sol#234-244) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reporter.isRegistered,Not a registered reporter) (src/P2POracle.sol#237)
+	- require(bool,string)(reporter.stake - withdrawalAmount >= minStake,Cannot withdraw below minimum stake) (src/P2POracle.sol#238)
+P2POracle.slash(address) (src/P2POracle.sol#251-263) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reporter.isRegistered,Not a registered reporter) (src/P2POracle.sol#253)
+P2POracle.reportPrice(uint256) (src/P2POracle.sol#272-285) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(reporter.isRegistered,Not a registered reporter) (src/P2POracle.sol#274)
+	- require(bool,string)(reporter.lastReportEpoch != epoch + 1,Already reported this epoch) (src/P2POracle.sol#279)
+PriceOracle.isValidPrice(address) (src/PriceOracle.sol#212-223) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp - data.lastUpdateTime > data.maxAge (src/PriceOracle.sol#220)
+PriceOracle._getAggregatedPrice(address) (src/PriceOracle.sol#260-308) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp - source.lastUpdateTime > data.maxAge (src/PriceOracle.sol#276)
+TrustedRelayerOracle.updatePrice(bytes32,uint256) (src/TrustedRelayerOracle.sol#86-111) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(priceToValidate.validatePrice(),Invalid price data) (src/TrustedRelayerOracle.sol#89)
+TrustedRelayerOracle.getPrice(bytes32) (src/TrustedRelayerOracle.sol#124-129) uses timestamp for comparisons
+	Dangerous comparisons:
+	- data.price == 0 (src/TrustedRelayerOracle.sol#126)
+	- block.timestamp - data.timestamp > MAX_PRICE_AGE (src/TrustedRelayerOracle.sol#127)
+TrustedRelayerOracle.getPriceWithMetadata(bytes32) (src/TrustedRelayerOracle.sol#131-139) uses timestamp for comparisons
+	Dangerous comparisons:
+	- isStale = block.timestamp - data.timestamp > MAX_PRICE_AGE (src/TrustedRelayerOracle.sol#137)
+TrustedRelayerOracle.getAggregatedPrice(bytes32) (src/TrustedRelayerOracle.sol#141-146) uses timestamp for comparisons
+	Dangerous comparisons:
+	- data.price == 0 (src/TrustedRelayerOracle.sol#143)
+	- block.timestamp - data.timestamp > MAX_PRICE_AGE (src/TrustedRelayerOracle.sol#144)
+AndeChainBridge.forceTransaction(AndeChainBridge.BridgeTransaction,bytes) (src/bridge/AndeChainBridge.sol#255-282) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp < txData.blockTimestamp + forceInclusionPeriod (src/bridge/AndeChainBridge.sol#271)
+GaugeController.vote(address,uint256) (src/gauges/GaugeController.sol#127-164) uses timestamp for comparisons
+	Dangerous comparisons:
+	- d_slope != 0 (src/gauges/GaugeController.sol#151)
+GaugeController.gauge_relative_weight_at(address,uint256) (src/gauges/GaugeController.sol#187-202) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_time <= block.timestamp,GC: Time in future) (src/gauges/GaugeController.sol#188)
+LiquidityGaugeV1.claim_rewards() (src/gauges/LiquidityGaugeV1.sol#95-101) uses timestamp for comparisons
+	Dangerous comparisons:
+	- reward > 0 (src/gauges/LiquidityGaugeV1.sol#97)
+LiquidityGaugeV1.notifyRewardAmount(uint256) (src/gauges/LiquidityGaugeV1.sol#109-121) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp >= last_update_time + WEEK (src/gauges/LiquidityGaugeV1.sol#112)
+VotingEscrow.increase_amount(uint256) (src/gauges/VotingEscrow.sol#113-122) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(old_locked.end > block.timestamp,VE: Cannot add to expired lock) (src/gauges/VotingEscrow.sol#119)
+VotingEscrow.increase_unlock_time(uint256) (src/gauges/VotingEscrow.sol#128-137) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(old_locked.end > block.timestamp,VE: Lock expired) (src/gauges/VotingEscrow.sol#133)
+VotingEscrow.withdraw() (src/gauges/VotingEscrow.sol#142-159) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(block.timestamp >= old_locked.end,VE: Lock not yet expired) (src/gauges/VotingEscrow.sol#146)
+VotingEscrow.balanceOfAt(address,uint256) (src/gauges/VotingEscrow.sol#179-183) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_t <= block.timestamp,VE: Timestamp in future) (src/gauges/VotingEscrow.sol#180)
+VotingEscrow._balanceOfAt(address,uint256,uint256) (src/gauges/VotingEscrow.sol#185-214) uses timestamp for comparisons
+	Dangerous comparisons:
+	- user_point_history[_owner][mid].ts > _t (src/gauges/VotingEscrow.sol#195)
+	- decayedBias < 0 (src/gauges/VotingEscrow.sol#209)
+VotingEscrow.totalSupplyAt(uint256) (src/gauges/VotingEscrow.sol#229-259) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_t <= block.timestamp,VE: Timestamp in future) (src/gauges/VotingEscrow.sol#230)
+	- _epoch == 0 (src/gauges/VotingEscrow.sol#232)
+	- min < max (src/gauges/VotingEscrow.sol#239)
+	- point_history[mid].ts > _t (src/gauges/VotingEscrow.sol#241)
+	- decayedBias < 0 (src/gauges/VotingEscrow.sol#254)
+VotingEscrow._checkpoint(address,VotingEscrow.LockedBalance,VotingEscrow.LockedBalance) (src/gauges/VotingEscrow.sol#269-354) uses timestamp for comparisons
+	Dangerous comparisons:
+	- _old_locked.end > block.timestamp && _old_locked.amount > 0 (src/gauges/VotingEscrow.sol#281)
+	- _new_locked.end > block.timestamp && _new_locked.amount > 0 (src/gauges/VotingEscrow.sol#287)
+	- g_epoch == 0 (src/gauges/VotingEscrow.sol#300)
+	- new_g_epoch > g_epoch (src/gauges/VotingEscrow.sol#309)
+	- require(bool,string)(epoch_jump <= MAX_EPOCH_JUMP,VE: Too many epochs to fill) (src/gauges/VotingEscrow.sol#311)
+	- i < new_g_epoch (src/gauges/VotingEscrow.sol#314)
+VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType) (src/gauges/VotingEscrow.sol#364-395) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(_unlock_time > block.timestamp,VE: Can only lock until future) (src/gauges/VotingEscrow.sol#375)
+	- require(bool,string)(_unlock_time <= block.timestamp + MAXTIME,VE: Voting lock can be 4 years max) (src/gauges/VotingEscrow.sol#376)
+PriceValidator.validatePrice(PriceValidator.PriceData) (src/security/Utils.sol#89-106) uses timestamp for comparisons
+	Dangerous comparisons:
+	- data.timestamp > block.timestamp || block.timestamp - data.timestamp > MAX_AGE (src/security/Utils.sol#96)
+StakingVault.claimWithdrawal(uint256) (src/staking/StakingVault.sol#119-134) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(request.owner != address(0),Request does not exist) (src/staking/StakingVault.sol#122)
+	- require(bool,string)(msg.sender == request.owner,Only the request owner can claim) (src/staking/StakingVault.sol#123)
+	- require(bool,string)(block.timestamp >= request.claimableAt,Unbonding period has not passed) (src/staking/StakingVault.sol#124)
+XERC20._mintWithCaller(address,address,uint256) (src/xERC20/XERC20.sol#164-178) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentLimit < _amount (src/xERC20/XERC20.sol#173)
+XERC20._burnWithCaller(address,address,uint256) (src/xERC20/XERC20.sol#186-200) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentLimit < _amount (src/xERC20/XERC20.sol#195)
+XERC20._changeMinterLimit(address,uint256) (src/xERC20/XERC20.sol#207-227) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentLimit > _limit (src/xERC20/XERC20.sol#220)
+XERC20._changeBurnerLimit(address,uint256) (src/xERC20/XERC20.sol#234-254) uses timestamp for comparisons
+	Dangerous comparisons:
+	- currentLimit > _limit (src/xERC20/XERC20.sol#247)
+XERC20._getCurrentLimit(uint256,uint256,uint256,uint256) (src/xERC20/XERC20.sol#298-306) uses timestamp for comparisons
+	Dangerous comparisons:
+	- calculatedLimit > _maxLimit (src/xERC20/XERC20.sol#305)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+
+ANDETokenDuality._update(address,address,uint256) (src/ANDETokenDuality.sol#178-222) uses assembly
+	- INLINE ASM (src/ANDETokenDuality.sol#210-213)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+
+10 different versions of Solidity are used:
+	- Version constraint >=0.8.4 is used by:
+		->=0.8.4 (lib/openzeppelin-contracts/contracts/access/IAccessControl.sol#4)
+		->=0.8.4 (lib/openzeppelin-contracts/contracts/governance/IGovernor.sol#4)
+		->=0.8.4 (lib/openzeppelin-contracts/contracts/governance/utils/IVotes.sol#3)
+		->=0.8.4 (lib/openzeppelin-contracts/contracts/interfaces/IERC5805.sol#4)
+		->=0.8.4 (lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol#3)
+	- Version constraint ^0.8.20 is used by:
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/access/Ownable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Address.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Context.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Errors.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Panic.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Pausable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol#5)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Strings.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol#5)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/structs/Checkpoints.sol#5)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/structs/DoubleEndedQueue.sol#3)
+		-^0.8.20 (lib/openzeppelin-contracts/contracts/utils/types/Time.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/governance/TimelockControllerUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/governance/utils/VotesUpgradeable.sol#3)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20BurnableUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20VotesUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/NoncesUpgradeable.sol#3)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/EIP712Upgradeable.sol#4)
+		-^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol#4)
+		-^0.8.20 (src/gauges/GaugeController.sol#2)
+		-^0.8.20 (src/gauges/LiquidityGaugeV1.sol#2)
+		-^0.8.20 (src/gauges/VotingEscrow.sol#2)
+		-^0.8.20 (src/vaults/WAndeVault.sol#2)
+	- Version constraint >=0.5.0 is used by:
+		->=0.5.0 (lib/openzeppelin-contracts/contracts/interfaces/IERC1271.sol#4)
+		->=0.5.0 (lib/openzeppelin-contracts/contracts/interfaces/IERC7913.sol#4)
+		->=0.5.0 (lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol#4)
+	- Version constraint >=0.6.2 is used by:
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/interfaces/IERC1363.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol#4)
+		->=0.6.2 (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+	- Version constraint >=0.4.16 is used by:
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC165.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/IERC6372.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/interfaces/draft-IERC1822.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol#4)
+		->=0.4.16 (lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol#4)
+	- Version constraint >=0.4.11 is used by:
+		->=0.4.11 (lib/openzeppelin-contracts/contracts/interfaces/IERC1967.sol#4)
+	- Version constraint ^0.8.21 is used by:
+		-^0.8.21 (lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol#4)
+	- Version constraint ^0.8.24 is used by:
+		-^0.8.24 (lib/openzeppelin-contracts/contracts/utils/Bytes.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts/contracts/utils/cryptography/SignatureChecker.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts-upgradeable/contracts/governance/GovernorUpgradeable.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts-upgradeable/contracts/governance/extensions/GovernorCountingSimpleUpgradeable.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts-upgradeable/contracts/governance/extensions/GovernorSettingsUpgradeable.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts-upgradeable/contracts/governance/extensions/GovernorTimelockControlUpgradeable.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts-upgradeable/contracts/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol#4)
+		-^0.8.24 (lib/openzeppelin-contracts-upgradeable/contracts/governance/extensions/GovernorVotesUpgradeable.sol#4)
+	- Version constraint ^0.8.22 is used by:
+		-^0.8.22 (lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol#4)
+	- Version constraint ^0.8.25 is used by:
+		-^0.8.25 (src/ANDEToken.sol#2)
+		-^0.8.25 (src/ANDETokenDuality.sol#2)
+		-^0.8.25 (src/AbobToken.sol#2)
+		-^0.8.25 (src/AndeOracleAggregator.sol#2)
+		-^0.8.25 (src/AuctionManager.sol#2)
+		-^0.8.25 (src/CollateralManager.sol#2)
+		-^0.8.25 (src/Counter.sol#2)
+		-^0.8.25 (src/DualTrackBurnEngine.sol#2)
+		-^0.8.25 (src/IOracle.sol#2)
+		-^0.8.25 (src/P2POracle.sol#2)
+		-^0.8.25 (src/PriceOracle.sol#2)
+		-^0.8.25 (src/TrustedRelayerOracle.sol#2)
+		-^0.8.25 (src/bridge/AndeChainBridge.sol#2)
+		-^0.8.25 (src/bridge/IBlobstream.sol#2)
+		-^0.8.25 (src/governance/AndeGovernor.sol#2)
+		-^0.8.25 (src/governance/AndeTimelockController.sol#2)
+		-^0.8.25 (src/interfaces/IXERC20.sol#2)
+		-^0.8.25 (src/interfaces/IXERC20Lockbox.sol#2)
+		-^0.8.25 (src/mocks/MockERC20.sol#2)
+		-^0.8.25 (src/mocks/MockOracle.sol#2)
+		-^0.8.25 (src/mocks/NativeTransferPrecompileMock.sol#2)
+		-^0.8.25 (src/sAbobToken.sol#2)
+		-^0.8.25 (src/security/Utils.sol#2)
+		-^0.8.25 (src/staking/StakingVault.sol#2)
+		-^0.8.25 (src/xERC20/XERC20.sol#2)
+		-^0.8.25 (src/xERC20/XERC20Lockbox.sol#2)
+		-^0.8.25 (src/xERC20/xANDEToken.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+
+AbobToken.removeCollateral(address) (src/AbobToken.sol#340-357) has costly operations inside a loop:
+	- collateralList.pop() (src/AbobToken.sol#351)
+CollateralManager.removeCollateral(address) (src/CollateralManager.sol#193-214) has costly operations inside a loop:
+	- supportedCollaterals.pop() (src/CollateralManager.sol#208)
+TrustedRelayerOracle.updatePrice(bytes32,uint256) (src/TrustedRelayerOracle.sol#86-111) has costly operations inside a loop:
+	- totalUpdates ++ (src/TrustedRelayerOracle.sol#108)
+	Calls stack containing the loop:
+		TrustedRelayerOracle.updatePricesBatch(bytes32[],uint256[])
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop
+
+GaugeController._checkpoint_gauge(address) (src/gauges/GaugeController.sol#233-235) is never used and should be removed
+GaugeController._get_weight(address,uint256) (src/gauges/GaugeController.sol#168-175) is never used and should be removed
+WithdrawalPattern._addPendingWithdrawal(address,uint256) (src/security/Utils.sol#148-150) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+It is used by:
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/access/Ownable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC4626.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Address.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Context.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Errors.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Panic.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Pausable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol#5)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Strings.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/Math.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol#5)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/structs/Checkpoints.sol#5)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/structs/DoubleEndedQueue.sol#3)
+	- ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/types/Time.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/governance/TimelockControllerUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/governance/utils/VotesUpgradeable.sol#3)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20BurnableUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20VotesUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/utils/ERC721HolderUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/ContextUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/NoncesUpgradeable.sol#3)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/EIP712Upgradeable.sol#4)
+	- ^0.8.20 (lib/openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165Upgradeable.sol#4)
+	- ^0.8.20 (src/gauges/GaugeController.sol#2)
+	- ^0.8.20 (src/gauges/LiquidityGaugeV1.sol#2)
+	- ^0.8.20 (src/gauges/VotingEscrow.sol#2)
+	- ^0.8.20 (src/vaults/WAndeVault.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+
+Low level call in ANDETokenDuality.balanceOf(address) (src/ANDETokenDuality.sol#131-142):
+	- (success,returnData) = _nativeTransferPrecompile.staticcall(abi.encodeWithSignature(getNativeBalance(address),account)) (src/ANDETokenDuality.sol#133-134)
+Low level call in ANDETokenDuality.totalSupply() (src/ANDETokenDuality.sol#150-160):
+	- (success,returnData) = _nativeTransferPrecompile.staticcall(abi.encodeWithSignature(totalSupply())) (src/ANDETokenDuality.sol#152-153)
+Low level call in ANDETokenDuality._update(address,address,uint256) (src/ANDETokenDuality.sol#178-222):
+	- (success,returnData) = _nativeTransferPrecompile.call(input) (src/ANDETokenDuality.sol#204)
+Low level call in ANDETokenDuality.mint(address,uint256) (src/ANDETokenDuality.sol#254-266):
+	- (success,None) = _nativeTransferPrecompile.call(abi.encodeWithSignature(depositNativeBalance(address,uint256),to,amount)) (src/ANDETokenDuality.sol#258-259)
+Low level call in WithdrawalPattern.withdraw() (src/security/Utils.sol#152-162):
+	- (success,None) = msg.sender.call{value: amount}() (src/security/Utils.sol#160)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+
+AbobToken (src/AbobToken.sol#50-1109) should inherit from ICollateralManager (src/AuctionManager.sol#19-26)
+AndeOracleAggregator (src/AndeOracleAggregator.sol#14-219) should inherit from IOracle (src/IOracle.sol#4-11)
+AuctionManager (src/AuctionManager.sol#34-478) should inherit from IAuctionManager (src/AbobToken.sol#35-42)
+CollateralManager (src/CollateralManager.sol#16-398) should inherit from ICollateralManager (src/AbobToken.sol#16-33)
+PriceOracle (src/PriceOracle.sol#16-468) should inherit from IPriceOracle (src/AbobToken.sol#12-14)
+VotingEscrow (src/gauges/VotingEscrow.sol#17-396) should inherit from IVotingEscrow (src/gauges/GaugeController.sol#8-11)
+MockOracle (src/mocks/MockOracle.sol#11-63) should inherit from IOracle (src/IOracle.sol#4-11)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance
+
+Variable ANDETokenDuality.__gap (src/ANDETokenDuality.sol#81) is not in mixedCase
+Parameter AbobToken.initialize(address,address,address,address,address,address)._admin (src/AbobToken.sol#227) is not in mixedCase
+Parameter AbobToken.initialize(address,address,address,address,address,address)._pauser (src/AbobToken.sol#228) is not in mixedCase
+Parameter AbobToken.initialize(address,address,address,address,address,address)._governance (src/AbobToken.sol#229) is not in mixedCase
+Parameter AbobToken.initialize(address,address,address,address,address,address)._priceOracle (src/AbobToken.sol#230) is not in mixedCase
+Parameter AbobToken.initialize(address,address,address,address,address,address)._collateralManager (src/AbobToken.sol#231) is not in mixedCase
+Parameter AbobToken.initialize(address,address,address,address,address,address)._liquidationManager (src/AbobToken.sol#232) is not in mixedCase
+Parameter AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address)._collateral (src/AbobToken.sol#281) is not in mixedCase
+Parameter AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address)._ratio (src/AbobToken.sol#282) is not in mixedCase
+Parameter AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address)._threshold (src/AbobToken.sol#283) is not in mixedCase
+Parameter AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address)._ceiling (src/AbobToken.sol#284) is not in mixedCase
+Parameter AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address)._minDeposit (src/AbobToken.sol#285) is not in mixedCase
+Parameter AbobToken.addCollateral(address,uint256,uint256,uint256,uint256,address)._priceOracle (src/AbobToken.sol#286) is not in mixedCase
+Parameter AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256)._collateral (src/AbobToken.sol#318) is not in mixedCase
+Parameter AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256)._ratio (src/AbobToken.sol#319) is not in mixedCase
+Parameter AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256)._threshold (src/AbobToken.sol#320) is not in mixedCase
+Parameter AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256)._ceiling (src/AbobToken.sol#321) is not in mixedCase
+Parameter AbobToken.updateCollateral(address,uint256,uint256,uint256,uint256)._minDeposit (src/AbobToken.sol#322) is not in mixedCase
+Parameter AbobToken.removeCollateral(address)._collateral (src/AbobToken.sol#340) is not in mixedCase
+Parameter AbobToken.depositCollateralAndMint(address,uint256,uint256)._collateral (src/AbobToken.sol#368) is not in mixedCase
+Parameter AbobToken.depositCollateralAndMint(address,uint256,uint256)._collateralAmount (src/AbobToken.sol#369) is not in mixedCase
+Parameter AbobToken.depositCollateralAndMint(address,uint256,uint256)._abobAmount (src/AbobToken.sol#370) is not in mixedCase
+Parameter AbobToken.depositCollateral(address,uint256)._collateral (src/AbobToken.sol#434) is not in mixedCase
+Parameter AbobToken.depositCollateral(address,uint256)._amount (src/AbobToken.sol#435) is not in mixedCase
+Parameter AbobToken.mintAbob(uint256)._amount (src/AbobToken.sol#460) is not in mixedCase
+Parameter AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256)._collateral (src/AbobToken.sol#497) is not in mixedCase
+Parameter AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256)._collateralAmount (src/AbobToken.sol#498) is not in mixedCase
+Parameter AbobToken.withdrawCollateralAndRepayDebt(address,uint256,uint256)._debtAmount (src/AbobToken.sol#499) is not in mixedCase
+Parameter AbobToken.withdrawCollateral(address,uint256)._collateral (src/AbobToken.sol#542) is not in mixedCase
+Parameter AbobToken.withdrawCollateral(address,uint256)._amount (src/AbobToken.sol#543) is not in mixedCase
+Parameter AbobToken.repayDebt(uint256)._amount (src/AbobToken.sol#580) is not in mixedCase
+Parameter AbobToken.canLiquidate(address)._user (src/AbobToken.sol#602) is not in mixedCase
+Parameter AbobToken.liquidateVault(address)._user (src/AbobToken.sol#616) is not in mixedCase
+Parameter AbobToken.startAuctionLiquidation(address)._user (src/AbobToken.sol#657) is not in mixedCase
+Parameter AbobToken.redeemAbob(uint256)._abobAmount (src/AbobToken.sol#708) is not in mixedCase
+Parameter AbobToken.transferGovernance(address)._newGovernance (src/AbobToken.sol#759) is not in mixedCase
+Parameter AbobToken.updateSystemParameters(uint256,uint256,uint256,uint256,uint256)._globalDebtCeiling (src/AbobToken.sol#788) is not in mixedCase
+Parameter AbobToken.updateSystemParameters(uint256,uint256,uint256,uint256,uint256)._redemptionFee (src/AbobToken.sol#789) is not in mixedCase
+Parameter AbobToken.updateSystemParameters(uint256,uint256,uint256,uint256,uint256)._minRedemptionAmount (src/AbobToken.sol#790) is not in mixedCase
+Parameter AbobToken.updateSystemParameters(uint256,uint256,uint256,uint256,uint256)._redemptionCooldown (src/AbobToken.sol#791) is not in mixedCase
+Parameter AbobToken.updateSystemParameters(uint256,uint256,uint256,uint256,uint256)._stabilityFeeRate (src/AbobToken.sol#792) is not in mixedCase
+Parameter AbobToken.toggleEmergencyMode(bool)._enabled (src/AbobToken.sol#806) is not in mixedCase
+Parameter AbobToken.emergencyMint(uint256)._amount (src/AbobToken.sol#814) is not in mixedCase
+Parameter AbobToken.enableMigration(address)._target (src/AbobToken.sol#827) is not in mixedCase
+Parameter AbobToken.getUserVaultInfo(address)._user (src/AbobToken.sol#855) is not in mixedCase
+Parameter AbobToken.getCollateralInfo(address)._collateral (src/AbobToken.sol#923) is not in mixedCase
+Parameter AbobToken.getTotalCollateralValue(address)._user (src/AbobToken.sol#947) is not in mixedCase
+Parameter AbobToken.getCollateralValue(address,address)._user (src/AbobToken.sol#976) is not in mixedCase
+Parameter AbobToken.getCollateralValue(address,address)._collateral (src/AbobToken.sol#976) is not in mixedCase
+Parameter AbobToken.getCollateralTokenValue(address,uint256)._collateral (src/AbobToken.sol#984) is not in mixedCase
+Parameter AbobToken.getCollateralTokenValue(address,uint256)._amount (src/AbobToken.sol#984) is not in mixedCase
+Parameter AbobToken.getCollateralPrice(address)._collateral (src/AbobToken.sol#1007) is not in mixedCase
+Parameter AbobToken.getCollateralDebt(address)._collateral (src/AbobToken.sol#1034) is not in mixedCase
+Parameter AbobToken.addSupportedCollateral(address)._collateral (src/AbobToken.sol#1066) is not in mixedCase
+Parameter AuctionManager.initialize(address,address,address)._abobToken (src/AuctionManager.sol#133) is not in mixedCase
+Parameter AuctionManager.initialize(address,address,address)._collateralManager (src/AuctionManager.sol#134) is not in mixedCase
+Parameter CollateralManager.initialize(address,address)._defaultPriceOracle (src/CollateralManager.sol#87) is not in mixedCase
+Parameter P2POracle.initialize(address,address,uint256,uint256)._minStake (src/P2POracle.sol#110) is not in mixedCase
+Parameter P2POracle.initialize(address,address,uint256,uint256)._epochDuration (src/P2POracle.sol#110) is not in mixedCase
+Parameter P2POracle.setTreasury(address)._treasury (src/P2POracle.sol#178) is not in mixedCase
+Function PriceOracle._getSourcePrice(address) (src/PriceOracle.sol#340-354) is not in mixedCase
+Parameter AndeChainBridge.setForceInclusionPeriod(uint256)._forceInclusionPeriod (src/bridge/AndeChainBridge.sol#384) is not in mixedCase
+Parameter AndeChainBridge.setEmergencyGracePeriod(uint256)._emergencyGracePeriod (src/bridge/AndeChainBridge.sol#392) is not in mixedCase
+Parameter AndeChainBridge.toggleEmergencyMode(string)._reason (src/bridge/AndeChainBridge.sol#401) is not in mixedCase
+Function GaugeController.add_gauge_type(string) (src/gauges/GaugeController.sol#93-98) is not in mixedCase
+Parameter GaugeController.add_gauge_type(string)._name (src/gauges/GaugeController.sol#93) is not in mixedCase
+Function GaugeController.add_gauge(address,int256,uint256) (src/gauges/GaugeController.sol#106-120) is not in mixedCase
+Parameter GaugeController.add_gauge(address,int256,uint256)._addr (src/gauges/GaugeController.sol#106) is not in mixedCase
+Parameter GaugeController.add_gauge(address,int256,uint256)._gauge_type (src/gauges/GaugeController.sol#106) is not in mixedCase
+Parameter GaugeController.add_gauge(address,int256,uint256)._weight (src/gauges/GaugeController.sol#106) is not in mixedCase
+Parameter GaugeController.vote(address,uint256)._gauge_addr (src/gauges/GaugeController.sol#127) is not in mixedCase
+Parameter GaugeController.vote(address,uint256)._user_weight (src/gauges/GaugeController.sol#127) is not in mixedCase
+Function GaugeController._get_weight(address,uint256) (src/gauges/GaugeController.sol#168-175) is not in mixedCase
+Parameter GaugeController._get_weight(address,uint256)._gauge_addr (src/gauges/GaugeController.sol#168) is not in mixedCase
+Parameter GaugeController._get_weight(address,uint256)._time (src/gauges/GaugeController.sol#168) is not in mixedCase
+Function GaugeController.gauge_relative_weight(address) (src/gauges/GaugeController.sol#177-179) is not in mixedCase
+Parameter GaugeController.gauge_relative_weight(address)._gauge_addr (src/gauges/GaugeController.sol#177) is not in mixedCase
+Function GaugeController.gauge_relative_weight_at(address,uint256) (src/gauges/GaugeController.sol#187-202) is not in mixedCase
+Parameter GaugeController.gauge_relative_weight_at(address,uint256)._gauge_addr (src/gauges/GaugeController.sol#187) is not in mixedCase
+Parameter GaugeController.gauge_relative_weight_at(address,uint256)._time (src/gauges/GaugeController.sol#187) is not in mixedCase
+Function GaugeController._get_gauge_weight(address,uint256) (src/gauges/GaugeController.sol#206-210) is not in mixedCase
+Parameter GaugeController._get_gauge_weight(address,uint256)._gauge_addr (src/gauges/GaugeController.sol#206) is not in mixedCase
+Parameter GaugeController._get_gauge_weight(address,uint256)._time (src/gauges/GaugeController.sol#206) is not in mixedCase
+Function GaugeController._get_type_total_weight(int256,uint256) (src/gauges/GaugeController.sol#212-216) is not in mixedCase
+Parameter GaugeController._get_type_total_weight(int256,uint256)._gauge_type (src/gauges/GaugeController.sol#212) is not in mixedCase
+Parameter GaugeController._get_type_total_weight(int256,uint256)._time (src/gauges/GaugeController.sol#212) is not in mixedCase
+Function GaugeController.get_gauge_weight(address) (src/gauges/GaugeController.sol#223-225) is not in mixedCase
+Parameter GaugeController.get_gauge_weight(address)._gauge_addr (src/gauges/GaugeController.sol#223) is not in mixedCase
+Function GaugeController._checkpoint_gauge(address) (src/gauges/GaugeController.sol#233-235) is not in mixedCase
+Parameter GaugeController._checkpoint_gauge(address)._gauge_addr (src/gauges/GaugeController.sol#233) is not in mixedCase
+Variable GaugeController.voting_escrow (src/gauges/GaugeController.sol#42) is not in mixedCase
+Variable GaugeController.n_gauge_types (src/gauges/GaugeController.sol#44) is not in mixedCase
+Variable GaugeController.gauge_type_names (src/gauges/GaugeController.sol#45) is not in mixedCase
+Variable GaugeController.n_gauges (src/gauges/GaugeController.sol#47) is not in mixedCase
+Variable GaugeController.gauge_types (src/gauges/GaugeController.sol#48) is not in mixedCase
+Variable GaugeController.vote_user_slopes (src/gauges/GaugeController.sol#54) is not in mixedCase
+Variable GaugeController.vote_user_power (src/gauges/GaugeController.sol#55) is not in mixedCase
+Variable GaugeController.user_vote_weight (src/gauges/GaugeController.sol#56) is not in mixedCase
+Variable GaugeController.user_total_weight (src/gauges/GaugeController.sol#57) is not in mixedCase
+Variable GaugeController.last_user_vote (src/gauges/GaugeController.sol#60) is not in mixedCase
+Variable GaugeController.points_weight (src/gauges/GaugeController.sol#63) is not in mixedCase
+Variable GaugeController.changes_weight (src/gauges/GaugeController.sol#64) is not in mixedCase
+Variable GaugeController.points_type_weight (src/gauges/GaugeController.sol#67) is not in mixedCase
+Variable GaugeController.changes_type_weight (src/gauges/GaugeController.sol#68) is not in mixedCase
+Variable GaugeController.points_sum (src/gauges/GaugeController.sol#71) is not in mixedCase
+Variable GaugeController.changes_sum (src/gauges/GaugeController.sol#72) is not in mixedCase
+Parameter LiquidityGaugeV1.deposit(uint256)._value (src/gauges/LiquidityGaugeV1.sol#64) is not in mixedCase
+Parameter LiquidityGaugeV1.withdraw(uint256)._value (src/gauges/LiquidityGaugeV1.sol#80) is not in mixedCase
+Function LiquidityGaugeV1.claim_rewards() (src/gauges/LiquidityGaugeV1.sol#95-101) is not in mixedCase
+Parameter LiquidityGaugeV1.notifyRewardAmount(uint256)._amount (src/gauges/LiquidityGaugeV1.sol#109) is not in mixedCase
+Function LiquidityGaugeV1.reward_per_token() (src/gauges/LiquidityGaugeV1.sol#125-131) is not in mixedCase
+Parameter LiquidityGaugeV1.earned(address)._user (src/gauges/LiquidityGaugeV1.sol#138) is not in mixedCase
+Variable LiquidityGaugeV1.lp_token (src/gauges/LiquidityGaugeV1.sol#26) is not in mixedCase
+Variable LiquidityGaugeV1.reward_token (src/gauges/LiquidityGaugeV1.sol#28) is not in mixedCase
+Variable LiquidityGaugeV1.user_reward_per_token_paid (src/gauges/LiquidityGaugeV1.sol#31) is not in mixedCase
+Variable LiquidityGaugeV1.reward_rate (src/gauges/LiquidityGaugeV1.sol#33) is not in mixedCase
+Variable LiquidityGaugeV1.last_update_time (src/gauges/LiquidityGaugeV1.sol#34) is not in mixedCase
+Variable LiquidityGaugeV1.reward_per_token_stored (src/gauges/LiquidityGaugeV1.sol#35) is not in mixedCase
+Modifier LiquidityGaugeV1.update_reward(address) (src/gauges/LiquidityGaugeV1.sol#47-56) is not in mixedCase
+Function VotingEscrow.create_lock(uint256,uint256) (src/gauges/VotingEscrow.sol#99-107) is not in mixedCase
+Parameter VotingEscrow.create_lock(uint256,uint256)._value (src/gauges/VotingEscrow.sol#99) is not in mixedCase
+Parameter VotingEscrow.create_lock(uint256,uint256)._unlock_time (src/gauges/VotingEscrow.sol#99) is not in mixedCase
+Function VotingEscrow.increase_amount(uint256) (src/gauges/VotingEscrow.sol#113-122) is not in mixedCase
+Parameter VotingEscrow.increase_amount(uint256)._value (src/gauges/VotingEscrow.sol#113) is not in mixedCase
+Function VotingEscrow.increase_unlock_time(uint256) (src/gauges/VotingEscrow.sol#128-137) is not in mixedCase
+Parameter VotingEscrow.increase_unlock_time(uint256)._unlock_time (src/gauges/VotingEscrow.sol#128) is not in mixedCase
+Parameter VotingEscrow.balanceOf(address)._owner (src/gauges/VotingEscrow.sol#168) is not in mixedCase
+Parameter VotingEscrow.balanceOfAt(address,uint256)._owner (src/gauges/VotingEscrow.sol#179) is not in mixedCase
+Parameter VotingEscrow.balanceOfAt(address,uint256)._t (src/gauges/VotingEscrow.sol#179) is not in mixedCase
+Parameter VotingEscrow.totalSupplyAt(uint256)._t (src/gauges/VotingEscrow.sol#229) is not in mixedCase
+Function VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType) (src/gauges/VotingEscrow.sol#364-395) is not in mixedCase
+Parameter VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType)._provider (src/gauges/VotingEscrow.sol#365) is not in mixedCase
+Parameter VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType)._value (src/gauges/VotingEscrow.sol#366) is not in mixedCase
+Parameter VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType)._unlock_time (src/gauges/VotingEscrow.sol#367) is not in mixedCase
+Parameter VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType)._old_locked (src/gauges/VotingEscrow.sol#368) is not in mixedCase
+Parameter VotingEscrow._deposit_for(address,uint256,uint256,VotingEscrow.LockedBalance,VotingEscrow.DepositType)._deposit_type (src/gauges/VotingEscrow.sol#369) is not in mixedCase
+Variable VotingEscrow.point_history (src/gauges/VotingEscrow.sol#70) is not in mixedCase
+Variable VotingEscrow.user_point_history (src/gauges/VotingEscrow.sol#71) is not in mixedCase
+Variable VotingEscrow.user_point_epoch (src/gauges/VotingEscrow.sol#77) is not in mixedCase
+Parameter AndeGovernor.initialize(IVotes,AndeTimelockController,uint256,uint32,uint48,uint256)._token (src/governance/AndeGovernor.sol#55) is not in mixedCase
+Parameter AndeGovernor.initialize(IVotes,AndeTimelockController,uint256,uint32,uint48,uint256)._timelock (src/governance/AndeGovernor.sol#56) is not in mixedCase
+Parameter AndeGovernor.initialize(IVotes,AndeTimelockController,uint256,uint32,uint48,uint256)._quorumPercentage (src/governance/AndeGovernor.sol#57) is not in mixedCase
+Parameter AndeGovernor.initialize(IVotes,AndeTimelockController,uint256,uint32,uint48,uint256)._votingPeriod (src/governance/AndeGovernor.sol#58) is not in mixedCase
+Parameter AndeGovernor.initialize(IVotes,AndeTimelockController,uint256,uint32,uint48,uint256)._votingDelay (src/governance/AndeGovernor.sol#59) is not in mixedCase
+Parameter AndeGovernor.initialize(IVotes,AndeTimelockController,uint256,uint32,uint48,uint256)._proposalThreshold (src/governance/AndeGovernor.sol#60) is not in mixedCase
+Function IXERC20Lockbox.ERC20() (src/interfaces/IXERC20Lockbox.sol#77) is not in mixedCase
+Function IXERC20Lockbox.XERC20() (src/interfaces/IXERC20Lockbox.sol#83) is not in mixedCase
+Contract sAbobToken (src/sAbobToken.sol#18-63) is not in CapWords
+Parameter StakingVault.initialize(address,IERC20,uint256)._asset (src/staking/StakingVault.sol#63) is not in mixedCase
+Parameter StakingVault.initialize(address,IERC20,uint256)._unbondingPeriod (src/staking/StakingVault.sol#63) is not in mixedCase
+Parameter XERC20.setLockbox(address)._lockbox (src/xERC20/XERC20.sol#79) is not in mixedCase
+Parameter XERC20.setLimits(address,uint256,uint256)._bridge (src/xERC20/XERC20.sol#87) is not in mixedCase
+Parameter XERC20.setLimits(address,uint256,uint256)._mintingLimit (src/xERC20/XERC20.sol#87) is not in mixedCase
+Parameter XERC20.setLimits(address,uint256,uint256)._burningLimit (src/xERC20/XERC20.sol#87) is not in mixedCase
+Parameter XERC20.mint(address,uint256)._user (src/xERC20/XERC20.sol#101) is not in mixedCase
+Parameter XERC20.mint(address,uint256)._amount (src/xERC20/XERC20.sol#101) is not in mixedCase
+Parameter XERC20.burn(address,uint256)._user (src/xERC20/XERC20.sol#108) is not in mixedCase
+Parameter XERC20.burn(address,uint256)._amount (src/xERC20/XERC20.sol#108) is not in mixedCase
+Parameter XERC20.mintingMaxLimitOf(address)._minter (src/xERC20/XERC20.sol#121) is not in mixedCase
+Parameter XERC20.burningMaxLimitOf(address)._burner (src/xERC20/XERC20.sol#128) is not in mixedCase
+Parameter XERC20.mintingCurrentLimitOf(address)._minter (src/xERC20/XERC20.sol#135) is not in mixedCase
+Parameter XERC20.burningCurrentLimitOf(address)._burner (src/xERC20/XERC20.sol#147) is not in mixedCase
+Parameter XERC20Lockbox.deposit(uint256)._amount (src/xERC20/XERC20Lockbox.sol#58) is not in mixedCase
+Parameter XERC20Lockbox.depositTo(address,uint256)._to (src/xERC20/XERC20Lockbox.sol#65) is not in mixedCase
+Parameter XERC20Lockbox.depositTo(address,uint256)._amount (src/xERC20/XERC20Lockbox.sol#65) is not in mixedCase
+Parameter XERC20Lockbox.withdraw(uint256)._amount (src/xERC20/XERC20Lockbox.sol#80) is not in mixedCase
+Parameter XERC20Lockbox.withdrawTo(address,uint256)._to (src/xERC20/XERC20Lockbox.sol#87) is not in mixedCase
+Parameter XERC20Lockbox.withdrawTo(address,uint256)._amount (src/xERC20/XERC20Lockbox.sol#87) is not in mixedCase
+Function XERC20Lockbox.ERC20() (src/xERC20/XERC20Lockbox.sol#104-106) is not in mixedCase
+Function XERC20Lockbox.XERC20() (src/xERC20/XERC20Lockbox.sol#111-113) is not in mixedCase
+Variable XERC20Lockbox.ERC20_TOKEN (src/xERC20/XERC20Lockbox.sol#32) is not in mixedCase
+Variable XERC20Lockbox.XERC20_TOKEN (src/xERC20/XERC20Lockbox.sol#35) is not in mixedCase
+Contract xANDEToken (src/xERC20/xANDEToken.sol#23-37) is not in CapWords
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+
+Redundant expression "newImplementation (src/DualTrackBurnEngine.sol#64)" inDualTrackBurnEngine (src/DualTrackBurnEngine.sol#13-66)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#redundant-statements
+
+WithdrawalPattern (src/security/Utils.sol#145-166) does not implement functions:
+	- WithdrawalPattern.nonReentrant() (src/security/Utils.sol#165)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unimplemented-functions
+
+ANDETokenDuality.__gap (src/ANDETokenDuality.sol#81) is never used in ANDETokenDuality (src/ANDETokenDuality.sol#34-318)
+AbobToken.MIN_HEALTH_FACTOR (src/AbobToken.sol#78) is never used in AbobToken (src/AbobToken.sol#50-1109)
+AbobToken.MIN_AUCTION_DURATION (src/AbobToken.sol#80) is never used in AbobToken (src/AbobToken.sol#50-1109)
+AbobToken.MAX_AUCTION_DURATION (src/AbobToken.sol#81) is never used in AbobToken (src/AbobToken.sol#50-1109)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-state-variable
+
+Loop condition i < collateralList.length (src/AbobToken.sol#475) should use cached array length instead of referencing `length` member of the storage array.
+ Loop condition i < collateralList.length (src/AbobToken.sol#667) should use cached array length instead of referencing `length` member of the storage array.
+ Loop condition i < collateralList.length (src/AbobToken.sol#727) should use cached array length instead of referencing `length` member of the storage array.
+ Loop condition i < vaultUsers.length (src/AbobToken.sol#1037) should use cached array length instead of referencing `length` member of the storage array.
+ Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#cache-array-length
+
+AbobToken.nextAuctionId (src/AbobToken.sol#149) should be constant 
+AbobToken.stabilityFeeAccumulator (src/AbobToken.sol#155) should be constant 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
+
+LiquidityGaugeV1.minter (src/gauges/LiquidityGaugeV1.sol#27) should be immutable 
+LiquidityGaugeV1.reward_token (src/gauges/LiquidityGaugeV1.sol#28) should be immutable 
+MockERC20._decimals (src/mocks/MockERC20.sol#8) should be immutable 
+MockOracle._decimals (src/mocks/MockOracle.sol#13) should be immutable 
+VotingEscrow.decimals (src/gauges/VotingEscrow.sol#67) should be immutable 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-immutable
+. analyzed (113 contracts with 100 detectors), 389 result(s) found
+INFO:Slither:slither-report.json exists already, the overwrite is prevented
