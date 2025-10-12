@@ -90,6 +90,10 @@ docs/ABOB_TECHNICAL_ARCHITECTURE.md
 docs/TECHNICAL_SPECS/**/*.md
 docs/DOCS_INDEX.md
 
+# ✅ CRITICAL IMPLEMENTATION PLANS (Always tracked)
+!docs/PLAN_IMPLEMENTACION_2025.md      # Q1-Q4 2025 roadmap
+!docs/mejorasrollup.md                 # Technical innovations guide
+
 # Progress reports and fix tracking
 FASE_*.md
 FIXES_APPLIED.md
