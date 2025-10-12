@@ -80,6 +80,10 @@ contract AbobToken is
     uint256 private constant MIN_AUCTION_DURATION = 1 hours;
     uint256 private constant MAX_AUCTION_DURATION = 24 hours;
     uint256 private constant GLOBAL_DEBT_CEILING = 100_000_000 * 1e18; // 100M ABOB max
+    uint256 private constant MAX_COLLATERAL_AMOUNT = 1_000_000 * 1e18; // 1M max collateral per tx
+    uint256 private constant MAX_MINT_AMOUNT = 10_000_000 * 1e18; // 10M max ABOB per tx
+    uint256 private constant MAX_WITHDRAWAL_AMOUNT = 1_000_000 * 1e18; // 1M max withdrawal per tx
+    uint256 private constant MAX_REDEMPTION_AMOUNT = 10_000_000 * 1e18; // 10M max redemption per tx
 
     // ==================== STRUCTS ====================
     struct UserVault {
@@ -369,7 +373,12 @@ contract AbobToken is
         uint256 _collateralAmount,
         uint256 _abobAmount
     ) external whenNotPaused nonReentrant validCollateral(_collateral) {
-        require(_collateralAmount > 0 && _abobAmount > 0, "Invalid amounts");
+        // Enhanced input validation
+        require(_collateral != address(0), "Invalid collateral address");
+        require(_collateralAmount > 0, "Collateral amount must be > 0");
+        require(_abobAmount > 0, "ABOB amount must be > 0");
+        require(_collateralAmount <= MAX_COLLATERAL_AMOUNT, "Collateral amount too large");
+        require(_abobAmount <= MAX_MINT_AMOUNT, "ABOB amount too large");
         require(_collateralAmount >= supportedCollaterals[_collateral].minDeposit, "Below minimum deposit");
 
         UserVault storage vault = vaults[msg.sender];
@@ -407,10 +416,7 @@ contract AbobToken is
 
         require(currentCollateralValue + newCollateralValue >= requiredCollateralValue, "Insufficient collateral");
 
-        // Transfer collateral to contract
-        IERC20(_collateral).transferFrom(msg.sender, address(this), _collateralAmount);
-
-        // Update vault state
+        // Update vault state FIRST (Checks-Effects-Interactions pattern)
         vault.collateralAmounts[_collateral] += _collateralAmount;
         vault.lastCollateralUpdate[_collateral] = block.timestamp;
         vault.totalDebt += _abobAmount;
@@ -419,6 +425,9 @@ contract AbobToken is
         // Update global state
         supportedCollaterals[_collateral].totalDeposited += _collateralAmount;
         totalSystemDebt += _abobAmount;
+
+        // Transfer collateral to contract LAST (safe transfer with return check)
+        _safeTransferFrom(_collateral, msg.sender, address(this), _collateralAmount);
 
         // Mint ABOB to user
         _mint(msg.sender, _abobAmount);
@@ -434,7 +443,10 @@ contract AbobToken is
         address _collateral,
         uint256 _amount
     ) external whenNotPaused nonReentrant validCollateral(_collateral) {
-        require(_amount > 0, "Invalid amount");
+        // Enhanced input validation
+        require(_collateral != address(0), "Invalid collateral address");
+        require(_amount > 0, "Amount must be > 0");
+        require(_amount <= MAX_COLLATERAL_AMOUNT, "Amount too large");
 
         UserVault storage vault = vaults[msg.sender];
 
@@ -444,12 +456,14 @@ contract AbobToken is
             vaultUsers.push(msg.sender);
         }
 
-        IERC20(_collateral).transferFrom(msg.sender, address(this), _amount);
-
+        // Update state FIRST (Checks-Effects-Interactions pattern)
         vault.collateralAmounts[_collateral] += _amount;
         vault.lastCollateralUpdate[_collateral] = block.timestamp;
         vault.lastInteraction = block.timestamp;
         supportedCollaterals[_collateral].totalDeposited += _amount;
+
+        // Transfer collateral LAST (safe transfer with return check)
+        _safeTransferFrom(_collateral, msg.sender, address(this), _amount);
 
         emit CollateralDeposited(msg.sender, _collateral, _amount);
     }
@@ -498,7 +512,12 @@ contract AbobToken is
         uint256 _collateralAmount,
         uint256 _debtAmount
     ) external whenNotPaused nonReentrant validCollateral(_collateral) {
-        require(_collateralAmount > 0 && _debtAmount > 0, "Invalid amounts");
+        // Enhanced input validation
+        require(_collateral != address(0), "Invalid collateral address");
+        require(_collateralAmount > 0, "Collateral amount must be > 0");
+        require(_debtAmount > 0, "Debt amount must be > 0");
+        require(_collateralAmount <= MAX_WITHDRAWAL_AMOUNT, "Collateral amount too large");
+        require(_debtAmount <= MAX_MINT_AMOUNT, "Debt amount too large");
 
         UserVault storage vault = vaults[msg.sender];
         require(vault.isActive, "Vault not active");
@@ -514,14 +533,7 @@ contract AbobToken is
             require(remainingValue >= requiredValue, "Undercollateralized after withdrawal");
         }
 
-        // Burn ABOB from user
-        require(balanceOf(msg.sender) >= _debtAmount, "Insufficient ABOB balance");
-        _burn(msg.sender, _debtAmount);
-
-        // Transfer collateral to user
-        IERC20(_collateral).transfer(msg.sender, _collateralAmount);
-
-        // Update vault state
+        // Update vault state FIRST (Checks-Effects-Interactions pattern)
         vault.collateralAmounts[_collateral] -= _collateralAmount;
         vault.lastCollateralUpdate[_collateral] = block.timestamp;
         vault.totalDebt = newTotalDebt;
@@ -530,6 +542,13 @@ contract AbobToken is
         // Update global state
         supportedCollaterals[_collateral].totalDeposited -= _collateralAmount;
         totalSystemDebt = newTotalDebt;
+
+        // Burn ABOB from user
+        require(balanceOf(msg.sender) >= _debtAmount, "Insufficient ABOB balance");
+        _burn(msg.sender, _debtAmount);
+
+        // Transfer collateral to user LAST (safe transfer with return check)
+        _safeTransfer(_collateral, msg.sender, _collateralAmount);
 
         emit CollateralWithdrawn(msg.sender, _collateral, _collateralAmount);
         emit AbobBurned(msg.sender, _debtAmount);
@@ -542,7 +561,10 @@ contract AbobToken is
         address _collateral,
         uint256 _amount
     ) external whenNotPaused nonReentrant validCollateral(_collateral) {
-        require(_amount > 0, "Invalid amount");
+        // Enhanced input validation
+        require(_collateral != address(0), "Invalid collateral address");
+        require(_amount > 0, "Amount must be > 0");
+        require(_amount <= MAX_WITHDRAWAL_AMOUNT, "Amount too large");
 
         UserVault storage vault = vaults[msg.sender];
         require(vault.isActive, "Vault not active");
@@ -564,12 +586,14 @@ contract AbobToken is
             require(remainingValue >= requiredValue, "Undercollateralized after withdrawal");
         }
 
-        IERC20(_collateral).transfer(msg.sender, _amount);
-
+        // Update state FIRST (Checks-Effects-Interactions pattern)
         vault.collateralAmounts[_collateral] -= _amount;
         vault.lastCollateralUpdate[_collateral] = block.timestamp;
         vault.lastInteraction = block.timestamp;
         supportedCollaterals[_collateral].totalDeposited -= _amount;
+
+        // Transfer collateral to user LAST (safe transfer with return check)
+        _safeTransfer(_collateral, msg.sender, _amount);
 
         emit CollateralWithdrawn(msg.sender, _collateral, _amount);
     }
@@ -632,12 +656,12 @@ contract AbobToken is
         // Burn liquidator's ABOB
         _burn(msg.sender, debtToRepay);
 
-        // Transfer all collateral to liquidator
+        // Transfer all collateral to liquidator (safe transfers with return checks)
         for (uint256 i = 0; i < collateralList.length; i++) {
             address collateral = collateralList[i];
             uint256 amount = vault.collateralAmounts[collateral];
             if (amount > 0) {
-                IERC20(collateral).transfer(msg.sender, amount);
+                _safeTransfer(collateral, msg.sender, amount);
                 supportedCollaterals[collateral].totalDeposited -= amount;
             }
         }
@@ -676,12 +700,19 @@ contract AbobToken is
         require(primaryCollateral != address(0), "No collateral found");
         require(liquidationManager != address(0), "No liquidation manager set");
 
-        // Transfer collateral to AuctionManager
-        IERC20(primaryCollateral).transfer(liquidationManager, maxAmount);
+        // Validate liquidation manager is authorized
+        require(hasRole(LIQUIDATION_MANAGER_ROLE, liquidationManager), "Unauthorized liquidation manager");
 
-        // Update vault state
+        // Check allowance before transfer (security validation)
+        uint256 allowance = IERC20(primaryCollateral).allowance(address(this), liquidationManager);
+        require(allowance >= maxAmount, "Insufficient allowance for liquidation");
+
+        // Update vault state FIRST (Checks-Effects-Interactions pattern)
         vault.collateralAmounts[primaryCollateral] = 0;
         supportedCollaterals[primaryCollateral].totalDeposited -= maxAmount;
+
+        // Transfer collateral to AuctionManager LAST (safe transfer with return check)
+        _safeTransfer(primaryCollateral, liquidationManager, maxAmount);
 
         // Start auction through AuctionManager
         try IAuctionManager(liquidationManager).startLiquidationAuction(
@@ -692,10 +723,12 @@ contract AbobToken is
         ) returns (uint256 auctionId) {
             emit AuctionCreated(auctionId, _user, primaryCollateral, maxAmount, 0);
         } catch Error(string memory reason) {
-            // Revert collateral if auction fails
-            IERC20(primaryCollateral).transferFrom(liquidationManager, address(this), maxAmount);
+            // Revert state if auction fails
             vault.collateralAmounts[primaryCollateral] = maxAmount;
             supportedCollaterals[primaryCollateral].totalDeposited += maxAmount;
+
+            // Try to recover funds if possible (this would require AuctionManager to have approval)
+            // This is a complex recovery scenario that needs careful handling
             revert(string(abi.encodePacked("Auction failed: ", reason)));
         }
     }
@@ -706,7 +739,10 @@ contract AbobToken is
      * @notice Redeem ABOB for proportional collateral
      */
     function redeemAbob(uint256 _abobAmount) external whenNotPaused nonReentrant {
+        // Enhanced input validation
+        require(_abobAmount > 0, "Amount must be > 0");
         require(_abobAmount >= minRedemptionAmount, "Below minimum redemption");
+        require(_abobAmount <= MAX_REDEMPTION_AMOUNT, "Amount too large");
         require(balanceOf(msg.sender) >= _abobAmount, "Insufficient ABOB balance");
         require(totalSystemDebt >= _abobAmount, "Exceeds system debt");
 
@@ -740,7 +776,7 @@ contract AbobToken is
                 collateralTokens[i] = collateral;
 
                 if (collateralAmounts[i] > 0) {
-                    IERC20(collateral).transfer(msg.sender, collateralAmounts[i]);
+                    _safeTransfer(collateral, msg.sender, collateralAmounts[i]);
                     supportedCollaterals[collateral].totalDeposited -= collateralAmounts[i];
                 }
             }
@@ -1093,9 +1129,56 @@ contract AbobToken is
         }
     }
 
+    // ==================== SAFE TRANSFER HELPERS ====================
+
+    /**
+     * @notice Safely transfer ERC20 tokens with return value check
+     * @param token The token address
+     * @param to The recipient address
+     * @param amount The amount to transfer
+     */
+    function _safeTransfer(address token, address to, uint256 amount) internal {
+        bool success = IERC20(token).transfer(to, amount);
+        if (!success) {
+            revert TransferFailed();
+        }
+    }
+
+    /**
+     * @notice Safely transfer ERC20 tokens from with return value check
+     * @param token The token address
+     * @param from The sender address
+     * @param to The recipient address
+     * @param amount The amount to transfer
+     */
+    function _safeTransferFrom(address token, address from, address to, uint256 amount) internal {
+        bool success = IERC20(token).transferFrom(from, to, amount);
+        if (!success) {
+            revert TransferFailed();
+        }
+    }
+
+    /**
+     * @notice Check if a transfer is likely to succeed (allowance check)
+     * @param token The token address
+     * @param from The address giving approval
+     * @param to The address to transfer to
+     * @param amount The amount to transfer
+     */
+    function _validateTransfer(address token, address from, address to, uint256 amount) internal view {
+        require(token != address(0), "Invalid token address");
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Invalid amount");
+
+        if (from != address(this) && from != msg.sender) {
+            uint256 allowance = IERC20(token).allowance(from, to);
+            require(allowance >= amount, "Insufficient allowance");
+        }
+    }
+
     // ==================== UPGRADE ====================
 
-    
+
     // ==================== FALLBACK ====================
 
     receive() external payable {

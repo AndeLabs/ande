@@ -82,6 +82,11 @@ contract GaugeController is ReentrancyGuard {
     constructor(address _token, address _voting_escrow) {
         token = _token;
         voting_escrow = IVotingEscrow(_voting_escrow);
+
+        // Initialize mappings with explicit defaults for safety
+        // Note: Solidity mappings are automatically initialized, but this ensures clarity
+        n_gauge_types = 0;
+        n_gauges = 0;
     }
 
     // --- External Functions ---

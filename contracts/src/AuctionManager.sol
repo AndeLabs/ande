@@ -221,11 +221,17 @@ contract AuctionManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, P
         if (bidAmount > auction.highestBidAmount) {
             // Refund previous highest bidder if exists
             if (auction.highestBidder != address(0)) {
-                abobToken.transfer(auction.highestBidder, auction.highestBidAmount);
+                require(
+                    abobToken.transfer(auction.highestBidder, auction.highestBidAmount),
+                    "Refund transfer failed"
+                );
             }
 
             // Transfer new bid
-            abobToken.transferFrom(msg.sender, address(this), bidAmount);
+            require(
+                abobToken.transferFrom(msg.sender, address(this), bidAmount),
+                "Bid transfer failed"
+            );
 
             auction.highestBidder = msg.sender;
             auction.highestBidAmount = bidAmount;
@@ -287,7 +293,10 @@ contract AuctionManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, P
         // Refund excess bid to winner
         if (auction.highestBidAmount > debtRepaid + penaltyAmount) {
             uint256 refund = auction.highestBidAmount - debtRepaid - penaltyAmount;
-            abobToken.transfer(auction.highestBidder, refund);
+            require(
+                abobToken.transfer(auction.highestBidder, refund),
+                "Refund transfer failed"
+            );
         }
 
         emit AuctionEnded(
@@ -464,7 +473,10 @@ contract AuctionManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, P
 
         // Refund highest bidder if exists
         if (auction.highestBidder != address(0)) {
-            abobToken.transfer(auction.highestBidder, auction.highestBidAmount);
+            require(
+                abobToken.transfer(auction.highestBidder, auction.highestBidAmount),
+                "Emergency refund transfer failed"
+            );
         }
 
         auction.isActive = false;
