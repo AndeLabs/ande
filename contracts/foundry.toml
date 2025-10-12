@@ -21,6 +21,7 @@ remappings = [
 
 # Fija la versión del compilador de Solidity para garantizar builds consistentes.
 solc_version = "0.8.25"
+evm_version = "cancun"
 
 # Habilita el optimizador de Solidity, crucial para reducir costos de gas en producción.
 optimizer = true
