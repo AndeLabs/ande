@@ -1,230 +1,205 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
-
 /**
- * @title IEntryPoint
- * @notice Interface for ERC-4337 EntryPoint contract
- * @dev This interface defines the core functions that Claude needs to implement
- *      GLM has prepared this structure to facilitate Claude's implementation
- */
+ ** Account-Abstraction (EIP-4337) singleton EntryPoint implementation.
+ ** Only one instance required on each chain.
+ **/
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.12;
 
-/**
- * @title UserOperation
- * @notice Standard ERC-4337 UserOperation structure
- */
-struct UserOperation {
-    address sender;              // The account contract
-    uint256 nonce;
-    bytes initCode;              // Account factory + calldata
-    bytes callData;              // The call to execute
-    uint256 callGasLimit;
-    uint256 verificationGasLimit;
-    uint256 preVerificationGas;
-    uint256 maxFeePerGas;
-    uint256 maxPriorityFeePerGas;
-    bytes paymasterAndData;      // Paymaster address + data
-    bytes signature;             // User signature
-}
+/* solhint-disable avoid-low-level-calls */
+/* solhint-disable no-inline-assembly */
+/* solhint-disable reason-string */
 
-/**
- * @title UserOpResult
- * @notice Result of a UserOperation execution
- */
-struct UserOpResult {
-    uint256 paid;                // Total gas paid by user or paymaster
-    uint256 actualGasCost;       // Actual gas cost
-    bool success;                // Whether operation succeeded
-    bytes returnData;            // Return data from the operation
-}
+import "./UserOperation.sol";
+import "./IStakeManager.sol";
+import "./IAggregator.sol";
+import "./INonceManager.sol";
 
-interface IEntryPoint {
-    // ========================================
-    // EVENTS
-    // ========================================
+interface IEntryPoint is IStakeManager, INonceManager {
 
-    event UserOperationEvent(
-        bytes32 indexed userOpHash,
-        address indexed sender,
-        address indexed paymaster,
-        uint256 nonce,
-        bool success,
-        uint256 actualGasCost,
-        uint256 actualGasUsed
-    );
-
-    event AccountDeployed(
-        address indexed sender,
-        address factory
-    );
-
-    event PrefundManagerWithdrawal(
-        address indexed account,
-        address indexed paymaster,
-        uint256 amount
-    );
-
-    // ========================================
-    // CORE FUNCTIONS (For Claude to implement)
-    // ========================================
+    /***
+     * An event emitted after each successful request
+     * @param userOpHash - unique identifier for the request (hash its entire content, except signature).
+     * @param sender - the account that generates this request.
+     * @param paymaster - if non-null, the paymaster that pays for this request.
+     * @param nonce - the nonce value from the request.
+     * @param success - true if the sender transaction succeeded, false if reverted.
+     * @param actualGasCost - actual amount paid (by account or paymaster) for this UserOperation.
+     * @param actualGasUsed - total gas used by this UserOperation (including preVerification, creation, validation and execution).
+     */
+    event UserOperationEvent(bytes32 indexed userOpHash, address indexed sender, address indexed paymaster, uint256 nonce, bool success, uint256 actualGasCost, uint256 actualGasUsed);
 
     /**
-     * @notice Handle a bundle of UserOperations
-     * @dev Main entry point for bundlers to execute UserOperations
-     * @param ops Array of UserOperations to execute
-     * @param beneficiary Address to receive gas fees
+     * account "sender" was deployed.
+     * @param userOpHash the userOp that deployed this account. UserOperationEvent will follow.
+     * @param sender the account that is deployed
+     * @param factory the factory used to deploy this account (in the initCode)
+     * @param paymaster the paymaster used by this UserOp
      */
-    function handleOps(
-        UserOperation[] calldata ops,
+    event AccountDeployed(bytes32 indexed userOpHash, address indexed sender, address factory, address paymaster);
+
+    /**
+     * An event emitted if the UserOperation "callData" reverted with non-zero length
+     * @param userOpHash the request unique identifier.
+     * @param sender the sender of this request
+     * @param nonce the nonce used in the request
+     * @param revertReason - the return bytes from the (reverted) call to "callData".
+     */
+    event UserOperationRevertReason(bytes32 indexed userOpHash, address indexed sender, uint256 nonce, bytes revertReason);
+
+    /**
+     * an event emitted by handleOps(), before starting the execution loop.
+     * any event emitted before this event, is part of the validation.
+     */
+    event BeforeExecution();
+
+    /**
+     * signature aggregator used by the following UserOperationEvents within this bundle.
+     */
+    event SignatureAggregatorChanged(address indexed aggregator);
+
+    /**
+     * a custom revert error of handleOps, to identify the offending op.
+     *  NOTE: if simulateValidation passes successfully, there should be no reason for handleOps to fail on it.
+     *  @param opIndex - index into the array of ops to the failed one (in simulateValidation, this is always zero)
+     *  @param reason - revert reason
+     *      The string starts with a unique code "AAmn", where "m" is "1" for factory, "2" for account and "3" for paymaster issues,
+     *      so a failure can be attributed to the correct entity.
+     *   Should be caught in off-chain handleOps simulation and not happen on-chain.
+     *   Useful for mitigating DoS attempts against batchers or for troubleshooting of factory/account/paymaster reverts.
+     */
+    error FailedOp(uint256 opIndex, string reason);
+
+    /**
+     * error case when a signature aggregator fails to verify the aggregated signature it had created.
+     */
+    error SignatureValidationFailed(address aggregator);
+
+    /**
+     * Successful result from simulateValidation.
+     * @param returnInfo gas and time-range returned values
+     * @param senderInfo stake information about the sender
+     * @param factoryInfo stake information about the factory (if any)
+     * @param paymasterInfo stake information about the paymaster (if any)
+     */
+    error ValidationResult(ReturnInfo returnInfo,
+        StakeInfo senderInfo, StakeInfo factoryInfo, StakeInfo paymasterInfo);
+
+    /**
+     * Successful result from simulateValidation, if the account returns a signature aggregator
+     * @param returnInfo gas and time-range returned values
+     * @param senderInfo stake information about the sender
+     * @param factoryInfo stake information about the factory (if any)
+     * @param paymasterInfo stake information about the paymaster (if any)
+     * @param aggregatorInfo signature aggregation info (if the account requires signature aggregator)
+     *      bundler MUST use it to verify the signature, or reject the UserOperation
+     */
+    error ValidationResultWithAggregation(ReturnInfo returnInfo,
+        StakeInfo senderInfo, StakeInfo factoryInfo, StakeInfo paymasterInfo,
+        AggregatorStakeInfo aggregatorInfo);
+
+    /**
+     * return value of getSenderAddress
+     */
+    error SenderAddressResult(address sender);
+
+    /**
+     * return value of simulateHandleOp
+     */
+    error ExecutionResult(uint256 preOpGas, uint256 paid, uint48 validAfter, uint48 validUntil, bool targetSuccess, bytes targetResult);
+
+    //UserOps handled, per aggregator
+    struct UserOpsPerAggregator {
+        UserOperation[] userOps;
+
+        // aggregator address
+        IAggregator aggregator;
+        // aggregated signature
+        bytes signature;
+    }
+
+    /**
+     * Execute a batch of UserOperation.
+     * no signature aggregator is used.
+     * if any account requires an aggregator (that is, it returned an aggregator when
+     * performing simulateValidation), then handleAggregatedOps() must be used instead.
+     * @param ops the operations to execute
+     * @param beneficiary the address to receive the fees
+     */
+    function handleOps(UserOperation[] calldata ops, address payable beneficiary) external;
+
+    /**
+     * Execute a batch of UserOperation with Aggregators
+     * @param opsPerAggregator the operations to execute, grouped by aggregator (or address(0) for no-aggregator accounts)
+     * @param beneficiary the address to receive the fees
+     */
+    function handleAggregatedOps(
+        UserOpsPerAggregator[] calldata opsPerAggregator,
         address payable beneficiary
     ) external;
 
     /**
-     * @notice Simulate execution of a UserOperation (gas estimation)
-     * @dev Returns estimated gas costs without modifying state
-     * @param op UserOperation to simulate
-     * @param targetOffset Offset in callData to target for simulation
+     * generate a request Id - unique identifier for this request.
+     * the request ID is a hash over the content of the userOp (except the signature), the entrypoint and the chainid.
      */
-    function simulateHandleOp(
-        UserOperation calldata op,
-        address target,
-        uint256 targetOffset
-    ) external returns (uint256 preOpGas, bytes memory context, uint256 deadline);
+    function getUserOpHash(UserOperation calldata userOp) external view returns (bytes32);
 
     /**
-     * @notice Get the counter for a sender account
-     * @dev Used by wallets to construct valid UserOperations
-     * @param sender Account address
-     * @return nonce Current nonce for the account
+     * Simulate a call to account.validateUserOp and paymaster.validatePaymasterUserOp.
+     * @dev this method always revert. Successful result is ValidationResult error. other errors are failures.
+     * @dev The node must also verify it doesn't use banned opcodes, and that it doesn't reference storage outside the account's data.
+     * @param userOp the user operation to validate.
      */
-    function getNonce(address sender) external view returns (uint256 nonce);
+    function simulateValidation(UserOperation calldata userOp) external;
 
     /**
-     * @notice Get the deposit info for an account
-     * @param depositInfo Address to check (account or paymaster)
-     * @return deposit Current deposit amount
-     * @return blockNumber Block when deposit was last updated
+     * gas and return values during simulation
+     * @param preOpGas the gas used for validation (including preValidationGas)
+     * @param prefund the required prefund for this operation
+     * @param sigFailed validateUserOp's (or paymaster's) signature check failed
+     * @param validAfter - first timestamp this UserOp is valid (merging account and paymaster time-range)
+     * @param validUntil - last timestamp this UserOp is valid (merging account and paymaster time-range)
+     * @param paymasterContext returned by validatePaymasterUserOp (to be passed into postOp)
      */
-    function depositInfo(address depositInfo)
-        external
-        view
-        returns (uint256 deposit, uint256 blockNumber);
+    struct ReturnInfo {
+        uint256 preOpGas;
+        uint256 prefund;
+        bool sigFailed;
+        uint48 validAfter;
+        uint48 validUntil;
+        bytes paymasterContext;
+    }
 
     /**
-     * @notice Get the current sender address for creating a userOp
-     * @dev Used during account creation process
-     * @param initCode Account creation code
-     * @return sender Address that will be created
+     * returned aggregated signature info.
+     * the aggregator returned by the account, and its current stake.
      */
-    function getSenderAddress(bytes memory initCode)
-        external
-        view
-        returns (address sender);
-
-    // ========================================
-    // DEPOSIT/WITHDRAWAL FUNCTIONS
-    // ========================================
+    struct AggregatorStakeInfo {
+        address aggregator;
+        StakeInfo stakeInfo;
+    }
 
     /**
-     * @notice Add deposit to account or paymaster
-     * @param account Address to add deposit to
+     * Get counterfactual sender address.
+     *  Calculate the sender contract address that will be generated by the initCode and salt in the UserOperation.
+     * this method always revert, and returns the address in SenderAddressResult error
+     * @param initCode the constructor code to be passed into the UserOperation.
      */
-    function depositTo(address account) external payable;
+    function getSenderAddress(bytes memory initCode) external;
+
 
     /**
-     * @notice Withdraw deposit from account or paymaster
-     * @param withdrawAddress Address to withdraw to
-     * @param amount Amount to withdraw
+     * simulate full execution of a UserOperation (including both validation and target execution)
+     * this method will always revert with "ExecutionResult".
+     * it performs full validation of the UserOperation, but ignores signature error.
+     * an optional target address is called after the userop succeeds, and its value is returned
+     * (before the entire call is reverted)
+     * Note that in order to collect the the success/failure of the target call, it must be executed
+     * with trace enabled to track the emitted events.
+     * @param op the UserOperation to simulate
+     * @param target if nonzero, a target address to call after userop simulation. If called, the targetSuccess and targetResult
+     *        are set to the return from that call.
+     * @param targetCallData callData to pass to target address
      */
-    function withdrawTo(
-        address payable withdrawAddress,
-        uint256 amount
-    ) external;
-
-    // ========================================
-    // HELPER FUNCTIONS
-    // ========================================
-
-    /**
-     * @notice Get the current stake amount for an address
-     * @param addr Address to check
-     * @return stake Amount staked
-     * @param unstakeDelaySec Delay before unstaking
-     */
-    function getStakeInfo(address addr)
-        external
-        view
-        returns (uint256 stake, uint256 unstakeDelaySec);
-
-    /**
-     * @notice Check if an address is a trusted paymaster
-     * @param paymaster Address to check
-     * @return isTrusted Whether the paymaster is trusted
-     */
-    function isTrustedPaymaster(address paymaster)
-        external
-        view
-        returns (bool isTrusted);
+    function simulateHandleOp(UserOperation calldata op, address target, bytes calldata targetCallData) external;
 }
 
-/**
- * @title IAccount
- * @notice Interface for smart contract accounts (wallets)
- */
-interface IAccount {
-    /**
-     * @notice Validate UserOperation signature and nonce
-     * @dev Must return 0 if valid, non-zero otherwise
-     * @param userOp UserOperation to validate
-     * @param userOpHash Hash of the UserOperation
-     * @param missingAccountFunds Amount that account needs to pay
-     * @return validationData 0 if valid, non-zero error code otherwise
-     */
-    function validateUserOp(
-        UserOperation calldata userOp,
-        bytes32 userOpHash,
-        uint256 missingAccountFunds
-    ) external returns (uint256 validationData);
-}
-
-/**
- * @title IPaymaster
- * @notice Interface for paymaster contracts
- */
-interface IPaymaster {
-    /**
-     * @notice Validate paymaster data and deposit funds
-     * @param userOp UserOperation to validate
-     * @param userOpHash Hash of the UserOperation
-     * @param maxCost Maximum gas cost this operation can cost
-     * @return context Data to pass to postOp
-     * @return validationData 0 if valid, non-zero error code otherwise
-     */
-    function validatePaymasterUserOp(
-        UserOperation calldata userOp,
-        bytes32 userOpHash,
-        uint256 maxCost
-    ) external returns (bytes memory context, uint256 validationData);
-
-    /**
-     * @notice Called after operation execution
-     * @dev Used for final calculations and refunds
-     * @param mode Execution mode
-     * @param context Context from validatePaymasterUserOp
-     * @param actualGasCost Actual gas cost of the operation
-     */
-    function postOp(
-        PostOpMode mode,
-        bytes calldata context,
-        uint256 actualGasCost
-    ) external;
-}
-
-/**
- * @title PostOpMode
- * @notice Mode for postOp execution
- */
-enum PostOpMode {
-    opSucceeded,     // Operation succeeded
-    opReverted,      // Operation reverted
-    postOpReverted   // postOp itself reverted
-}

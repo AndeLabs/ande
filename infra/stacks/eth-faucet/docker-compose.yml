@@ -3,15 +3,15 @@ services:
     image: ghcr.io/01builders/eth-faucet:main
     container_name: eth-faucet
     restart: unless-stopped
-    depends_on:
-      ev-reth-sequencer:
-        condition: service_healthy
+    # depends_on:
+    #   ev-reth-sequencer:
+    #     condition: service_healthy
     environment:
       WEB3_PROVIDER: http://ev-reth-sequencer:8545
     command: ["-httpport", "8081", "-proxycount", "1"]
     env_file: ../.env
     networks:
-      - evstack_shared
+      - ande-network
 
   nginx-faucet:
     image: nginx:alpine
@@ -24,6 +24,10 @@ services:
     depends_on:
       - eth-faucet
     networks:
-      - evstack_shared
+      - ande-network
+
+networks:
+  ande-network:
+    external: true
 
 

@@ -17,12 +17,11 @@ services:
         openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex;
       fi"
 
-  # ev-reth-sequencer con ANDE Token Duality
+  # ev-reth-sequencer con ANDE Token Duality v0.3.0
   ev-reth-sequencer:
     container_name: ev-reth-sequencer
-    build:
-      context: ../../..
-      dockerfile: Dockerfile.evm
+    image: ghcr.io/AndeLabs/ev-reth:latest
+    pull_policy: always
     depends_on:
       jwt-init-sequencer:
         condition: service_completed_successfully
@@ -40,9 +39,12 @@ services:
     entrypoint: /bin/sh -c
     command:
       - |
-        echo "🚀 Starting ANDE-enabled ev-reth for AndeChain..."
-        echo "📍 Precompile Address: 0x00000000000000000000000000000000000000FD"
-        echo "🔗 ANDE Integration: Type alias pattern"
+        echo "🚀 Starting ANDE-enabled ev-reth v0.3.0 for AndeChain..."
+        echo "📍 ANDE Precompile: 0x00000000000000000000000000000000000000FD"
+        echo "🔗 Token Duality: ✅ Integrated"
+        echo "⚡ Parallel EVM: ✅ Enabled"
+        echo "🧠 MEV System: ✅ Ready"
+        echo "📦 Build: 2025-10-14 (368ad84)"
         echo ""
 
         ev-reth node \
