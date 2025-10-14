@@ -3,7 +3,7 @@ const cors = require('cors');
 const { ethers } = require('ethers');
 
 const app = express();
-const PORT = 8081;
+const PORT = process.env.FAUCET_PORT || 8080;
 
 // Middleware
 app.use(cors());

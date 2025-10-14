@@ -341,3 +341,106 @@ redeploy-token:
 		echo "📋 Para verificar el nuevo contrato:"; \
 		echo "   make health"; \
 		echo "   cast call <NEW_ADDRESS> 'name()' --rpc-url local"
+
+# ==========================================
+# Testnet Deployment Commands
+# ==========================================
+
+# Despliega testnet completo con MEV y ejecución paralela
+deploy-testnet:
+	@echo "🚀 Desplegando AndeChain Testnet con MEV y ejecución paralela..."
+	@./scripts/deploy-testnet.sh
+
+# Verifica salud del testnet
+health-testnet:
+	@echo "🏥 Verificando salud del testnet..."
+	@./scripts/testnet-health-check.sh
+
+# Detiene testnet
+stop-testnet:
+	@echo "🛑 Deteniendo testnet..."
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down
+
+# Limpia testnet (borra volúmenes)
+clean-testnet:
+	@echo "🧹 Limpiando testnet..."
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down -v
+	@docker system prune -f --volumes
+
+# Muestra logs del testnet
+logs-testnet:
+	@echo "📝 Mostrando logs del testnet..."
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml logs -f
+
+# Reinicia servicio específico del testnet
+restart-testnet-service:
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "❌ Especifica SERVICE=nombre_del_servicio"; \
+		echo "Servicios disponibles: ev-reth-testnet, single-sequencer-testnet, local-da-testnet, prometheus-testnet, grafana-testnet"; \
+		exit 1; \
+	fi
+	@echo "🔄 Reiniciando servicio $(SERVICE)..."
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml restart $(SERVICE)
+
+# Verifica métricas del testnet
+metrics-testnet:
+	@echo "📊 Verificando métricas del testnet..."
+	@echo "Prometheus: http://localhost:9090"
+	@echo "Grafana: http://localhost:3000 (admin/ande_testnet_2025)"
+	@echo "MEV Metrics: http://localhost:9002/metrics"
+	@echo "Parallel Metrics: http://localhost:9002/parallel/metrics"
+
+# Configura dashboards de Grafana
+setup-dashboards:
+	@echo "📊 Configurando dashboards de Grafana..."
+	@./scripts/setup-grafana-dashboards.sh
+
+# Análisis de optimización de gas
+gas-analysis:
+	@echo "⛽ Ejecutando análisis de optimización de gas..."
+	@./scripts/gas-optimization.sh
+
+# Genera reporte de gas
+gas-report:
+	@echo "📊 Generando reporte de gas..."
+	@cd contracts && forge test --gas-report | grep -A 50 -B 5 "MEV\|VotingEscrow" || echo "No MEV contracts found"
+
+# Optimización de contratos
+gas-optimize:
+	@echo "🔧 Ejecutando optimización de gas..."
+	@cd contracts && forge build --optimize --optimizer-runs 20000
+	@echo "✅ Contratos optimizados con --optimizer-runs 20000"
+
+# Despliegue de ZK Lazybridging
+deploy-zk-lazybridging:
+	@echo "🔐 Desplegando ZK Lazybridging..."
+	@./scripts/deploy-zk-lazybridging.sh --network testnet --rpc-url http://localhost:8545
+
+# Despliegue de ZK Lazybridging (mainnet)
+deploy-zk-lazybridging-mainnet:
+	@echo "🔐 Desplegando ZK Lazybridging a mainnet..."
+	@./scripts/deploy-zk-lazybridging.sh --network mainnet --rpc-url $(MAINNET_RPC_URL) --private-key $(MAINNET_PRIVATE_KEY)
+
+# Infraestructura de ZK Lazybridging
+start-zk-infrastructure:
+	@echo "🚀 Iniciando infraestructura ZK Lazybridging..."
+	@cd infra && docker-compose -f docker-compose.celestia.yml up -d
+	@cd infra && docker-compose -f docker-compose.prover.yml up -d
+	@cd infra && docker-compose -f docker-compose.relayer.yml up -d
+	@echo "✅ Infraestructura ZK Lazybridging iniciada"
+
+# Detener infraestructura ZK
+stop-zk-infrastructure:
+	@echo "🛑 Deteniendo infraestructura ZK Lazybridging..."
+	@cd infra && docker-compose -f docker-compose.relayer.yml down
+	@cd infra && docker-compose -f docker-compose.prover.yml down
+	@cd infra && docker-compose -f docker-compose.celestia.yml down
+	@echo "✅ Infraestructura ZK Lazybridging detenida"
+
+# Salud de ZK Lazybridging
+health-zk-lazybridging:
+	@echo "🏥 Verificando salud de ZK Lazybridging..."
+	@curl -s http://localhost:8080/health || echo "❌ ZK Prover no responde"
+	@curl -s http://localhost:26657/status || echo "❌ Celestia Light Client no responde"
+	@curl -s http://localhost:3000/health || echo "❌ IBC Relayer no responde"
+	@docker ps | grep -E "(zk-prover|celestia|ibc-relayer)" || echo "❌ Contenedores no corriendo"
