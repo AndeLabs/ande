@@ -434,6 +434,10 @@ contract AndePerpetuals is Ownable, ReentrancyGuard {
      * @param longOI Long open interest
      * @param shortOI Short open interest
      * @return fundingRate Funding rate (can be negative)
+     * 
+     * Security:
+     * - Clamped to MAX_FUNDING_RATE to prevent infinite funding
+     * - Linear scaling based on OI imbalance
      */
     function _calculateFundingRate(uint256 longOI, uint256 shortOI) 
         internal 
@@ -447,8 +451,18 @@ contract AndePerpetuals is Ownable, ReentrancyGuard {
         int256 imbalance = int256(longOI) - int256(shortOI);
         int256 totalOI = int256(longOI + shortOI);
         
+        // Prevent division by zero (should never happen due to check above)
+        if (totalOI == 0) return 0;
+        
         // fundingRate = imbalance / totalOI * maxRate
         fundingRate = (imbalance * int256(MAX_FUNDING_RATE)) / totalOI;
+        
+        // Clamp to MAX_FUNDING_RATE bounds [-MAX, +MAX]
+        if (fundingRate > int256(MAX_FUNDING_RATE)) {
+            fundingRate = int256(MAX_FUNDING_RATE);
+        } else if (fundingRate < -int256(MAX_FUNDING_RATE)) {
+            fundingRate = -int256(MAX_FUNDING_RATE);
+        }
     }
 
     // ========================================
@@ -460,8 +474,12 @@ contract AndePerpetuals is Ownable, ReentrancyGuard {
      * @param user User address
      * @param market Market address
      * @param currentPrice Current mark price
-     * @return pnl Profit/Loss
+     * @return pnl Profit/Loss (capped to prevent insolvency)
      * @return fundingFee Funding fee owed
+     * 
+     * Security:
+     * - Loss is capped at 100% of collateral to prevent protocol insolvency
+     * - Prevents negative equity scenarios
      */
     function _calculatePnL(address user, address market, uint256 currentPrice)
         internal
@@ -481,6 +499,13 @@ contract AndePerpetuals is Ownable, ReentrancyGuard {
             pnl = (priceDiff * int256(position.size)) / int256(position.entryPrice);
         }
         
+        // Cap maximum loss to collateral amount to prevent protocol insolvency
+        // User can never lose more than they deposited
+        int256 maxLoss = -int256(position.collateral);
+        if (pnl < maxLoss) {
+            pnl = maxLoss;
+        }
+        
         // Calculate funding fee
         Market storage marketData = markets[market];
         int256 fundingDelta = marketData.cumulativeFundingRate - position.lastFundingIndex;
@@ -494,6 +519,14 @@ contract AndePerpetuals is Ownable, ReentrancyGuard {
         }
         
         fundingFee = (fundingFee * position.size) / FUNDING_RATE_PRECISION;
+        
+        // Cap funding fee to remaining collateral after PnL
+        int256 remainingCollateral = int256(position.collateral) + pnl;
+        if (remainingCollateral < 0) {
+            fundingFee = 0; // No collateral left to pay funding
+        } else if (fundingFee > uint256(remainingCollateral)) {
+            fundingFee = uint256(remainingCollateral);
+        }
     }
     
     /**
@@ -634,10 +667,4 @@ contract AndePerpetuals is Ownable, ReentrancyGuard {
     }
 }
 
-// ========================================
-// INTERFACES
-// ========================================
-
-interface IPriceOracle {
-    function getPrice(address asset) external view returns (uint256 price);
-}
+import "../interfaces/IPriceOracle.sol";
