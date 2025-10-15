@@ -353,6 +353,9 @@ contract AndeSwapRouter {
         // Create pair if doesn't exist
         if (pair == address(0)) {
             pair = AndeSwapFactory(factory).createPair(tokenA, tokenB);
+            
+            // Validate pair was successfully created
+            if (pair == address(0)) revert InvalidPath();
         }
         
         (uint112 reserveA, uint112 reserveB,) = AndeSwapPair(pair).getReserves();

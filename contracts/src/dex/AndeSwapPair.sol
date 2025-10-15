@@ -101,21 +101,6 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
     error InsufficientLiquidityBurned();
     error Overflow();
     error InvalidK();
-    error Locked();
-
-    // ========================================
-    // MODIFIERS
-    // ========================================
-    
-    /// @notice Reentrancy lock
-    uint256 private unlocked = 1;
-    
-    modifier lock() {
-        if (unlocked == 0) revert Locked();
-        unlocked = 0;
-        _;
-        unlocked = 1;
-    }
 
     // ========================================
     // CONSTRUCTOR
@@ -183,8 +168,9 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
      * - MINIMUM_LIQUIDITY locked forever prevents division by zero
      * - Uses geometric mean for initial liquidity (prevents manipulation)
      * - Protocol fee minted before liquidity addition
+     * - ReentrancyGuard protects against reentrancy attacks
      */
-    function mint(address to) external nonReentrant lock returns (uint256 liquidity) {
+    function mint(address to) external nonReentrant returns (uint256 liquidity) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         uint256 balance0 = IERC20(token0).balanceOf(address(this));
         uint256 balance1 = IERC20(token1).balanceOf(address(this));
@@ -234,7 +220,6 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
     function burn(address to) 
         external 
         nonReentrant 
-        lock 
         returns (uint256 amount0, uint256 amount1) 
     {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
@@ -286,15 +271,15 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
      * Security:
      * - Validates K invariant after swap
      * - Callback before K check enables flash loans
-     * - Reentrancy protection via lock modifier
-     * - Overflow protection via SafeMath
+     * - ReentrancyGuard protects against reentrancy attacks
+     * - Overflow checks prevent manipulation
      */
     function swap(
         uint256 amount0Out,
         uint256 amount1Out,
         address to,
         bytes calldata data
-    ) external nonReentrant lock {
+    ) external nonReentrant {
         if (amount0Out == 0 && amount1Out == 0) revert InsufficientOutputAmount();
         
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
@@ -361,7 +346,7 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
      * @dev Used to recover from unexpected state
      * @param to Address to send excess tokens
      */
-    function skim(address to) external nonReentrant lock {
+    function skim(address to) external nonReentrant {
         address _token0 = token0;
         address _token1 = token1;
         _safeTransfer(_token0, to, IERC20(_token0).balanceOf(address(this)) - reserve0);
@@ -372,7 +357,7 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
      * @notice Force balances to match reserves
      * @dev Used to recover from unexpected state
      */
-    function sync() external nonReentrant lock {
+    function sync() external nonReentrant {
         _update(
             IERC20(token0).balanceOf(address(this)),
             IERC20(token1).balanceOf(address(this)),
@@ -392,6 +377,11 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
      * @param balance1 New balance of token1
      * @param _reserve0 Old reserve of token0
      * @param _reserve1 Old reserve of token1
+     * 
+     * Security Fix:
+     * - Uses UQ112x112 fixed-point encoding for TWAP (Uniswap V2 standard)
+     * - Prevents division by zero and maintains precision
+     * - Accumulates price * time for accurate TWAP calculation
      */
     function _update(
         uint256 balance0,
@@ -409,11 +399,20 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
             timeElapsed = blockTimestamp - blockTimestampLast;
         }
         
-        // Update TWAP oracle
+        // Update TWAP oracle using UQ112x112 encoding
+        // Formula: price = reserve1 * 2^112 / reserve0
+        // This maintains precision and prevents division by zero
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
             unchecked {
-                price0CumulativeLast += uint256(_reserve1 / _reserve0) * timeElapsed;
-                price1CumulativeLast += uint256(_reserve0 / _reserve1) * timeElapsed;
+                // UQ112x112: (reserve1 << 112) / reserve0
+                // Multiply by timeElapsed to accumulate price * time
+                price0CumulativeLast += uint256(
+                    (uint224(_reserve1) << 112) / _reserve0
+                ) * timeElapsed;
+                
+                price1CumulativeLast += uint256(
+                    (uint224(_reserve0) << 112) / _reserve1
+                ) * timeElapsed;
             }
         }
         
@@ -472,19 +471,5 @@ contract AndeSwapPair is ERC20, ReentrancyGuard {
     }
 }
 
-// ========================================
-// INTERFACES
-// ========================================
-
-interface IAndeSwapFactory {
-    function feeTo() external view returns (address);
-}
-
-interface IAndeSwapCallee {
-    function andeSwapCall(
-        address sender,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external;
-}
+import "../interfaces/IAndeSwapFactory.sol";
+import "../interfaces/IAndeSwapCallee.sol";

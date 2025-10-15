@@ -224,9 +224,25 @@ contract AndeLend is ReentrancyGuard, Ownable {
         UserMarketData storage userData = userMarkets[msg.sender][token];
         
         // Update borrow balance with accrued interest
+        // Security: Explicit checks prevent underflow/overflow exploitation
         if (userData.borrowBalance > 0) {
+            // Validate borrowIndex hasn't decreased (should only increase)
+            if (market.borrowIndex < userData.borrowIndex) revert InvalidAmount();
+            
             uint256 borrowIndexDelta = market.borrowIndex - userData.borrowIndex;
-            userData.borrowBalance += (userData.borrowBalance * borrowIndexDelta) / 1e18;
+            uint256 interestAccrued = (userData.borrowBalance * borrowIndexDelta) / 1e18;
+            
+            // Check for overflow before adding
+            if (userData.borrowBalance + interestAccrued < userData.borrowBalance) {
+                revert InvalidAmount();
+            }
+            
+            userData.borrowBalance += interestAccrued;
+        }
+        
+        // Check overflow before adding new borrow
+        if (userData.borrowBalance + amount < userData.borrowBalance) {
+            revert InvalidAmount();
         }
         
         userData.borrowBalance += amount;
@@ -260,9 +276,20 @@ contract AndeLend is ReentrancyGuard, Ownable {
         UserMarketData storage userData = userMarkets[msg.sender][token];
         
         // Update borrow balance with accrued interest
+        // Security: Explicit checks prevent underflow/overflow exploitation
         if (userData.borrowBalance > 0) {
+            // Validate borrowIndex hasn't decreased (should only increase)
+            if (market.borrowIndex < userData.borrowIndex) revert InvalidAmount();
+            
             uint256 borrowIndexDelta = market.borrowIndex - userData.borrowIndex;
-            userData.borrowBalance += (userData.borrowBalance * borrowIndexDelta) / 1e18;
+            uint256 interestAccrued = (userData.borrowBalance * borrowIndexDelta) / 1e18;
+            
+            // Check for overflow before adding
+            if (userData.borrowBalance + interestAccrued < userData.borrowBalance) {
+                revert InvalidAmount();
+            }
+            
+            userData.borrowBalance += interestAccrued;
         }
         
         uint256 repayAmount = amount == 0 ? userData.borrowBalance : amount;
@@ -511,6 +538,10 @@ contract AndeLend is ReentrancyGuard, Ownable {
     }
     
     function _getAssetValue(address token, uint256 amount) internal view returns (uint256) {
+        // Security: Oracle is REQUIRED for production
+        // Never allow fallback pricing as it can be exploited
+        if (priceOracle == address(0)) revert InvalidMarket();
+        
         // Get token decimals
         uint8 decimals = _getDecimals(token);
         
@@ -522,34 +553,25 @@ contract AndeLend is ReentrancyGuard, Ownable {
             normalizedAmount = amount / (10 ** (decimals - 18));
         }
         
-        // Get price from oracle
-        if (priceOracle == address(0)) {
-            // No oracle: assume 1:1 USD (for testing only)
-            return normalizedAmount;
-        }
-        
         // Get price from oracle (price is in USD with 18 decimals)
         uint256 priceInUSD = IPriceOracle(priceOracle).getPrice(token);
+        
+        // Validate oracle price is not zero (prevents division by zero and invalid prices)
+        if (priceInUSD == 0) revert InvalidMarket();
         
         // Calculate value: normalizedAmount * price / 1e18
         return (normalizedAmount * priceInUSD) / 1e18;
     }
     
     function _getAssetAmount(address token, uint256 value) internal view returns (uint256) {
-        // Get price from oracle
-        if (priceOracle == address(0)) {
-            // No oracle: assume 1:1 USD (for testing only)
-            uint8 decimals = _getDecimals(token);
-            if (decimals < 18) {
-                return value / (10 ** (18 - decimals));
-            } else if (decimals > 18) {
-                return value * (10 ** (decimals - 18));
-            }
-            return value;
-        }
+        // Security: Oracle is REQUIRED for production
+        if (priceOracle == address(0)) revert InvalidMarket();
         
         // Get price from oracle (price is in USD with 18 decimals)
         uint256 priceInUSD = IPriceOracle(priceOracle).getPrice(token);
+        
+        // Validate oracle price is not zero
+        if (priceInUSD == 0) revert InvalidMarket();
         
         // Calculate amount: value * 1e18 / price
         uint256 normalizedAmount = (value * 1e18) / priceInUSD;
@@ -599,15 +621,9 @@ contract AndeLend is ReentrancyGuard, Ownable {
     }
 }
 
-// ========================================
-// INTERFACES
-// ========================================
+import "../interfaces/IPriceOracle.sol";
 
 interface IAToken {
     function mint(address user, uint256 amount) external;
     function burn(address user, uint256 amount) external;
-}
-
-interface IPriceOracle {
-    function getPrice(address asset) external view returns (uint256 price);
 }
