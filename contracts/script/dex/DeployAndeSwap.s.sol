@@ -19,10 +19,11 @@ contract DeployAndeSwap is Script {
         feeToSetter = msg.sender; // Can be changed later
         
         // If ANDE doesn't exist, deploy mock for testing
-        ande = new ERC20Mock("ANDE", "ANDE", 1000000 ether);
+        ande = new ERC20Mock("ANDE", "ANDE");
+        ande.mint(msg.sender, 1000000 ether);
     }
     
-    function run() public {
+    function run() public virtual {
         vm.startBroadcast();
         
         // Deploy factory
@@ -58,9 +59,9 @@ contract DeployAndeSwap is Script {
         
         require(factory.feeToSetter() == feeToSetter, "Factory feeToSetter not set correctly");
         require(address(router.factory()) == address(factory), "Router factory not set correctly");
-        require(router.WETH() == address(ande), "Router WETH not set correctly");
+        require(router.ANDE() == address(ande), "Router WETH not set correctly");
         
-        console.log("✅ All deployment verifications passed!");
+        console.log("OK - All deployment verifications passed!");
     }
     
     function createInitialLiquidity() public {
@@ -110,7 +111,8 @@ contract DeployAndeSwapWithConfig is DeployAndeSwap {
         vm.startBroadcast();
         
         // Deploy ANDE with custom config
-        ande = new ERC20Mock(config.andeName, config.andeSymbol, config.andeSupply);
+        ande = new ERC20Mock(config.andeName, config.andeSymbol);
+        ande.mint(msg.sender, config.andeSupply);
         
         // Deploy factory
         factory = new AndeSwapFactory(config.feeToSetter);
@@ -150,7 +152,7 @@ contract DeployAndeSwapTestnet is DeployAndeSwap {
         // Create test pairs
         createInitialLiquidity();
         
-        console.log("\n🧪 Testnet deployment complete!");
+        console.log("\nTEST: Testnet deployment complete!");
         console.log("Ready for testing on local network");
     }
 }
@@ -163,7 +165,7 @@ contract DeployAndeSwapMainnet is DeployAndeSwap {
         
         super.run();
         
-        console.log("\n🚀 Mainnet deployment complete!");
+        console.log("\nOK Mainnet deployment complete!");
         console.log("IMPORTANT: Verify all contracts on Etherscan");
         console.log("IMPORTANT: Transfer ownership to multisig/DAO");
         console.log("IMPORTANT: Set up proper fee collection");

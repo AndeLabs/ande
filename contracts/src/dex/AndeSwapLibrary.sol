@@ -142,6 +142,7 @@ library AndeSwapLibrary {
     /**
      * @dev Calculates liquidity amount to mint
      * @param amountA The amount of tokenA
+     * @param amountB The amount of tokenB
      * @param reserveA The reserve of tokenA
      * @param reserveB The reserve of tokenB
      * @param totalSupply The total supply of LP tokens
@@ -149,6 +150,7 @@ library AndeSwapLibrary {
      */
     function getLiquidityMinted(
         uint256 amountA,
+        uint256 amountB,
         uint256 reserveA,
         uint256 reserveB,
         uint256 totalSupply
@@ -480,7 +482,7 @@ library AndeSwapLibrary {
     }
 
     /**
-     * @dev Safely divides two uint256 values
+     * @dev Safely divides two numbers
      * @param a The numerator
      * @param b The denominator
      * @return result The quotient
@@ -488,5 +490,49 @@ library AndeSwapLibrary {
     function safeDiv(uint256 a, uint256 b) internal pure returns (uint256 result) {
         if (b == 0) revert InvalidK();
         result = a / b;
+    }
+
+    /**
+     * @dev Calculates amounts out for a given input through a path of pairs
+     * @param factory The factory address
+     * @param amountIn The input amount
+     * @param path The path of token addresses
+     * @return amounts Array of amounts at each step
+     */
+    function getAmountsOut(
+        address factory,
+        uint256 amountIn,
+        address[] memory path
+    ) internal view returns (uint256[] memory amounts) {
+        require(path.length >= 2, "AndeSwapLibrary: INVALID_PATH");
+        amounts = new uint256[](path.length);
+        amounts[0] = amountIn;
+        
+        for (uint256 i; i < path.length - 1; i++) {
+            (uint256 reserveIn, uint256 reserveOut) = getReserves(factory, path[i], path[i + 1]);
+            amounts[i + 1] = getAmountOut(amounts[i], reserveIn, reserveOut);
+        }
+    }
+
+    /**
+     * @dev Calculates amounts in for a given output through a path of pairs
+     * @param factory The factory address
+     * @param amountOut The output amount
+     * @param path The path of token addresses
+     * @return amounts Array of amounts at each step
+     */
+    function getAmountsIn(
+        address factory,
+        uint256 amountOut,
+        address[] memory path
+    ) internal view returns (uint256[] memory amounts) {
+        require(path.length >= 2, "AndeSwapLibrary: INVALID_PATH");
+        amounts = new uint256[](path.length);
+        amounts[amounts.length - 1] = amountOut;
+        
+        for (uint256 i = path.length - 1; i > 0; i--) {
+            (uint256 reserveIn, uint256 reserveOut) = getReserves(factory, path[i - 1], path[i]);
+            amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut);
+        }
     }
 }

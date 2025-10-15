@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AndeSwapFactory.sol";
 import "./AndeSwapPair.sol";
+import "./AndeSwapLibrary.sol";
 
 /**
  * @title AndeSwapRouter
@@ -28,8 +29,8 @@ contract AndeSwapRouter {
     /// @notice Factory contract address
     address public immutable factory;
     
-    /// @notice WANDE (Wrapped ANDE) token address
-    address public immutable WANDE;
+    /// @notice ANDE precompile address (native dual token)
+    address public constant ANDE = 0x00000000000000000000000000000000000000fd;
 
     // ========================================
     // ERRORS
@@ -62,13 +63,12 @@ contract AndeSwapRouter {
     // ========================================
     
     /**
-     * @notice Initialize router with factory and WANDE addresses
+     * @notice Initialize router with factory address
      * @param _factory AndeSwap factory address
-     * @param _WANDE Wrapped ANDE token address
+     * @dev ANDE is precompile at fixed address 0xFD
      */
-    constructor(address _factory, address _WANDE) {
+    constructor(address _factory) {
         factory = _factory;
-        WANDE = _WANDE;
     }
 
     // ========================================
@@ -472,4 +472,144 @@ contract AndeSwapRouter {
     {
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
+
+    // ========================================
+    // ANDE NATIVE FUNCTIONS
+    // ========================================
+
+    /**
+     * @notice Swap exact ANDE for tokens
+     * @param amountOutMin Minimum tokens to receive
+     * @param path Trading path (must start with ANDE)
+     * @param to Recipient address
+     * @param deadline Transaction deadline
+     * @return amounts Array of amounts swapped
+     */
+    function swapExactANDEForTokens(
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external payable ensure(deadline) returns (uint256[] memory amounts) {
+        if (path[0] != ANDE) revert InvalidPath();
+        
+        amounts = AndeSwapLibrary.getAmountsOut(factory, msg.value, path);
+        if (amounts[amounts.length - 1] < amountOutMin) revert InsufficientOutputAmount();
+        
+        // Transfer ANDE to first pair via precompile
+        IERC20(ANDE).transfer(
+            AndeSwapLibrary.pairFor(factory, path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, to);
+    }
+
+    /**
+     * @notice Swap tokens for exact ANDE
+     * @param amountOut Exact ANDE amount to receive
+     * @param amountInMax Maximum tokens to spend
+     * @param path Trading path (must end with ANDE)
+     * @param to Recipient address
+     * @param deadline Transaction deadline
+     * @return amounts Array of amounts swapped
+     */
+    function swapTokensForExactANDE(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external ensure(deadline) returns (uint256[] memory amounts) {
+        if (path[path.length - 1] != ANDE) revert InvalidPath();
+        
+        amounts = AndeSwapLibrary.getAmountsIn(factory, amountOut, path);
+        if (amounts[0] > amountInMax) revert ExcessiveInputAmount();
+        
+        IERC20(path[0]).transferFrom(
+            msg.sender,
+            AndeSwapLibrary.pairFor(factory, path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, address(this));
+        
+        // Transfer ANDE to recipient
+        payable(to).transfer(amounts[amounts.length - 1]);
+    }
+
+    /**
+     * @notice Add liquidity with ANDE
+     * @param token Token to pair with ANDE
+     * @param amountTokenDesired Desired token amount
+     * @param amountTokenMin Minimum token amount
+     * @param amountANDEMin Minimum ANDE amount
+     * @param to Recipient of LP tokens
+     * @param deadline Transaction deadline
+     */
+    function addLiquidityANDE(
+        address token,
+        uint256 amountTokenDesired,
+        uint256 amountTokenMin,
+        uint256 amountANDEMin,
+        address to,
+        uint256 deadline
+    )
+        external
+        payable
+        ensure(deadline)
+        returns (uint256 amountToken, uint256 amountANDE, uint256 liquidity)
+    {
+        (amountToken, amountANDE) = _addLiquidity(
+            token,
+            ANDE,
+            amountTokenDesired,
+            msg.value,
+            amountTokenMin,
+            amountANDEMin
+        );
+        
+        address pair = AndeSwapLibrary.pairFor(factory, token, ANDE);
+        IERC20(token).transferFrom(msg.sender, pair, amountToken);
+        IERC20(ANDE).transfer(pair, amountANDE);
+        liquidity = AndeSwapPair(pair).mint(to);
+        
+        // Refund excess ANDE
+        if (msg.value > amountANDE) {
+            payable(msg.sender).transfer(msg.value - amountANDE);
+        }
+    }
+
+    /**
+     * @notice Remove liquidity and receive ANDE
+     * @param token Token paired with ANDE
+     * @param liquidity LP tokens to burn
+     * @param amountTokenMin Minimum token amount
+     * @param amountANDEMin Minimum ANDE amount
+     * @param to Recipient address
+     * @param deadline Transaction deadline
+     */
+    function removeLiquidityANDE(
+        address token,
+        uint256 liquidity,
+        uint256 amountTokenMin,
+        uint256 amountANDEMin,
+        address to,
+        uint256 deadline
+    ) external ensure(deadline) returns (uint256 amountToken, uint256 amountANDE) {
+        address pair = AndeSwapLibrary.pairFor(factory, token, ANDE);
+        AndeSwapPair(pair).transferFrom(msg.sender, pair, liquidity);
+        (uint256 amount0, uint256 amount1) = AndeSwapPair(pair).burn(address(this));
+        (address token0,) = AndeSwapLibrary.sortTokens(token, ANDE);
+        (amountToken, amountANDE) = token == token0 ? (amount0, amount1) : (amount1, amount0);
+        
+        if (amountToken < amountTokenMin) revert InsufficientAAmount();
+        if (amountANDE < amountANDEMin) revert InsufficientBAmount();
+        
+        IERC20(token).transfer(to, amountToken);
+        payable(to).transfer(amountANDE);
+    }
+
+    /**
+     * @notice Receive ANDE (for native transfers)
+     */
+    receive() external payable {}
 }

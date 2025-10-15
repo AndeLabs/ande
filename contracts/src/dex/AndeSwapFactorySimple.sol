@@ -49,12 +49,12 @@ contract AndeSwapFactorySimple is Ownable {
     }
 
     /**
-     * @dev Creates a new pair
+     * @dev Creates a new token pair
      * @param tokenA The first token address
      * @param tokenB The second token address
-     * @return pair The address of the created pair
+     * @return pair The address of the newly created pair
      */
-    function createPair(address tokenA, address tokenB) external returns (address pair) {
+    function createPair(address tokenA, address tokenB) public returns (address pair) {
         require(tokenA != tokenB, "AndeSwapFactory: IDENTICAL_ADDRESSES");
         require(tokenA != address(0) && tokenB != address(0), "AndeSwapFactory: ZERO_ADDRESS");
         require(getPair[tokenA][tokenB] == address(0), "AndeSwapFactory: PAIR_EXISTS");
@@ -311,9 +311,7 @@ contract AndeSwapFactorySimple is Ownable {
         uint256[] memory liquidities
     ) {
         if (count == 0 || allPairs.length == 0) {
-            pairs = new address[](0);
-            liquidities = new uint256[](0);
-            return;
+            return (new address[](0), new uint256[](0));
         }
         
         uint256 returnCount = count > allPairs.length ? allPairs.length : count;
