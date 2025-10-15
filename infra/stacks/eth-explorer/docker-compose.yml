@@ -19,7 +19,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - evstack_shared
+      - ande-network
 
   stats-db:
     container_name: stats-db
@@ -41,7 +41,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - evstack_shared
+      - ande-network
 
   redis:
     image: redis:7-alpine
@@ -51,7 +51,7 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - evstack_shared
+      - ande-network
 
   stats:
     container_name: stats
@@ -68,7 +68,7 @@ services:
         STATS__SERVER__HTTP__ADDR: 0.0.0.0:8051
         STATS__RUN_MIGRATIONS: true
     networks:
-      - evstack_shared
+      - ande-network
 
   blockscout-backend:
     image: ghcr.io/blockscout/blockscout:9.0.2
@@ -92,7 +92,7 @@ services:
     ports:
       - "4001:4000"
     networks:
-      - evstack_shared
+      - ande-network
 
   blockscout-frontend:
     depends_on:
@@ -135,7 +135,7 @@ services:
     ports:
       - ${EXPLORER_FRONTEND_PORT}:3000
     networks:
-      - evstack_shared
+      - ande-network
 
   smart-contract-verifier:
     image: ghcr.io/blockscout/smart-contract-verifier:v1.10.0
@@ -147,7 +147,7 @@ services:
     depends_on:
       - db
     networks:
-      - evstack_shared
+      - ande-network
 
 volumes:
   pg-data:
@@ -156,5 +156,9 @@ volumes:
     driver: local
   redis-data:
     driver: local
+
+networks:
+  ande-network:
+    external: true
 
 

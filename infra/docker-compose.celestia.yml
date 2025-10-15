@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  celestia-light-client:
+    image: ghcr.io/celestiaorg/celestia-node:latest
+    container_name: celestia-light-client
+    restart: unless-stopped
+    ports:
+      - "26657:26657"  # RPC
+      - "26658:26658"  # P2P
+      - "26659:26659"  # Gateway
+    volumes:
+      - celestia-data:/home/celestia/.celestia-light
+      - ./celestia-config:/home/celestia/config
+    environment:
+      - CELESTIA_CUSTOM=custom
+    command:
+      - celestia
+      - light
+      - --core.ip
+      - rpc.celestia.org
+      - --core.rpc.port
+      - "26657"
+      - --core.grpc.port
+      - "9090"
+      - --keyring-backend
+      - test
+      - --p2p.network
+      - celestia
+      - --rpc.addr
+      - 0.0.0.0
+      - --rpc.port
+      - 26657
+      - --gateway.addr
+      - 0.0.0.0
+      - --gateway.port
+      - 26659
+      - --log.level
+      - info
+    networks:
+      - ande-zk-network
+
+  celestia-exporter:
+    image: ghcr.io/celestiaorg/celestia-node-exporter:latest
+    container_name: celestia-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    environment:
+      - CELESTIA_RPC_URL=http://celestia-light-client:26657
+    depends_on:
+      - celestia-light-client
+    networks:
+      - ande-zk-network
+
+networks:
+  ande-zk-network:
+    name: ande-zk-network
+    driver: bridge
+
+volumes:
+  celestia-data:
+    driver: local
