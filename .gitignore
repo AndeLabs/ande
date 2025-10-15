@@ -47,8 +47,8 @@ ai-summary.md
 # Ignore ALL markdown by default
 *.md
 
-# Un-ignore all README.md files in any directory
-!**/README.md
+# Un-ignore only the root README.md
+!/README.md
 
 # ----------------------------------------
 # IDE & OS
