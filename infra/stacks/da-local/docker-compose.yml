@@ -1,4 +1,0 @@
-# local-da service is now defined in single-sequencer/docker-compose.yml
-# to avoid conflicts and use the ande-network
-
-

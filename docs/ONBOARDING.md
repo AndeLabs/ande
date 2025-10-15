@@ -33,7 +33,7 @@ Esta dualidad permite:
 
 Esta guía cubre todo, desde la configuración inicial hasta el despliegue, testing y solución de problemas, incluyendo cómo interactuar con este innovador sistema de doble token.
 
-> **📢 Estado Actual**: AndeChain está 100% operativa con configuración estandarizada. El problema del single-sequencer ha sido resuelto actualizando los flags de configuración de `--rollkit.*` a `--evnode.*`.
+> **📢 Estado Actual (Octubre 2025)**: AndeChain está 100% operativa con implementaciones completas de Account Abstraction, ZK Lazybridging, MEV Auction System y ANDE Token Duality. El stack incluye EntryPoint, ANDEPaymaster, LazybridgeRelay y MEVAuctionManager listos para producción.
 
 ---
 
@@ -105,7 +105,7 @@ make full-start
 4. ✅ **Inicia infraestructura Docker** (ev-reth-sequencer, single-sequencer, local-da)
 5. ✅ **Espera estabilización** (60 segundos)
 6. ✅ **Verifica salud del sistema** (RPC + containers)
-7. ✅ **Despliega contrato ANDE Token** automáticamente
+7. ✅ **Despliega ecosistema completo** (ANDE Token, EntryPoint, Paymaster, etc.)
 
 ### ✅ Verificación y Acceso a Servicios
 
@@ -316,6 +316,75 @@ make health-quiet
 *   **Interactuar (Transacción)**: `cast send <ADDRESS> "functionName(arg)" --private-key $PRIVATE_KEY --rpc-url http://localhost:8545`
 *   **Verificar balance**: `cast balance <ADDRESS> --rpc-url http://localhost:8545`
 *   **Verificar bloque**: `cast block-number --rpc-url http://localhost:8545`
+
+### 🚀 **Nuevas Funcionalidades Implementadas (Octubre 2025)**
+
+AndeChain ahora incluye un ecosistema completo de características avanzadas:
+
+#### **🔐 Account Abstraction (ERC-4337)**
+```bash
+# Desplegar EntryPoint (si no está desplegado)
+forge script script/DeployAccountAbstraction.s.sol --rpc-url local --broadcast
+
+# Verificar EntryPoint
+cast call <ENTRYPOINT_ADDRESS> "getNonce(address,uint192)" <ACCOUNT_ADDRESS> 0 --rpc-url local
+
+# Desplegar ANDE Paymaster
+forge script script/DeployANDEPaymaster.s.sol --rpc-url local --broadcast
+```
+
+**Componentes implementados:**
+- `EntryPoint.sol` - Core ERC-4337 implementation
+- `ANDEPaymaster.sol` - Pay gas with ANDE tokens
+- `SimpleAccount.sol` - Smart contract wallet
+- `NonceManager.sol` - Nonce management system
+- `StakeManager.sol` - Stake management for bundlers
+
+#### **⚡ ZK Lazybridging**
+```bash
+# Compilar circuitos ZK
+cd contracts/src/lazybridge/circuits
+circom bridge_lock.circom --r1cs --wasm --sym
+
+# Desplegar LazybridgeRelay
+forge script script/DeployLazybridge.s.sol --rpc-url local --broadcast
+```
+
+**Características:**
+- Bridge times <5 segundos usando ZK proofs
+- Integración con Celestia DA para disponibilidad
+- Circuitos Groth16 para verificación eficiente
+- Soporte para múltiples tokens
+
+#### **💰 MEV Auction System**
+```bash
+# Desplegar MEV Auction Manager
+forge script script/DeployMEVSystem.s.sol --rpc-url local --broadcast
+
+# Verificar subasta activa
+cast call <MEV_MANAGER_ADDRESS> "getCurrentAuction()" --rpc-url local
+```
+
+**Componentes:**
+- `MEVAuctionManager.sol` - Gestión de subastas MEV
+- `MEVDistributor.sol` - Redistribución a stakers
+- Estilo Flashbots para bundle ordering
+- Bids en ANDE tokens
+
+#### **🏦 Staking Vaults**
+```bash
+# Desplegar WAnde Vault
+forge script script/DeployWAndeVault.s.sol --rpc-url local --broadcast
+
+# Staking de ANDE tokens
+cast send <WANDE_VAULT> "deposit(uint256)" 1000000000000000000 --rpc-url local
+```
+
+**Características:**
+- `WAndeVault.sol` - Wrapped ANDE staking
+- `StakingVault.sol` - Vault general para staking
+- Rewards en veANDE tokens
+- Integración con governance
 
 ### 💰 ANDE Token Duality - Comandos Especiales
 

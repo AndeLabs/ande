@@ -1,0 +1,512 @@
+name: AndeChain Contracts CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'contracts/**' ]
+  pull_request:
+    branches: [ main, develop ]
+    paths: [ 'contracts/**' ]
+  workflow_dispatch:
+    inputs:
+      deploy_testnet:
+        description: 'Deploy to testnet'
+        required: false
+        default: false
+        type: boolean
+      deploy_mainnet:
+        description: 'Deploy to mainnet'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FOUNDRY_PROFILE: ci
+  ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+  SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+  ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
+jobs:
+  # Build and Test Jobs
+  build:
+    name: Build Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Build contracts
+        working-directory: contracts
+        run: forge build
+
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: contracts/out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/src/**/*.sol') }}
+          restore-keys: |
+            ${{ runner.os }}-foundry-
+
+  test:
+    name: Test Contracts
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        test-type: [unit, integration, fuzz]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: contracts/out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/src/**/*.sol') }}
+
+      - name: Run ${{ matrix.test-type }} tests
+        working-directory: contracts
+        run: |
+          case "${{ matrix.test-type }}" in
+            unit)
+              forge test --match-path test/dex/* --match-path test/factory/* -vv
+              ;;
+            integration)
+              forge test --match-path test/integration/* -vvv
+              ;;
+            fuzz)
+              forge test --fuzz-runs 1000 --no-match-contract AndeSwapPairTest
+              ;;
+          esac
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: contracts/test-results/
+
+  coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: contracts/out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/src/**/*.sol') }}
+
+      - name: Generate coverage report
+        working-directory: contracts
+        run: forge coverage --report lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: contracts/coverage/lcov.info
+          flags: contracts
+          name: andechain-contracts
+
+      - name: Coverage summary
+        working-directory: contracts
+        run: |
+          echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          forge coverage --report lcov | grep -E "(Total:|File:)" >> $GITHUB_STEP_SUMMARY
+
+  gas-analysis:
+    name: Gas Analysis
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: contracts/out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/src/**/*.sol') }}
+
+      - name: Generate gas report
+        working-directory: contracts
+        run: forge test --gas-report
+
+      - name: Upload gas report
+        uses: actions/upload-artifact@v3
+        with:
+          name: gas-report
+          path: contracts/gas-report.txt
+
+      - name: Gas analysis summary
+        working-directory: contracts
+        run: |
+          echo "## Gas Analysis" >> $GITHUB_STEP_SUMMARY
+          forge test --gas-report | head -50 >> $GITHUB_STEP_SUMMARY
+
+  # Security and Quality Jobs
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Check code formatting
+        working-directory: contracts
+        run: forge fmt --check
+
+      - name: Run Slither analysis
+        uses: crytic/slither-action@v0.3.0
+        id: slither
+        with:
+          target: 'contracts/src/'
+          slither-args: '--filter-paths "test/" --filter naming-convention,external-function,low-level-calls'
+          fail-on: none
+
+      - name: Upload Slither results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Run comprehensive Slither analysis
+        uses: crytic/slither-action@v0.3.0
+        with:
+          target: 'contracts/src/'
+          slither-args: '--json slither-full-report.json --markdown slither-report.md'
+          fail-on: none
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: contracts/slither-*.json
+
+      - name: Security summary
+        run: |
+          echo "## Security Analysis" >> $GITHUB_STEP_SUMMARY
+          if [ -f contracts/slither-report.md ]; then
+            head -50 contracts/slither-report.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Deployment Jobs
+  deploy-testnet:
+    name: Deploy to Testnet
+    runs-on: ubuntu-latest
+    needs: [build, test, coverage, lint]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_testnet == 'true' || (github.ref == 'refs/heads/develop' && github.event_name == 'push')
+    environment: testnet
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: contracts/out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/src/**/*.sol') }}
+
+      - name: Deploy AndeSwap to testnet
+        working-directory: contracts
+        run: |
+          forge script script/dex/DeployAndeSwap.s.sol:DeployAndeSwapTestnet \
+            --rpc-url $SEPOLIA_RPC_URL \
+            --broadcast \
+            --legacy \
+            --verify \
+            --etherscan-api-key $ETHERSCAN_API_KEY
+        env:
+          PRIVATE_KEY: ${{ secrets.TESTNET_PRIVATE_KEY }}
+
+      - name: Deploy Token Factory to testnet
+        working-directory: contracts
+        run: |
+          forge script script/factory/DeployTokenFactory.s.sol:DeployTokenFactoryTestnet \
+            --rpc-url $SEPOLIA_RPC_URL \
+            --broadcast \
+            --legacy \
+            --verify \
+            --etherscan-api-key $ETHERSCAN_API_KEY
+        env:
+          PRIVATE_KEY: ${{ secrets.TESTNET_PRIVATE_KEY }}
+
+      - name: Update deployment addresses
+        run: |
+          echo "## Testnet Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Contracts deployed successfully to Sepolia testnet" >> $GITHUB_STEP_SUMMARY
+          echo "Check Etherscan for verified contracts" >> $GITHUB_STEP_SUMMARY
+
+  deploy-mainnet:
+    name: Deploy to Mainnet
+    runs-on: ubuntu-latest
+    needs: [build, test, coverage, lint, security-scan]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_mainnet == 'true'
+    environment: mainnet
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: contracts/out
+          key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/src/**/*.sol') }}
+
+      - name: Safety check
+        run: |
+          echo "⚠️ MAINNET DEPLOYMENT INITIATED ⚠️"
+          echo "This will deploy contracts to Ethereum mainnet"
+          echo "Please ensure all tests have passed and security review is complete"
+
+      - name: Deploy AndeSwap to mainnet
+        working-directory: contracts
+        run: |
+          forge script script/dex/DeployAndeSwap.s.sol:DeployAndeSwapMainnet \
+            --rpc-url $ETH_RPC_URL \
+            --broadcast \
+            --legacy \
+            --verify \
+            --etherscan-api-key $ETHERSCAN_API_KEY
+        env:
+          PRIVATE_KEY: ${{ secrets.MAINNET_PRIVATE_KEY }}
+
+      - name: Deploy Token Factory to mainnet
+        working-directory: contracts
+        run: |
+          forge script script/factory/DeployTokenFactory.s.sol:DeployTokenFactoryMainnet \
+            --rpc-url $ETH_RPC_URL \
+            --broadcast \
+            --legacy \
+            --verify \
+            --etherscan-api-key $ETHERSCAN_API_KEY
+        env:
+          PRIVATE_KEY: ${{ secrets.MAINNET_PRIVATE_KEY }}
+
+      - name: Update deployment addresses
+        run: |
+          echo "## Mainnet Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Contracts deployed successfully to Ethereum mainnet" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All contracts verified on Etherscan" >> $GITHUB_STEP_SUMMARY
+
+  # Documentation Job
+  docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Generate documentation
+        working-directory: contracts
+        run: |
+          mkdir -p docs/generated
+          forge doc --build
+          cp -r out/docs/* docs/generated/ || true
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: contracts/docs/generated
+          destination_dir: contracts
+
+  # Performance Monitoring
+  performance:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v0.0.1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Compare gas usage with main
+        working-directory: contracts
+        run: |
+          git fetch origin main
+          forge test --gas-report > gas-report-new.txt
+          git checkout origin/main
+          forge test --gas-report > gas-report-old.txt
+          git checkout -
+          
+          echo "## Gas Usage Comparison" >> $GITHUB_STEP_SUMMARY
+          echo "### Changes since main branch" >> $GITHUB_STEP_SUMMARY
+          diff -u gas-report-old.txt gas-report-new.txt || true >> $GITHUB_STEP_SUMMARY
+
+      - name: Performance regression check
+        working-directory: contracts
+        run: |
+          # Add logic to check for gas usage regressions
+          forge test --gas-report | grep -E "(AndeSwap|TokenFactory)" | while read line; do
+            if echo "$line" | grep -q "[0-9]\{6\}"; then
+              echo "⚠️ High gas usage detected: $line"
+            fi
+          done
+
+  # Notification Job
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [build, test, coverage, lint, gas-analysis]
+    if: always()
+    steps:
+      - name: Notify success
+        if: ${{ needs.build.result == 'success' && needs.test.result == 'success' && needs.coverage.result == 'success' && needs.lint.result == 'success' }}
+        run: |
+          echo "✅ All checks passed successfully!"
+          echo "Build: ${{ needs.build.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Coverage: ${{ needs.coverage.result }}"
+          echo "Lint: ${{ needs.lint.result }}"
+
+      - name: Notify failure
+        if: ${{ needs.build.result == 'failure' || needs.test.result == 'failure' || needs.coverage.result == 'failure' || needs.lint.result == 'failure' }}
+        run: |
+          echo "❌ Some checks failed!"
+          echo "Build: ${{ needs.build.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Coverage: ${{ needs.coverage.result }}"
+          echo "Lint: ${{ needs.lint.result }}"
+          exit 1
+
+  # Cleanup Job
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-testnet, deploy-mainnet, docs, performance]
+    if: always()
+    steps:
+      - name: Cleanup artifacts
+        uses: geekyeggo/delete-artifact@v2
+        with:
+          name: |
+            test-results-*
+            gas-report
+            security-report
+          failOnError: false

@@ -44,63 +44,11 @@ ai-summary.md
 # ========================================
 # MARKDOWN DOCUMENTATION STRATEGY
 # ========================================
-# Ignore ALL markdown by default, only track essentials
+# Ignore ALL markdown by default
 *.md
 
-# ----------------------------------------
-# 🏗️ CORE PROJECT DOCUMENTATION (Always tracked)
-# ----------------------------------------
-!README.md                           # Main project README
-!CHANGELOG.md                       # Version history
-!CODE_OF_CONDUCT.md                  # Community guidelines
-!SECURITY.md                        # Security policy
-!CONTRIBUTING.md                    # Contribution guidelines
-
-# ----------------------------------------
-# 👥 DEVELOPER ONBOARDING (Always tracked)
-# ----------------------------------------
-!docs/ONBOARDING.md                 # Complete developer guide
-
-# ----------------------------------------
-# 📁 ARCHIVE (Historical - tracked but organized)
-# ----------------------------------------
-!docs/archive/**/*.md
-!docs/archive/**/README.md
-
-# ----------------------------------------
-# 📦 COMPONENT READMEs (Always tracked)
-# ----------------------------------------
-!**/README.md                       # Component-specific documentation
-
-# ----------------------------------------
-# ❌ ALL OTHER MARKDOWN (Always ignored)
-# ----------------------------------------
-# AI-generated content
-**/CLAUDE.md
-**/GEMINI.md
-contracts/GEMINI.md
-
-# External planning and technical specs
-docs/AndeChainPlanMaestro.md
-docs/Khipu_YIELD_ROADMAP.md
-docs/ROADMAP_CONCEPTUAL.md
-docs/VEANDE_MODEL.md
-docs/BRIDGE_ESCAPE_HATCHES.md
-docs/ABOB_TECHNICAL_ARCHITECTURE.md
-docs/TECHNICAL_SPECS/**/*.md
-docs/DOCS_INDEX.md
-
-# Progress reports and fix tracking
-FASE_*.md
-FIXES_APPLIED.md
-FIX_TOKEN_DUALITY.md
-
-# GitHub templates
-.github/PULL_REQUEST_TEMPLATE.md
-
-# External dependency documentation
-infra/CHANGELOG.md
-bundler/README.md
+# Un-ignore only the root README.md
+!/README.md
 
 # ----------------------------------------
 # IDE & OS

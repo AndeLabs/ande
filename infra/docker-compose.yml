@@ -14,7 +14,6 @@ services:
       - evstack_shared
 
 include:
-  - ./stacks/da-local/docker-compose.yml
   - ./stacks/single-sequencer/docker-compose.yml
   - ./stacks/eth-explorer/docker-compose.yml
   - ./stacks/eth-faucet/docker-compose.yml
