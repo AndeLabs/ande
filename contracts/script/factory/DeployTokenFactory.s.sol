@@ -17,11 +17,17 @@ contract DeployTokenFactory is Script {
         creationFee = 0.01 ether; // 0.01 ANDE
     }
     
-    function run() public {
+    function run() public virtual {
         vm.startBroadcast();
         
         // Deploy factory
-        factory = new AndeTokenFactory(feeRecipient);
+        // TODO: Update with actual addresses
+        factory = new AndeTokenFactory(
+            address(0), // andeSwapFactory - update with actual
+            address(0), // andeSwapRouter - update with actual  
+            address(0), // andeToken - update with actual
+            feeRecipient
+        );
         
         vm.stopBroadcast();
         
@@ -42,7 +48,7 @@ contract DeployTokenFactory is Script {
         require(factory.feeRecipient() == feeRecipient, "Factory feeRecipient not set correctly");
         require(factory.creationFee() == creationFee, "Factory creationFee not set correctly");
         
-        console.log("✅ All deployment verifications passed!");
+        console.log("OK - All deployment verifications passed!");
     }
     
     function updateFeeRecipient(address newFeeRecipient) public {
@@ -97,7 +103,7 @@ contract DeployTokenFactoryWithConfig is DeployTokenFactory {
         vm.startBroadcast();
         
         // Deploy factory with custom config
-        factory = new AndeTokenFactory(config.feeRecipient);
+        factory = new AndeTokenFactory(address(0), address(0), address(0), config.feeRecipient);
         
         // Update creation fee if different from default
         if (config.creationFee != 0.01 ether) {
@@ -124,7 +130,7 @@ contract DeployTokenFactoryTestnet is DeployTokenFactory {
         
         super.run();
         
-        console.log("\n🧪 Testnet Token Factory deployment complete!");
+        console.log("\nTEST: Testnet Token Factory deployment complete!");
         console.log("Ready for testing on local network");
     }
 }
@@ -138,7 +144,7 @@ contract DeployTokenFactoryMainnet is DeployTokenFactory {
         
         super.run();
         
-        console.log("\n🚀 Mainnet Token Factory deployment complete!");
+        console.log("\nOK Mainnet Token Factory deployment complete!");
         console.log("IMPORTANT: Verify all contracts on Etherscan");
         console.log("IMPORTANT: Transfer ownership to multisig/DAO");
         console.log("IMPORTANT: Set up proper fee collection to treasury");
@@ -146,7 +152,7 @@ contract DeployTokenFactoryMainnet is DeployTokenFactory {
 }
 
 contract CreateSampleTokens is DeployTokenFactory {
-    function run() public {
+    function run() public override {
         // Deploy factory first if not already deployed
         if (address(factory) == address(0)) {
             DeployTokenFactory testnetFactory = new DeployTokenFactoryTestnet();
@@ -156,38 +162,43 @@ contract CreateSampleTokens is DeployTokenFactory {
         
         vm.startBroadcast();
         
-        // Create sample tokens
+        // Create sample tokens with correct API
         address token1 = factory.createStandardToken{value: 0.001 ether}(
             "Sample Token One",
             "SAMPLE1",
-            1000000 ether
+            1000000 ether,
+            true,  // autoList
+            0      // initialLiquidity
         );
         
         address token2 = factory.createMintableToken{value: 0.001 ether}(
             "Sample Token Two",
             "SAMPLE2",
-            500000 ether
+            500000 ether,   // initialSupply
+            1000000 ether   // maxSupply
         );
         
-        address token3 = factory.createBurnableToken{value: 0.001 ether}(
+        // Create tax config struct
+        AndeTokenFactory.TaxConfig memory taxConfig = AndeTokenFactory.TaxConfig({
+            buyTax: 200,           // 2% buy tax
+            sellTax: 200,          // 2% sell tax
+            taxRecipient: msg.sender,
+            maxTx: 10000 ether,    // Max transaction
+            maxWallet: 50000 ether // Max wallet
+        });
+        
+        address token3 = factory.createTaxableToken{value: 0.001 ether}(
             "Sample Token Three",
             "SAMPLE3",
-            2000000 ether
+            1000000 ether,
+            taxConfig
         );
         
-        address token4 = factory.createTaxableToken{value: 0.001 ether}(
+        address token4 = factory.createReflectionToken{value: 0.001 ether}(
             "Sample Token Four",
             "SAMPLE4",
-            1000000 ether,
-            200, // 2% tax
-            msg.sender
-        );
-        
-        address token5 = factory.createReflectionToken{value: 0.001 ether}(
-            "Sample Token Five",
-            "SAMPLE5",
-            1000000 ether,
-            100 // 1% reflection
+            2000000 ether,
+            100    // 1% reflection fee (in basis points, so 100 = 1%)
         );
         
         vm.stopBroadcast();
@@ -195,10 +206,8 @@ contract CreateSampleTokens is DeployTokenFactory {
         console.log("\n=== Sample Tokens Created ===");
         console.log("Standard Token:", token1);
         console.log("Mintable Token:", token2);
-        console.log("Burnable Token:", token3);
-        console.log("Taxable Token:", token4);
-        console.log("Reflection Token:", token5);
-        console.log("Total Tokens Created:", factory.tokensCreated());
+        console.log("Taxable Token:", token3);
+        console.log("Reflection Token:", token4);
         console.log("============================\n");
     }
 }
@@ -233,27 +242,30 @@ contract BatchTokenCreation is DeployTokenFactory {
                 createdTokens[i] = factory.createStandardToken{value: 0.001 ether}(
                     config.name,
                     config.symbol,
-                    config.supply
+                    config.supply,
+                    true,  // autoList
+                    0      // initialLiquidity
                 );
             } else if (config.tokenType == 1) {
                 createdTokens[i] = factory.createMintableToken{value: 0.001 ether}(
                     config.name,
                     config.symbol,
-                    config.supply
-                );
-            } else if (config.tokenType == 2) {
-                createdTokens[i] = factory.createBurnableToken{value: 0.001 ether}(
-                    config.name,
-                    config.symbol,
-                    config.supply
+                    config.supply,
+                    config.supply * 2  // maxSupply = 2x initial
                 );
             } else if (config.tokenType == 3) {
+                AndeTokenFactory.TaxConfig memory taxCfg = AndeTokenFactory.TaxConfig({
+                    buyTax: config.taxRate,
+                    sellTax: config.taxRate,
+                    taxRecipient: config.taxRecipient,
+                    maxTx: config.supply / 100,    // 1% of supply
+                    maxWallet: config.supply / 50  // 2% of supply
+                });
                 createdTokens[i] = factory.createTaxableToken{value: 0.001 ether}(
                     config.name,
                     config.symbol,
                     config.supply,
-                    config.taxRate,
-                    config.taxRecipient
+                    taxCfg
                 );
             } else if (config.tokenType == 4) {
                 createdTokens[i] = factory.createReflectionToken{value: 0.001 ether}(
@@ -280,7 +292,7 @@ contract BatchTokenCreation is DeployTokenFactory {
         
         console.log("\n=== Batch Token Creation Complete ===");
         console.log("Total Tokens Created:", configs.length);
-        console.log("Factory Total Count:", factory.tokensCreated());
+        // console.log("Factory Total Count:", factory.tokensCreated());
         console.log("=====================================\n");
         
         // Return token addresses for further use

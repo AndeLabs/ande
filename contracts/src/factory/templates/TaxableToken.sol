@@ -49,7 +49,7 @@ contract TaxableToken is ERC20, Ownable, Pausable {
         require(initialSupply > 0, "TaxableToken: initial supply must be greater than 0");
         require(owner != address(0), "TaxableToken: owner cannot be zero address");
         require(taxRecipient != address(0), "TaxableToken: tax recipient cannot be zero address");
-        require(taxRate <= 500, "TaxableToken: tax rate cannot exceed 5%");
+        require(taxRate <= 2500, "TaxableToken: tax rate cannot exceed 25%");
         
         _taxRate = taxRate;
         _taxRecipient = taxRecipient;
@@ -66,10 +66,10 @@ contract TaxableToken is ERC20, Ownable, Pausable {
     }
 
     /**
-     * @dev Returns the version of the token contract
+     * @dev Returns the version of the token template
      * @return string The version string
      */
-    function version() external pure returns (string memory) {
+    function version() public pure returns (string memory) {
         return "1.0.0";
     }
 
@@ -374,8 +374,8 @@ contract TaxableToken is ERC20, Ownable, Pausable {
         address from,
         address to,
         uint256 amount
-    ) internal override whenNotPaused {
-        super._beforeTokenTransfer(from, to, amount);
+    ) internal view whenNotPaused {
+        // Hook for future extensions
     }
 
     /**

@@ -55,6 +55,10 @@ contract ReflectionERC20 is ERC20, Ownable {
         return _tTotal;
     }
     
+    function getReflectionFee() external view returns (uint256) {
+        return reflectionFee;
+    }
+    
     /**
      * @notice Get balance of account
      */

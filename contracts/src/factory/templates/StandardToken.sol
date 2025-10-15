@@ -31,10 +31,10 @@ contract StandardToken is ERC20, Ownable {
     }
 
     /**
-     * @dev Returns the version of the token contract
+     * @dev Returns the version of the token template
      * @return string The version string
      */
-    function version() external pure returns (string memory) {
+    function version() public pure returns (string memory) {
         return "1.0.0";
     }
 
@@ -125,10 +125,8 @@ contract StandardToken is ERC20, Ownable {
      * @param interfaceId The interface identifier
      * @return bool Whether the interface is supported
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IERC20).interfaceId || 
-               interfaceId == type(IOwnable).interfaceId ||
-               super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return interfaceId == type(IERC20).interfaceId;
     }
 
     /**

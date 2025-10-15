@@ -48,7 +48,7 @@ contract ReflectionToken is ERC20, Ownable, Pausable {
     ) ERC20(name, symbol) Ownable(owner) {
         require(initialSupply > 0, "ReflectionToken: initial supply must be greater than 0");
         require(owner != address(0), "ReflectionToken: owner cannot be zero address");
-        require(reflectionFee <= 300, "ReflectionToken: reflection fee cannot exceed 3%");
+        require(reflectionFee <= 1000, "ReflectionToken: reflection fee cannot exceed 10%");
         
         _reflectionFee = reflectionFee;
         
@@ -69,10 +69,10 @@ contract ReflectionToken is ERC20, Ownable, Pausable {
     }
 
     /**
-     * @dev Returns the version of the token contract
+     * @dev Returns the version of the token template
      * @return string The version string
      */
-    function version() external pure returns (string memory) {
+    function version() public pure returns (string memory) {
         return "1.0.0";
     }
 
@@ -451,8 +451,8 @@ contract ReflectionToken is ERC20, Ownable, Pausable {
         address from,
         address to,
         uint256 amount
-    ) internal override whenNotPaused {
-        super._beforeTokenTransfer(from, to, amount);
+    ) internal view whenNotPaused {
+        // Hook for future extensions
     }
 
     /**

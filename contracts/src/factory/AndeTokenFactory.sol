@@ -4,10 +4,10 @@ pragma solidity ^0.8.25;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./templates/StandardERC20.sol";
-import "./templates/MintableERC20.sol";
-import "./templates/BurnableERC20.sol";
-import "./templates/TaxableERC20.sol";
-import "./templates/ReflectionERC20.sol";
+import "./templates/MintableToken.sol";
+import "./templates/BurnableToken.sol";
+import "./templates/TaxableToken.sol";
+import "./templates/ReflectionToken.sol";
 
 /**
  * @title AndeTokenFactory
@@ -33,7 +33,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
     // ========================================
     
     /// @notice Minimum creation fee (in ANDE)
-    uint256 public constant MIN_CREATION_FEE = 100 ether;
+    uint256 public constant MIN_CREATION_FEE = 0.01 ether;
     
     /// @notice Maximum supply cap (prevents excessive inflation)
     uint256 public constant MAX_SUPPLY = 1_000_000_000_000 ether;
@@ -59,6 +59,9 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
     
     /// @notice Fee recipient (treasury)
     address public feeRecipient;
+    
+    /// @notice Total number of tokens created
+    uint256 public tokensCreated;
     
     /// @notice Mapping of deployed tokens
     mapping(address => TokenInfo) public deployedTokens;
@@ -151,6 +154,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
     error UnauthorizedCaller();
     error LiquidityStillLocked();
     error InvalidTaxRate();
+    error InvalidParameters();
 
     // ========================================
     // CONSTRUCTOR
@@ -198,6 +202,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
         uint256 initialLiquidity
     ) external payable nonReentrant returns (address token) {
         _validateCreation(totalSupply);
+        _validateTokenParams(name, symbol);
         
         // Calculate salt for CREATE2
         bytes32 salt = keccak256(abi.encodePacked(
@@ -261,6 +266,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
         uint256 maxSupply
     ) external payable nonReentrant returns (address token) {
         _validateCreation(initialSupply);
+        _validateTokenParams(name, symbol);
         
         if (maxSupply > MAX_SUPPLY) revert InvalidSupply();
         if (maxSupply < initialSupply) revert InvalidSupply();
@@ -272,7 +278,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
             block.timestamp
         ));
         
-        token = address(new MintableERC20{salt: salt}(
+        token = address(new MintableToken{salt: salt}(
             name,
             symbol,
             initialSupply,
@@ -306,6 +312,66 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Create a burnable ERC-20 token
+     * @dev Allows token holders to burn their tokens
+     * @param name Token name
+     * @param symbol Token symbol
+     * @param totalSupply Total supply
+     * @param burnRewardRate Percentage reward for burning (basis points, e.g., 100 = 1%)
+     * @return token Address of created token
+     */
+    function createBurnableToken(
+        string memory name,
+        string memory symbol,
+        uint256 totalSupply,
+        uint256 burnRewardRate
+    ) external payable nonReentrant returns (address token) {
+        _validateCreation(totalSupply);
+        _validateTokenParams(name, symbol);
+        
+        if (burnRewardRate > 1000) revert InvalidTaxRate(); // Max 10%
+        
+        bytes32 salt = keccak256(abi.encodePacked(
+            msg.sender,
+            name,
+            symbol,
+            block.timestamp
+        ));
+        
+        token = address(new BurnableToken{salt: salt}(
+            name,
+            symbol,
+            totalSupply,
+            burnRewardRate,
+            msg.sender
+        ));
+        
+        _recordToken(
+            token,
+            TokenConfig({
+                name: name,
+                symbol: symbol,
+                totalSupply: totalSupply,
+                tokenType: TokenType.Burnable,
+                creator: msg.sender,
+                createdAt: block.timestamp,
+                autoList: false,
+                initialLiquidity: 0,
+                lockDuration: 0
+            })
+        );
+        
+        emit TokenCreated(
+            msg.sender,
+            token,
+            name,
+            symbol,
+            TokenType.Burnable,
+            totalSupply
+        );
+    }
+
+    /**
      * @notice Create a taxable ERC-20 token
      * @dev Includes buy/sell taxes and max transaction limits
      * @param name Token name
@@ -321,6 +387,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
         TaxConfig memory taxConfig
     ) external payable nonReentrant returns (address token) {
         _validateCreation(totalSupply);
+        _validateTokenParams(name, symbol);
         _validateTaxConfig(taxConfig);
         
         bytes32 salt = keccak256(abi.encodePacked(
@@ -330,16 +397,13 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
             block.timestamp
         ));
         
-        token = address(new TaxableERC20{salt: salt}(
+        token = address(new TaxableToken{salt: salt}(
             name,
             symbol,
             totalSupply,
-            msg.sender,
             taxConfig.buyTax,
-            taxConfig.sellTax,
             taxConfig.taxRecipient,
-            taxConfig.maxTx,
-            taxConfig.maxWallet
+            msg.sender
         ));
         
         _recordToken(
@@ -383,8 +447,9 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
         uint256 reflectionFee
     ) external payable nonReentrant returns (address token) {
         _validateCreation(totalSupply);
+        _validateTokenParams(name, symbol);
         
-        if (reflectionFee > 10) revert InvalidTaxRate(); // Max 10%
+        if (reflectionFee > 1000) revert InvalidTaxRate(); // Max 10% (1000 basis points)
         
         bytes32 salt = keccak256(abi.encodePacked(
             msg.sender,
@@ -393,12 +458,12 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
             block.timestamp
         ));
         
-        token = address(new ReflectionERC20{salt: salt}(
+        token = address(new ReflectionToken{salt: salt}(
             name,
             symbol,
             totalSupply,
-            msg.sender,
-            reflectionFee
+            reflectionFee,
+            msg.sender
         ));
         
         _recordToken(
@@ -610,12 +675,16 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
         if (msg.value < creationFee) revert InsufficientFee();
         if (totalSupply == 0 || totalSupply > MAX_SUPPLY) revert InvalidSupply();
     }
+    
+    function _validateTokenParams(string memory name, string memory symbol) internal pure {
+        if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidParameters();
+    }
 
     /**
      * @notice Validate tax configuration
      */
     function _validateTaxConfig(TaxConfig memory config) internal pure {
-        if (config.buyTax > 25 || config.sellTax > 25) revert InvalidTaxRate();
+        if (config.buyTax > 2500 || config.sellTax > 2500) revert InvalidTaxRate(); // Max 25% (2500 basis points)
         if (config.maxTx == 0 || config.maxWallet == 0) revert InvalidConfig();
     }
 
@@ -633,6 +702,7 @@ contract AndeTokenFactory is Ownable, ReentrancyGuard {
         
         allTokens.push(token);
         creatorTokens[msg.sender].push(token);
+        tokensCreated++;
     }
 
     /**

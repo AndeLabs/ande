@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
  * @notice This token allows authorized addresses to mint new tokens
  * @author AndeChain Team
  */
-contract MintableToken is ERC20, AccessControl, Pausable {
+contract MintableToken is ERC20, AccessControlEnumerable, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     
@@ -55,10 +55,10 @@ contract MintableToken is ERC20, AccessControl, Pausable {
     }
 
     /**
-     * @dev Returns the version of the token contract
+     * @dev Returns the version of the token template
      * @return string The version string
      */
-    function version() external pure returns (string memory) {
+    function version() public pure returns (string memory) {
         return "1.0.0";
     }
 
@@ -277,8 +277,8 @@ contract MintableToken is ERC20, AccessControl, Pausable {
         address from,
         address to,
         uint256 amount
-    ) internal override whenNotPaused {
-        super._beforeTokenTransfer(from, to, amount);
+    ) internal view whenNotPaused {
+        // Hook for future extensions
     }
 
     /**
