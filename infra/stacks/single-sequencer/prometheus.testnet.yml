@@ -1,0 +1,48 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ev-reth testnet metrics
+  - job_name: 'ev-reth-testnet'
+    static_configs:
+      - targets: ['ev-reth-testnet:9001']
+    metrics_path: /debug/metrics/prometheus
+    scrape_interval: 10s
+
+  # ANDE precompile metrics
+  - job_name: 'ande-precompile'
+    static_configs:
+      - targets: ['ev-reth-testnet:9002']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # Sequencer testnet metrics
+  - job_name: 'sequencer-testnet'
+    static_configs:
+      - targets: ['single-sequencer-testnet:26660']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # MEV System metrics
+  - job_name: 'mev-system'
+    static_configs:
+      - targets: ['ev-reth-testnet:9002']
+    metrics_path: /mev/metrics
+    scrape_interval: 5s
+
+  # Parallel Execution metrics
+  - job_name: 'parallel-execution'
+    static_configs:
+      - targets: ['ev-reth-testnet:9002']
+    metrics_path: /parallel/metrics
+    scrape_interval: 5s

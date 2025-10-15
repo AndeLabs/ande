@@ -1,0 +1,309 @@
+# AndeLend Subgraph Schema
+# Indexes all lending/borrowing activity on AndeChain
+
+type Protocol @entity {
+  id: ID!
+  totalValueLockedUSD: BigDecimal!
+  totalBorrowedUSD: BigDecimal!
+  totalReservesUSD: BigDecimal!
+  totalSupply: BigDecimal!
+  totalBorrow: BigDecimal!
+  
+  # Counts
+  marketCount: Int!
+  userCount: Int!
+  transactionCount: BigInt!
+  
+  # Relationships
+  markets: [Market!]! @derivedFrom(field: "protocol")
+}
+
+type Market @entity {
+  id: ID!
+  protocol: Protocol!
+  
+  # Token info
+  inputToken: Token!
+  outputToken: Token! # aToken
+  
+  # Market state
+  totalValueLockedUSD: BigDecimal!
+  totalSupply: BigDecimal!
+  totalBorrow: BigDecimal!
+  totalReserves: BigDecimal!
+  
+  # Interest rates (APR in basis points)
+  supplyRate: BigInt!
+  borrowRate: BigInt!
+  
+  # Utilization
+  utilizationRate: BigDecimal!
+  
+  # Risk parameters
+  collateralFactor: BigInt!
+  liquidationThreshold: BigInt!
+  liquidationPenalty: BigInt!
+  reserveFactor: BigInt!
+  
+  # Status
+  isActive: Boolean!
+  
+  # Timestamps
+  createdTimestamp: BigInt!
+  createdBlockNumber: BigInt!
+  
+  # Relationships
+  deposits: [Deposit!]! @derivedFrom(field: "market")
+  withdraws: [Withdraw!]! @derivedFrom(field: "market")
+  borrows: [Borrow!]! @derivedFrom(field: "market")
+  repays: [Repay!]! @derivedFrom(field: "market")
+  liquidations: [Liquidation!]! @derivedFrom(field: "market")
+  positions: [Position!]! @derivedFrom(field: "market")
+  
+  # Daily data
+  dailySnapshots: [MarketDailySnapshot!]! @derivedFrom(field: "market")
+  hourlySnapshots: [MarketHourlySnapshot!]! @derivedFrom(field: "market")
+}
+
+type Token @entity {
+  id: ID!
+  name: String!
+  symbol: String!
+  decimals: Int!
+  
+  # Price
+  lastPriceUSD: BigDecimal
+  lastPriceBlockNumber: BigInt
+}
+
+type Account @entity {
+  id: ID!
+  
+  # Positions
+  positions: [Position!]! @derivedFrom(field: "account")
+  
+  # Activity
+  deposits: [Deposit!]! @derivedFrom(field: "account")
+  withdraws: [Withdraw!]! @derivedFrom(field: "account")
+  borrows: [Borrow!]! @derivedFrom(field: "account")
+  repays: [Repay!]! @derivedFrom(field: "account")
+  liquidations: [Liquidation!]! @derivedFrom(field: "account")
+  
+  # Health
+  totalCollateralUSD: BigDecimal!
+  totalBorrowedUSD: BigDecimal!
+  healthFactor: BigDecimal
+  
+  # Counts
+  positionCount: Int!
+  depositCount: Int!
+  withdrawCount: Int!
+  borrowCount: Int!
+  repayCount: Int!
+  liquidationCount: Int!
+}
+
+type Position @entity {
+  id: ID!
+  account: Account!
+  market: Market!
+  
+  # Balances
+  principal: BigDecimal!
+  borrowBalance: BigDecimal!
+  
+  # Indexes for interest calculation
+  borrowIndex: BigInt!
+  
+  # Status
+  isCollateral: Boolean!
+  
+  # Timestamps
+  openedTimestamp: BigInt!
+  closedTimestamp: BigInt
+  
+  # Snapshots
+  snapshots: [PositionSnapshot!]! @derivedFrom(field: "position")
+}
+
+type PositionSnapshot @entity {
+  id: ID!
+  position: Position!
+  timestamp: Int!
+  blockNumber: BigInt!
+  
+  # State at snapshot
+  principal: BigDecimal!
+  borrowBalance: BigDecimal!
+  healthFactor: BigDecimal
+}
+
+type Deposit @entity {
+  id: ID!
+  hash: Bytes!
+  logIndex: Int!
+  protocol: Protocol!
+  to: Account!
+  from: Account!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  market: Market!
+  asset: Token!
+  amount: BigDecimal!
+  amountUSD: BigDecimal!
+  account: Account!
+}
+
+type Withdraw @entity {
+  id: ID!
+  hash: Bytes!
+  logIndex: Int!
+  protocol: Protocol!
+  to: Account!
+  from: Account!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  market: Market!
+  asset: Token!
+  amount: BigDecimal!
+  amountUSD: BigDecimal!
+  account: Account!
+}
+
+type Borrow @entity {
+  id: ID!
+  hash: Bytes!
+  logIndex: Int!
+  protocol: Protocol!
+  to: Account!
+  from: Account!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  market: Market!
+  asset: Token!
+  amount: BigDecimal!
+  amountUSD: BigDecimal!
+  account: Account!
+}
+
+type Repay @entity {
+  id: ID!
+  hash: Bytes!
+  logIndex: Int!
+  protocol: Protocol!
+  to: Account!
+  from: Account!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  market: Market!
+  asset: Token!
+  amount: BigDecimal!
+  amountUSD: BigDecimal!
+  account: Account!
+}
+
+type Liquidation @entity {
+  id: ID!
+  hash: Bytes!
+  logIndex: Int!
+  protocol: Protocol!
+  to: Account! # Liquidator
+  from: Account! # Borrower
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  market: Market!
+  asset: Token!
+  amount: BigDecimal!
+  amountUSD: BigDecimal!
+  profitUSD: BigDecimal!
+  account: Account!
+}
+
+# Daily aggregated data
+type MarketDailySnapshot @entity {
+  id: ID!
+  protocol: Protocol!
+  market: Market!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  
+  # Rates
+  rates: [InterestRate!]!
+  
+  # Balances
+  totalValueLockedUSD: BigDecimal!
+  totalSupply: BigDecimal!
+  totalBorrow: BigDecimal!
+  
+  # Daily metrics
+  dailySupplyUSD: BigDecimal!
+  dailyBorrowUSD: BigDecimal!
+  dailyLiquidateUSD: BigDecimal!
+  dailyWithdrawUSD: BigDecimal!
+  dailyRepayUSD: BigDecimal!
+  
+  # Revenue
+  dailyProtocolRevenueUSD: BigDecimal!
+  cumulativeProtocolRevenueUSD: BigDecimal!
+}
+
+type MarketHourlySnapshot @entity {
+  id: ID!
+  protocol: Protocol!
+  market: Market!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  
+  # Rates
+  rates: [InterestRate!]!
+  
+  # Balances
+  totalValueLockedUSD: BigDecimal!
+  totalSupply: BigDecimal!
+  totalBorrow: BigDecimal!
+  
+  # Hourly metrics
+  hourlySupplyUSD: BigDecimal!
+  hourlyBorrowUSD: BigDecimal!
+  hourlyLiquidateUSD: BigDecimal!
+}
+
+type InterestRate @entity {
+  id: ID!
+  rate: BigDecimal!
+  side: InterestRateSide!
+  type: InterestRateType!
+}
+
+enum InterestRateSide {
+  LENDER
+  BORROWER
+}
+
+enum InterestRateType {
+  STABLE
+  VARIABLE
+  FIXED
+}
+
+type ProtocolDailySnapshot @entity {
+  id: ID!
+  protocol: Protocol!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  
+  # TVL
+  totalValueLockedUSD: BigDecimal!
+  
+  # Daily activity
+  dailySupplyUSD: BigDecimal!
+  dailyBorrowUSD: BigDecimal!
+  dailyLiquidateUSD: BigDecimal!
+  dailyWithdrawUSD: BigDecimal!
+  dailyRepayUSD: BigDecimal!
+  
+  # Cumulative
+  cumulativeSupplyUSD: BigDecimal!
+  cumulativeBorrowUSD: BigDecimal!
+  cumulativeLiquidateUSD: BigDecimal!
+}
