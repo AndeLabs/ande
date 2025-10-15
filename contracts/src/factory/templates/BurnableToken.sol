@@ -52,10 +52,10 @@ contract BurnableToken is ERC20, Ownable, Pausable {
     }
 
     /**
-     * @dev Returns the version of the token contract
+     * @dev Returns the version of this token
      * @return string The version string
      */
-    function version() external pure returns (string memory) {
+    function version() public pure returns (string memory) {
         return "1.0.0";
     }
 
@@ -312,8 +312,8 @@ contract BurnableToken is ERC20, Ownable, Pausable {
         address from,
         address to,
         uint256 amount
-    ) internal override whenNotPaused {
-        super._beforeTokenTransfer(from, to, amount);
+    ) internal view whenNotPaused {
+        // Hook for future extensions
     }
 
     /**

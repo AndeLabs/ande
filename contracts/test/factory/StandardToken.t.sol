@@ -246,7 +246,7 @@ contract StandardTokenTest is Test {
 
     function testRescueTokens() public {
         // Deploy a mock token to rescue
-        ERC20Mock mockToken = new ERC20Mock("Mock", "MOCK", 1000 ether);
+        ERC20Mock mockToken = new ERC20Mock("Mock", "MOCK");
         
         // Send some mock tokens to the StandardToken contract
         vm.startPrank(address(this));
@@ -266,7 +266,7 @@ contract StandardTokenTest is Test {
     }
 
     function testRescueTokensUnauthorized() public {
-        ERC20Mock mockToken = new ERC20Mock("Mock", "MOCK", 1000 ether);
+        ERC20Mock mockToken = new ERC20Mock("Mock", "MOCK");
         
         vm.startPrank(user1);
         
