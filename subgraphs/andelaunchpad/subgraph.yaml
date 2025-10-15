@@ -1,0 +1,50 @@
+specVersion: 0.0.5
+description: AndeLaunchpad is a decentralized IDO platform on AndeChain
+repository: https://github.com/andelabs/andechain
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: AndeLaunchpad
+    network: andechain
+    source:
+      address: '0x0000000000000000000000000000000000000000' # Update with actual address
+      abi: AndeLaunchpad
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/mappings/launchpad.ts
+      entities:
+        - LaunchpadProtocol
+        - IDO
+        - LaunchedToken
+        - Participant
+        - Contribution
+        - Claim
+        - Refund
+        - IDODailySnapshot
+        - LaunchpadDailySnapshot
+      abis:
+        - name: AndeLaunchpad
+          file: ../../contracts/out/AndeLaunchpad.sol/AndeLaunchpad.json
+        - name: ERC20
+          file: ../../contracts/out/MockERC20.sol/MockERC20.json
+      eventHandlers:
+        - event: IDOCreated(indexed uint256,indexed address,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleIDOCreated
+        - event: Contribution(indexed uint256,indexed address,uint256,uint256)
+          handler: handleContribution
+        - event: TokensClaimed(indexed uint256,indexed address,uint256)
+          handler: handleTokensClaimed
+        - event: Refund(indexed uint256,indexed address,uint256,uint8)
+          handler: handleRefund
+        - event: IDOStatusChanged(indexed uint256,uint8,uint8)
+          handler: handleIDOStatusChanged
+        - event: IDOCancelled(indexed uint256,address)
+          handler: handleIDOCancelled
+        - event: WhitelistUpdated(indexed uint256,address[],bool)
+          handler: handleWhitelistUpdated
+        - event: TokenCreated(indexed address,address,string,string,uint256)
+          handler: handleTokenCreated
