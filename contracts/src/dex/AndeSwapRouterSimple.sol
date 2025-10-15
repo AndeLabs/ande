@@ -169,7 +169,7 @@ contract AndeSwapRouterSimple is ReentrancyGuard, Ownable {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external nonReentrant returns (uint256 amountA, uint256 amountB) {
+    ) public nonReentrant returns (uint256 amountA, uint256 amountB) {
         require(deadline >= block.timestamp, "AndeSwapRouter: EXPIRED");
         
         address pair = AndeSwapFactorySimple(factory).getPair(tokenA, tokenB);

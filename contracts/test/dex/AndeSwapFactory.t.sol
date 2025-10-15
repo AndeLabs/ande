@@ -25,10 +25,16 @@ contract AndeSwapFactoryTest is Test {
         vm.startPrank(owner);
         
         // Deploy tokens
-        token0 = new ERC20Mock("Token0", "T0", 1000 ether);
-        token1 = new ERC20Mock("Token1", "T1", 1000 ether);
-        token2 = new ERC20Mock("Token2", "T2", 1000 ether);
-        ande = new ERC20Mock("ANDE", "ANDE", 1000000 ether);
+        token0 = new ERC20Mock("Token0", "T0");
+        token1 = new ERC20Mock("Token1", "T1");
+        token2 = new ERC20Mock("Token2", "T2");
+        ande = new ERC20Mock("ANDE", "ANDE");
+        
+        // Mint initial supply
+        token0.mint(address(this), 1000 ether);
+        token1.mint(address(this), 1000 ether);
+        token2.mint(address(this), 1000 ether);
+        ande.mint(address(this), 1000000 ether);
         
         // Deploy factory
         factory = new AndeSwapFactory(owner);

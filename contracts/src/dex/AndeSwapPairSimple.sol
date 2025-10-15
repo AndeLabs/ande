@@ -21,7 +21,7 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
     string public constant symbol = "ANDE-LP";
     uint8 public constant decimals = 18;
     
-    uint256 public totalSupply;
+    uint256 private _totalSupply;
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
     
@@ -38,12 +38,12 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
     uint256 public price1CumulativeLast;
     
     // EIP-712 variables for permit
-    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 private _DOMAIN_SEPARATOR;
     bytes32 public constant PERMIT_TYPEHASH = keccak256(
         "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
     );
     
-    mapping(address => uint256) public nonces;
+    mapping(address => uint256) private _nonces;
     
     // Events
     event Mint(address indexed sender, uint256 amount0, uint256 amount1);
@@ -57,8 +57,6 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         address indexed to
     );
     event Sync(uint112 reserve0, uint112 reserve1);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-    event Transfer(address indexed from, address indexed to, uint256 value);
 
     // Minimum liquidity constant
     uint256 public constant MINIMUM_LIQUIDITY = 1000;
@@ -78,7 +76,7 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         token1 = _token1;
         
         // Initialize EIP-712 domain separator
-        DOMAIN_SEPARATOR = keccak256(
+        _DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
@@ -95,12 +93,12 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
      * @dev Returns the current reserves
      * @return _reserve0 The reserve of token0
      * @return _reserve1 The reserve of token1
-     * @return blockTimestampLast The last block timestamp
+     * @return _blockTimestampLast The last block timestamp
      */
-    function getReserves() external view returns (uint112 _reserve0, uint112 _reserve1, uint32 blockTimestampLast) {
+    function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
         _reserve0 = reserve0;
         _reserve1 = reserve1;
-        blockTimestampLast = blockTimestampLast;
+        _blockTimestampLast = blockTimestampLast;
     }
 
     /**
@@ -127,14 +125,14 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         uint256 amount0 = balance0 - _reserve0;
         uint256 amount1 = balance1 - _reserve1;
         
-        uint256 _totalSupply = totalSupply;
-        if (_totalSupply == 0) {
+        uint256 __totalSupply = _totalSupply;
+        if (__totalSupply == 0) {
             liquidity = AndeSwapLibrary.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
             liquidity = AndeSwapLibrary.min(
-                (amount0 * _totalSupply) / _reserve0,
-                (amount1 * _totalSupply) / _reserve1
+                (amount0 * __totalSupply) / _reserve0,
+                (amount1 * __totalSupply) / _reserve1
             );
         }
         
@@ -163,9 +161,9 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         uint256 balance1 = IERC20(_token1).balanceOf(address(this));
         uint256 liquidity = balanceOf[address(this)];
         
-        uint256 _totalSupply = totalSupply;
-        amount0 = (liquidity * balance0) / _totalSupply;
-        amount1 = (liquidity * balance1) / _totalSupply;
+        uint256 __totalSupply = _totalSupply;
+        amount0 = (liquidity * balance0) / __totalSupply;
+        amount1 = (liquidity * balance1) / __totalSupply;
         
         require(amount0 > 0 && amount1 > 0, "AndeSwapPair: INSUFFICIENT_LIQUIDITY_BURNED");
         
@@ -212,7 +210,7 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
             if (amount0Out > 0) _safeTransfer(_token0, to, amount0Out);
             if (amount1Out > 0) _safeTransfer(_token1, to, amount1Out);
             
-            if (data.length > 0) IAndeSwapCallee(to).andSwapCall(msg.sender, amount0Out, amount1Out, data);
+            if (data.length > 0) IAndeSwapCallee(to).andeSwapCall(msg.sender, amount0Out, amount1Out, data);
             
             balance0 = IERC20(_token0).balanceOf(address(this));
             balance1 = IERC20(_token1).balanceOf(address(this));
@@ -284,8 +282,8 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         uint32 timeElapsed = blockTimestamp - blockTimestampLast;
         
         if (timeElapsed > 0 && _reserve0 > 0 && _reserve1 > 0) {
-            price0CumulativeLast += uint256(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
-            price1CumulativeLast += uint256(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
+            price0CumulativeLast += uint256(UQ112x112.uqdiv(UQ112x112.encode(_reserve1), _reserve0)) * timeElapsed;
+            price1CumulativeLast += uint256(UQ112x112.uqdiv(UQ112x112.encode(_reserve0), _reserve1)) * timeElapsed;
         }
         
         reserve0 = uint112(balance0);
@@ -301,7 +299,21 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
      * @dev Returns the total supply of LP tokens
      */
     function totalSupply() public view override returns (uint256) {
-        return totalSupply;
+        return _totalSupply;
+    }
+
+    /**
+     * @dev Returns the nonce for an address (IERC20Permit)
+     */
+    function nonces(address owner) external view override returns (uint256) {
+        return _nonces[owner];
+    }
+
+    /**
+     * @dev Returns the domain separator (IERC20Permit)
+     */
+    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+        return _DOMAIN_SEPARATOR;
     }
 
     /**
@@ -365,7 +377,7 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
     function _mint(address to, uint256 amount) internal {
         require(to != address(0), "AndeSwapPair: ERC20: mint to the zero address");
         
-        totalSupply += amount;
+        _totalSupply += amount;
         balanceOf[to] += amount;
         
         emit Transfer(address(0), to, amount);
@@ -381,7 +393,7 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         require(fromBalance >= amount, "AndeSwapPair: ERC20: burn amount exceeds balance");
         
         balanceOf[from] = fromBalance - amount;
-        totalSupply -= amount;
+        _totalSupply -= amount;
         
         emit Transfer(from, address(0), amount);
     }
@@ -423,14 +435,14 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                DOMAIN_SEPARATOR,
+                _DOMAIN_SEPARATOR,
                 keccak256(
                     abi.encode(
                         PERMIT_TYPEHASH,
                         owner,
                         spender,
                         value,
-                        nonces[owner]++,
+                        _nonces[owner]++,
                         deadline
                     )
                 )
@@ -443,22 +455,7 @@ contract AndeSwapPairSimple is IERC20, IERC20Permit, ReentrancyGuard, Ownable {
         _approve(owner, spender, value);
     }
 
-    /**
-     * @dev Returns the nonce for an address
-     * @param owner The address to check
-     * @return uint256 The nonce
-     */
-    function nonces(address owner) external view override returns (uint256) {
-        return nonces[owner];
-    }
 
-    /**
-     * @dev Returns the domain separator
-     * @return bytes32 The domain separator
-     */
-    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
-        return DOMAIN_SEPARATOR;
-    }
 
     /**
      * @dev Safely transfers tokens
