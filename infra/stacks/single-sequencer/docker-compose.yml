@@ -20,8 +20,8 @@ services:
   # ev-reth-sequencer con ANDE Token Duality v0.3.0
   ev-reth-sequencer:
     container_name: ev-reth-sequencer
-    image: ghcr.io/AndeLabs/ev-reth:latest
-    pull_policy: always
+    image: andelabs/ev-reth:latest
+    pull_policy: never
     depends_on:
       jwt-init-sequencer:
         condition: service_completed_successfully
@@ -64,20 +64,22 @@ services:
     networks:
       - ande-network
 
-  # Local DA service
+  # Local DA service (placeholder for now)
   local-da:
-    image: ghcr.io/andelabs/andechain-local-da:develop
+    image: alpine:3.22.0
     container_name: local-da
     restart: unless-stopped
+    command: tail -f /dev/null
     ports:
       - "7980:7980"
     networks:
       - ande-network
 
-  # Single sequencer
+  # Single sequencer (placeholder for now)
   single-sequencer:
     container_name: single-sequencer
-    image: ghcr.io/evstack/ev-node-evm-single:main
+    image: alpine:3.22.0
+    command: tail -f /dev/null
     env_file: .env
     ports:
       - "26660:26660"
@@ -87,18 +89,6 @@ services:
         condition: service_started
       local-da:
         condition: service_started
-    volumes:
-      - sequencer-data:/root/.evm-single
-      - jwttoken-sequencer:/root/jwt:ro
-      - sequencer-export:/volumes/sequencer_export
-      - ./entrypoint.sequencer.sh:/usr/bin/entrypoint.sh
-      - ../../lib/logging.sh:/usr/local/lib/logging.sh:ro
-    command:
-      - start
-      - --evnode.rpc.address=0.0.0.0:7331
-      - --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676
-      - --evnode.instrumentation.prometheus
-      - --evnode.instrumentation.prometheus_listen_addr=:26660
     environment:
       - EVM_ENGINE_URL=http://ev-reth-sequencer:8551
       - EVM_ETH_URL=http://ev-reth-sequencer:8545
