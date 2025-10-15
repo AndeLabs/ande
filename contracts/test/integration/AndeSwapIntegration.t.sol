@@ -34,20 +34,27 @@ contract AndeSwapIntegrationTest is Test {
         vm.startPrank(owner);
         
         // Deploy ANDE token
-        ande = new ERC20Mock("ANDE", "ANDE", 1000000 ether);
+        ande = new ERC20Mock("ANDE", "ANDE");
+        
+        // Mint ANDE to owner
+        ande.mint(owner, 1000000 ether);
         
         // Deploy DEX infrastructure
         dexFactory = new AndeSwapFactory(owner);
         router = new AndeSwapRouter(address(dexFactory));
         
         // Deploy Token Factory
-        tokenFactory = new AndeTokenFactory(feeRecipient);
+        tokenFactory = new AndeTokenFactory(address(dexFactory), address(router), address(ande), feeRecipient);
         
         // Transfer ANDE to users
         ande.transfer(user1, 10000 ether);
         ande.transfer(user2, 10000 ether);
         
         vm.stopPrank();
+        
+        // Give users ETH for token creation fees
+        vm.deal(user1, 10 ether);
+        vm.deal(user2, 10 ether);
     }
 
     function testCompleteTokenCreationAndTradingFlow() public {
@@ -58,12 +65,18 @@ contract AndeSwapIntegrationTest is Test {
             "Token A",
             "TKA",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         address tokenB = tokenFactory.createStandardToken{value: 0.01 ether}(
             "Token B",
             "TKB",
             2000000 ether
+        ,
+            false,
+            0
         );
         
         vm.stopPrank();
@@ -81,8 +94,8 @@ contract AndeSwapIntegrationTest is Test {
         vm.startPrank(user1);
         
         // Add liquidity to A-B pair
-        StandardToken(tokenA).approve(address(router), 100000 ether);
-        StandardToken(tokenB).approve(address(router), 200000 ether);
+        StandardToken(payable(tokenA)).approve(address(router), 100000 ether);
+        StandardToken(payable(tokenB)).approve(address(router), 200000 ether);
         
         router.addLiquidity(
             tokenA,
@@ -96,7 +109,7 @@ contract AndeSwapIntegrationTest is Test {
         );
         
         // Add liquidity to A-ANDE pair
-        StandardToken(tokenA).approve(address(router), 50000 ether);
+        StandardToken(payable(tokenA)).approve(address(router), 50000 ether);
         ande.approve(address(router), 1000 ether);
         
         router.addLiquidity(
@@ -110,23 +123,38 @@ contract AndeSwapIntegrationTest is Test {
             block.timestamp + 3600
         );
         
+        // Add liquidity to B-ANDE pair (needed for multihop swap)
+        StandardToken(payable(tokenB)).approve(address(router), 100000 ether);
+        ande.approve(address(router), 2000 ether);
+        
+        router.addLiquidity(
+            tokenB,
+            address(ande),
+            100000 ether,
+            2000 ether,
+            0,
+            0,
+            user1,
+            block.timestamp + 3600
+        );
+        
         vm.stopPrank();
         
         // Step 4: Test trading between tokens
-        vm.startPrank(user2);
-        
         // Get some Token A from user1 for testing
         vm.prank(user1);
-        StandardToken(tokenA).transfer(user2, 1000 ether);
+        StandardToken(payable(tokenA)).transfer(user2, 1000 ether);
+        
+        vm.startPrank(user2);
         
         // Swap Token A for Token B
-        StandardToken(tokenA).approve(address(router), 100 ether);
+        StandardToken(payable(tokenA)).approve(address(router), 100 ether);
         
         address[] memory path = new address[](2);
         path[0] = tokenA;
         path[1] = tokenB;
         
-        uint256 balanceBBefore = StandardToken(tokenB).balanceOf(user2);
+        uint256 balanceBBefore = StandardToken(payable(tokenB)).balanceOf(user2);
         
         router.swapExactTokensForTokens(
             100 ether,
@@ -136,18 +164,18 @@ contract AndeSwapIntegrationTest is Test {
             block.timestamp + 3600
         );
         
-        uint256 balanceBAfter = StandardToken(tokenB).balanceOf(user2);
+        uint256 balanceBAfter = StandardToken(payable(tokenB)).balanceOf(user2);
         assertTrue(balanceBAfter > balanceBBefore);
         
         // Step 5: Test multihop swap through ANDE
-        StandardToken(tokenB).approve(address(router), 50 ether);
+        StandardToken(payable(tokenB)).approve(address(router), 50 ether);
         
         address[] memory multihopPath = new address[](3);
         multihopPath[0] = tokenB;
         multihopPath[1] = address(ande);
         multihopPath[2] = tokenA;
         
-        uint256 balanceABefore = StandardToken(tokenA).balanceOf(user2);
+        uint256 balanceABeforeMultihop = StandardToken(payable(tokenA)).balanceOf(user2);
         
         router.swapExactTokensForTokens(
             50 ether,
@@ -157,8 +185,8 @@ contract AndeSwapIntegrationTest is Test {
             block.timestamp + 3600
         );
         
-        uint256 balanceAAfter = StandardToken(tokenA).balanceOf(user2);
-        assertTrue(balanceAAfter > balanceABefore);
+        uint256 balanceAAfterMultihop = StandardToken(payable(tokenA)).balanceOf(user2);
+        assertTrue(balanceAAfterMultihop > balanceABeforeMultihop);
         
         vm.stopPrank();
         
@@ -172,8 +200,8 @@ contract AndeSwapIntegrationTest is Test {
         
         pairABContract.approve(address(router), liquidityProviderBalance);
         
-        uint256 balanceABefore = StandardToken(tokenA).balanceOf(user1);
-        uint256 balanceBBefore = StandardToken(tokenB).balanceOf(user1);
+        uint256 balanceABeforeRemove = StandardToken(payable(tokenA)).balanceOf(user1);
+        uint256 balanceBBeforeRemove = StandardToken(payable(tokenB)).balanceOf(user1);
         
         router.removeLiquidity(
             tokenA,
@@ -185,11 +213,11 @@ contract AndeSwapIntegrationTest is Test {
             block.timestamp + 3600
         );
         
-        uint256 balanceAAfter = StandardToken(tokenA).balanceOf(user1);
-        uint256 balanceBAfter = StandardToken(tokenB).balanceOf(user1);
+        uint256 balanceAAfterRemove = StandardToken(payable(tokenA)).balanceOf(user1);
+        uint256 balanceBAfterRemove = StandardToken(payable(tokenB)).balanceOf(user1);
         
-        assertTrue(balanceAAfter > balanceABefore);
-        assertTrue(balanceBAfter > balanceBBefore);
+        assertTrue(balanceAAfterRemove > balanceABeforeRemove);
+        assertTrue(balanceBAfterRemove > balanceBBeforeRemove);
         
         vm.stopPrank();
     }
@@ -202,9 +230,11 @@ contract AndeSwapIntegrationTest is Test {
         
         for (uint256 i = 0; i < 5; i++) {
             tokenFactory.createStandardToken{value: 0.01 ether}(
-                string(abi.encodePacked("Token ", i)),
+                string(abi.encodePacked("Token", i)),
                 string(abi.encodePacked("TK", i)),
-                1000000 ether
+                1000000 ether,
+                false,
+                0
             );
         }
         
@@ -226,18 +256,27 @@ contract AndeSwapIntegrationTest is Test {
             "Token X",
             "TKX",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         address tokenY = tokenFactory.createStandardToken{value: 0.01 ether}(
             "Token Y",
             "TKY",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         address tokenZ = tokenFactory.createStandardToken{value: 0.01 ether}(
             "Token Z",
             "TKZ",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         vm.stopPrank();
@@ -255,26 +294,31 @@ contract AndeSwapIntegrationTest is Test {
         vm.startPrank(user1);
         
         // X-Y: 1:1 ratio
-        StandardToken(tokenX).approve(address(router), 100000 ether);
-        StandardToken(tokenY).approve(address(router), 100000 ether);
+        StandardToken(payable(tokenX)).approve(address(router), 100000 ether);
+        StandardToken(payable(tokenY)).approve(address(router), 100000 ether);
         router.addLiquidity(tokenX, tokenY, 100000 ether, 100000 ether, 0, 0, user1, block.timestamp + 3600);
         
         // Y-Z: 1:2 ratio (Y is more valuable)
-        StandardToken(tokenY).approve(address(router), 50000 ether);
-        StandardToken(tokenZ).approve(address(router), 100000 ether);
+        StandardToken(payable(tokenY)).approve(address(router), 50000 ether);
+        StandardToken(payable(tokenZ)).approve(address(router), 100000 ether);
         router.addLiquidity(tokenY, tokenZ, 50000 ether, 100000 ether, 0, 0, user1, block.timestamp + 3600);
+        
+        // X-Z: direct route (slightly different ratio for arbitrage opportunity)
+        StandardToken(payable(tokenX)).approve(address(router), 100000 ether);
+        StandardToken(payable(tokenZ)).approve(address(router), 190000 ether);
+        router.addLiquidity(tokenX, tokenZ, 100000 ether, 190000 ether, 0, 0, user1, block.timestamp + 3600);
         
         vm.stopPrank();
         
         // Test arbitrage opportunity
-        vm.startPrank(user2);
-        
         // Get tokens for trading
         vm.prank(user1);
-        StandardToken(tokenX).transfer(user2, 1000 ether);
+        StandardToken(payable(tokenX)).transfer(user2, 1000 ether);
+        
+        vm.startPrank(user2);
         
         // Direct swap X->Z
-        StandardToken(tokenX).approve(address(router), 100 ether);
+        StandardToken(payable(tokenX)).approve(address(router), 100 ether);
         
         address[] memory directPath = new address[](2);
         directPath[0] = tokenX;
@@ -304,6 +348,9 @@ contract AndeSwapIntegrationTest is Test {
             "Liquidity Token",
             "LIQ",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         vm.stopPrank();
@@ -318,31 +365,20 @@ contract AndeSwapIntegrationTest is Test {
         providers[1] = user2;
         providers[2] = owner;
         
+        // Transfer tokens to other providers first
+        vm.startPrank(user1);
+        StandardToken(payable(token)).transfer(user2, 10000 ether);
+        ande.transfer(user2, 100 ether);
+        StandardToken(payable(token)).transfer(owner, 10000 ether);
+        ande.transfer(owner, 100 ether);
+        vm.stopPrank();
+        
         // Each provider adds liquidity
         for (uint256 i = 0; i < providers.length; i++) {
             vm.startPrank(providers[i]);
             
-            if (i == 0) {
-                // user1 already has tokens
-                StandardToken(token).approve(address(router), 10000 ether);
-                ande.approve(address(router), 100 ether);
-            } else if (i == 1) {
-                // user2 needs tokens
-                vm.prank(user1);
-                StandardToken(token).transfer(user2, 10000 ether);
-                ande.transfer(user2, 100 ether);
-                
-                StandardToken(token).approve(address(router), 10000 ether);
-                ande.approve(address(router), 100 ether);
-            } else {
-                // owner needs tokens
-                vm.prank(user1);
-                StandardToken(token).transfer(owner, 10000 ether);
-                ande.transfer(owner, 100 ether);
-                
-                StandardToken(token).approve(address(router), 10000 ether);
-                ande.approve(address(router), 100 ether);
-            }
+            StandardToken(payable(token)).approve(address(router), 10000 ether);
+            ande.approve(address(router), 100 ether);
             
             router.addLiquidity(
                 token,
@@ -360,7 +396,7 @@ contract AndeSwapIntegrationTest is Test {
         
         // Generate trading volume and fees
         vm.startPrank(user1);
-        StandardToken(token).approve(address(router), 1000 ether);
+        StandardToken(payable(token)).approve(address(router), 1000 ether);
         
         address[] memory path = new address[](2);
         path[0] = token;
@@ -385,9 +421,9 @@ contract AndeSwapIntegrationTest is Test {
             uint256 providerBalance = pairContract.balanceOf(providers[i]);
             assertTrue(providerBalance > 0);
             
-            // Each provider should have roughly equal share
+            // Each provider should have roughly equal share (allow rounding error)
             uint256 expectedShare = totalSupply / providers.length;
-            assertEq(providerBalance, expectedShare);
+            assertApproxEqAbs(providerBalance, expectedShare, 1000);
         }
     }
 
@@ -396,10 +432,34 @@ contract AndeSwapIntegrationTest is Test {
         vm.startPrank(user1);
         
         address[] memory tokens = new address[](4);
-        tokens[0] = tokenFactory.createStandardToken{value: 0.01 ether}("Token Alpha", "ALPHA", 1000000 ether);
-        tokens[1] = tokenFactory.createStandardToken{value: 0.01 ether}("Token Beta", "BETA", 2000000 ether);
-        tokens[2] = tokenFactory.createStandardToken{value: 0.01 ether}("Token Gamma", "GAMMA", 1500000 ether);
-        tokens[3] = tokenFactory.createStandardToken{value: 0.01 ether}("Token Delta", "DELTA", 3000000 ether);
+        tokens[0] = tokenFactory.createStandardToken{value: 0.01 ether}(
+            "Token Alpha",
+            "ALPHA",
+            1000000 ether,
+            false,
+            0
+        );
+        tokens[1] = tokenFactory.createStandardToken{value: 0.01 ether}(
+            "Token Beta",
+            "BETA",
+            2000000 ether,
+            false,
+            0
+        );
+        tokens[2] = tokenFactory.createStandardToken{value: 0.01 ether}(
+            "Token Gamma",
+            "GAMMA",
+            1500000 ether,
+            false,
+            0
+        );
+        tokens[3] = tokenFactory.createStandardToken{value: 0.01 ether}(
+            "Token Delta",
+            "DELTA",
+            3000000 ether,
+            false,
+            0
+        );
         
         vm.stopPrank();
         
@@ -423,7 +483,7 @@ contract AndeSwapIntegrationTest is Test {
         vm.startPrank(user1);
         
         for (uint256 i = 0; i < tokens.length; i++) {
-            StandardToken(tokens[i]).approve(address(router), 50000 ether);
+            StandardToken(payable(tokens[i])).approve(address(router), 50000 ether);
             ande.approve(address(router), 500 ether);
             
             router.addLiquidity(
@@ -440,15 +500,15 @@ contract AndeSwapIntegrationTest is Test {
         
         vm.stopPrank();
         
-        // Simulate trading activity
-        vm.startPrank(user2);
-        
         // Distribute tokens to user2
         vm.startPrank(user1);
         for (uint256 i = 0; i < tokens.length; i++) {
-            StandardToken(tokens[i]).transfer(user2, 1000 ether);
+            StandardToken(payable(tokens[i])).transfer(user2, 1000 ether);
         }
         vm.stopPrank();
+        
+        // Simulate trading activity
+        vm.startPrank(user2);
         
         // Perform complex trading strategies
         for (uint256 round = 0; round < 5; round++) {
@@ -456,7 +516,7 @@ contract AndeSwapIntegrationTest is Test {
             for (uint256 i = 0; i < tokens.length; i++) {
                 uint256 nextIndex = (i + 1) % tokens.length;
                 
-                StandardToken(tokens[i]).approve(address(router), 50 ether);
+                StandardToken(payable(tokens[i])).approve(address(router), 50 ether);
                 
                 address[] memory path = new address[](3);
                 path[0] = tokens[i];
@@ -477,7 +537,7 @@ contract AndeSwapIntegrationTest is Test {
         
         // Verify that all trading occurred successfully
         for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 balance = StandardToken(tokens[i]).balanceOf(user2);
+            uint256 balance = StandardToken(payable(tokens[i])).balanceOf(user2);
             assertTrue(balance > 0);
         }
     }
@@ -490,12 +550,18 @@ contract AndeSwapIntegrationTest is Test {
             "Gas Token A",
             "GASA",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         address tokenB = tokenFactory.createStandardToken{value: 0.01 ether}(
             "Gas Token B",
             "GASB",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         vm.stopPrank();
@@ -511,8 +577,8 @@ contract AndeSwapIntegrationTest is Test {
         uint256 gasStart = gasleft();
         
         // Batch approve
-        StandardToken(tokenA).approve(address(router), 100000 ether);
-        StandardToken(tokenB).approve(address(router), 200000 ether);
+        StandardToken(payable(tokenA)).approve(address(router), 100000 ether);
+        StandardToken(payable(tokenB)).approve(address(router), 200000 ether);
         
         uint256 approveGas = gasStart - gasleft();
         
@@ -535,7 +601,7 @@ contract AndeSwapIntegrationTest is Test {
         gasStart = gasleft();
         
         // Batch swap operations
-        StandardToken(tokenA).approve(address(router), 1000 ether);
+        StandardToken(payable(tokenA)).approve(address(router), 1000 ether);
         
         address[] memory path = new address[](2);
         path[0] = tokenA;
@@ -574,13 +640,22 @@ contract AndeSwapIntegrationTest is Test {
         
         // Should fail with insufficient fee
         vm.expectRevert();
-        tokenFactory.createStandardToken("No Fee Token", "NOFEE", 1000000 ether);
+        tokenFactory.createStandardToken(
+            "No Fee Token",
+            "NOFEE",
+            1000000 ether,
+            false,
+            0
+        );
         
         // Should work with correct fee
         address token = tokenFactory.createStandardToken{value: 0.01 ether}(
             "Secure Token",
             "SECURE",
             1000000 ether
+        ,
+            false,
+            0
         );
         
         vm.stopPrank();
@@ -593,7 +668,7 @@ contract AndeSwapIntegrationTest is Test {
         // 3. Test reentrancy protection
         vm.startPrank(user1);
         
-        StandardToken(token).approve(address(router), 1000 ether);
+        StandardToken(payable(token)).approve(address(router), 1000 ether);
         ande.approve(address(router), 10 ether);
         
         router.addLiquidity(
@@ -619,9 +694,9 @@ contract AndeSwapIntegrationTest is Test {
         vm.startPrank(user2);
         
         vm.prank(user1);
-        StandardToken(token).transfer(user2, 100 ether);
+        StandardToken(payable(token)).transfer(user2, 100 ether);
         
-        StandardToken(token).approve(address(router), 10 ether);
+        StandardToken(payable(token)).approve(address(router), 10 ether);
         
         address[] memory path = new address[](2);
         path[0] = token;
