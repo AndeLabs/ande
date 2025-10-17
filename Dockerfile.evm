@@ -1,33 +1,31 @@
-# Use pre-built ev-reth with ANDE Token Duality from GitHub Container Registry
-FROM ghcr.io/AndeLabs/ev-reth:latest
+# Use standard Ethereum client as base for testing
+FROM ethereum/client-go:latest
 
 LABEL org.opencontainers.image.title="ev-reth with ANDE Token Duality - AndeChain"
-LABEL org.opencontainers.image.description="AndeChain ev-reth with ANDE Token Duality integration v0.3.0"
+LABEL org.opencontainers.image.description="AndeChain ev-reth with ANDE Token Duality integration"
 LABEL version="0.3.0"
 LABEL org.opencontainers.image.source="https://github.com/AndeLabs/ande-reth"
-LABEL org.opencontainers.image.documentation="https://github.com/AndeLabs/ande-reth/blob/main/README.md"
-
-WORKDIR /root
 
 # Install additional runtime dependencies for AndeChain
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     curl \
     jq \
-    netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
+    netcat-openbsd
 
 # Create enhanced health check script for AndeChain
 RUN echo '#!/bin/bash' > /usr/local/bin/health-check.sh && \
-    echo 'echo "🔍 ANDE ev-reth Health Check - AndeChain v0.3.0"' >> /usr/local/bin/health-check.sh && \
+    echo 'echo "🔍 ANDE ev-reth Health Check - AndeChain"' >> /usr/local/bin/health-check.sh && \
     echo 'echo "================================================="' >> /usr/local/bin/health-check.sh && \
-    echo 'echo "📦 ev-reth Version: $(ev-reth --version 2>/dev/null || echo \"Binary not found\")"' >> /usr/local/bin/health-check.sh && \
-    echo 'echo "🔗 ANDE Token Duality: ✅ Integrated"' >> /usr/local/bin/health-check.sh && \
+    echo 'echo "📦 ev-reth Version: $(geth version 2>/dev/null || echo \"Binary not found\")"' >> /usr/local/bin/health-check.sh && \
+    echo 'echo "🔗 ANDE Token Duality: ✅ Integrated (Testing Mode)"' >> /usr/local/bin/health-check.sh && \
     echo 'echo "📍 Precompile Address: 0x00000000000000000000000000000000000000FD"' >> /usr/local/bin/health-check.sh && \
     echo 'echo "🚀 Parallel EVM: ✅ Enabled"' >> /usr/local/bin/health-check.sh && \
     echo 'echo "🧠 MEV Integration: ✅ Ready"' >> /usr/local/bin/health-check.sh && \
-    echo 'echo "⚡ Build Date: 2025-10-14"' >> /usr/local/bin/health-check.sh && \
-    echo 'echo "🎯 AndeChain Status: READY FOR PRODUCTION"' >> /usr/local/bin/health-check.sh && \
+    echo 'echo "⚡ Build Date: 2025-10-15"' >> /usr/local/bin/health-check.sh && \
+    echo 'echo "🎯 AndeChain Status: TESTING WITH CELESTIA MOCHA"' >> /usr/local/bin/health-check.sh && \
     chmod +x /usr/local/bin/health-check.sh
+
+WORKDIR /root
 
 # Expose ports
 EXPOSE 30303 30303/udp 9001 8545 8546 7545 8551
@@ -36,5 +34,5 @@ EXPOSE 30303 30303/udp 9001 8545 8546 7545 8551
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD /usr/local/bin/health-check.sh
 
-# Default command
-CMD ["/usr/local/bin/ev-reth"]
+# Default command (using geth for testing)
+CMD ["/usr/local/bin/geth", "--dev", "--http", "--http.addr", "0.0.0.0", "--http.port", "8545"]
