@@ -123,6 +123,14 @@ contract AndeSequencerRegistry is
 
         genesisTimestamp = block.timestamp;
         currentPhase = Phase.GENESIS;
+        
+        // Initialize state variables (required for proxy pattern)
+        blocksPerRotation = 100;
+        currentLeaderIndex = 0;
+        currentEpoch = 1;
+        maxSequencersPhase2 = 2;
+        maxSequencersPhase3 = 7;
+        maxSequencersPhase4 = 100;
 
         _registerGenesisSequencer(foundation);
 
@@ -214,7 +222,7 @@ contract AndeSequencerRegistry is
         emit SequencerRemoved(sequencer, reason);
     }
 
-    function recordBlockProduced(address sequencer) external onlyRole(SEQUENCER_MANAGER_ROLE) {
+    function recordBlockProduced(address sequencer) external onlyRole(SEQUENCER_MANAGER_ROLE) whenNotPaused {
         SequencerInfo storage seq = sequencers[sequencer];
         if (seq.sequencer == address(0)) revert SequencerNotFound();
         if (!seq.isActive) revert NotActiveSequencer();

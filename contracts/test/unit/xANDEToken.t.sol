@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import {Test, console2} from "forge-std/Test.sol";
 import {xANDEToken} from "../../src/xERC20/xANDEToken.sol";
 import {XERC20Lockbox} from "../../src/xERC20/XERC20Lockbox.sol";
-import {ANDEToken} from "../../src/ANDEToken.sol";
+import {ANDETokenDuality as ANDEToken} from "../../src/ANDETokenDuality.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IXERC20} from "../../src/interfaces/IXERC20.sol";
 

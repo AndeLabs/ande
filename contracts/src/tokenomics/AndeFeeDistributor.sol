@@ -12,14 +12,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 /**
  * @title AndeFeeDistributor
  * @author Ande Labs
- * @notice Distribuye todas las fees del network entre sequencers, stakers, protocol y Pachamama Fund
- * @dev Sistema de distribución completo de fees (no solo MEV)
+ * @notice Distributes all network fees among sequencers, stakers, protocol, and community treasury
+ * @dev Complete fee distribution system (not just MEV)
  *
- * DISTRIBUCIÓN DE FEES:
+ * FEE DISTRIBUTION:
  * - 40% → Sequencer operator
  * - 30% → Stakers (delegators)
  * - 20% → Protocol treasury
- * - 10% → Pachamama Fund
+ * - 10% → Community Treasury
  */
 contract AndeFeeDistributor is
     Initializable,
@@ -32,12 +32,13 @@ contract AndeFeeDistributor is
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant FEE_COLLECTOR_ROLE = keccak256("FEE_COLLECTOR_ROLE");
+    bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
 
     struct FeeDistributionConfig {
         uint256 sequencerShare;
         uint256 stakersShare;
         uint256 protocolShare;
-        uint256 pachamamaShare;
+        uint256 communityTreasuryShare;
     }
 
     struct EpochStats {
@@ -45,7 +46,7 @@ contract AndeFeeDistributor is
         uint256 sequencerFees;
         uint256 stakersFees;
         uint256 protocolFees;
-        uint256 pachamamaFees;
+        uint256 communityTreasuryFees;
         uint256 startTime;
         uint256 endTime;
     }
@@ -54,7 +55,7 @@ contract AndeFeeDistributor is
     address public sequencerRegistry;
     address public stakingContract;
     address public protocolTreasury;
-    address public pachamamaFund;
+    address public communityTreasury;
 
     FeeDistributionConfig public distributionConfig;
 
@@ -68,7 +69,7 @@ contract AndeFeeDistributor is
     uint256 public totalSequencerFees;
     uint256 public totalStakersFees;
     uint256 public totalProtocolFees;
-    uint256 public totalPachamamaFees;
+    uint256 public totalCommunityTreasuryFees;
 
     event FeesCollected(address indexed from, uint256 amount, uint256 epoch);
     event FeesDistributed(
@@ -76,13 +77,13 @@ contract AndeFeeDistributor is
         uint256 sequencerFees,
         uint256 stakersFees,
         uint256 protocolFees,
-        uint256 pachamamaFees
+        uint256 communityTreasuryFees
     );
     event DistributionConfigUpdated(
         uint256 sequencerShare,
         uint256 stakersShare,
         uint256 protocolShare,
-        uint256 pachamamaShare
+        uint256 communityTreasuryShare
     );
     event EpochEnded(uint256 indexed epoch, uint256 totalFees);
     event ContractAddressUpdated(string indexed contractType, address newAddress);
@@ -103,7 +104,7 @@ contract AndeFeeDistributor is
         address _sequencerRegistry,
         address _stakingContract,
         address _protocolTreasury,
-        address _pachamamaFund,
+        address _communityTreasury,
         address defaultAdmin
     ) public initializer {
         __AccessControl_init();
@@ -114,14 +115,14 @@ contract AndeFeeDistributor is
         if (
             _andeToken == address(0) || _sequencerRegistry == address(0)
                 || _stakingContract == address(0) || _protocolTreasury == address(0)
-                || _pachamamaFund == address(0)
+                || _communityTreasury == address(0)
         ) revert ZeroAddress();
 
         andeToken = IERC20(_andeToken);
         sequencerRegistry = _sequencerRegistry;
         stakingContract = _stakingContract;
         protocolTreasury = _protocolTreasury;
-        pachamamaFund = _pachamamaFund;
+        communityTreasury = _communityTreasury;
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, defaultAdmin);
@@ -131,7 +132,7 @@ contract AndeFeeDistributor is
             sequencerShare: 4000,
             stakersShare: 3000,
             protocolShare: 2000,
-            pachamamaShare: 1000
+            communityTreasuryShare: 1000
         });
 
         epochStats[currentEpoch].startTime = block.timestamp;
@@ -159,17 +160,17 @@ contract AndeFeeDistributor is
         uint256 sequencerFees = (totalFees * distributionConfig.sequencerShare) / BASIS_POINTS;
         uint256 stakersFees = (totalFees * distributionConfig.stakersShare) / BASIS_POINTS;
         uint256 protocolFees = (totalFees * distributionConfig.protocolShare) / BASIS_POINTS;
-        uint256 pachamamaFees = (totalFees * distributionConfig.pachamamaShare) / BASIS_POINTS;
+        uint256 communityTreasuryFees = (totalFees * distributionConfig.communityTreasuryShare) / BASIS_POINTS;
 
         stats.sequencerFees = sequencerFees;
         stats.stakersFees = stakersFees;
         stats.protocolFees = protocolFees;
-        stats.pachamamaFees = pachamamaFees;
+        stats.communityTreasuryFees = communityTreasuryFees;
 
         totalSequencerFees += sequencerFees;
         totalStakersFees += stakersFees;
         totalProtocolFees += protocolFees;
-        totalPachamamaFees += pachamamaFees;
+        totalCommunityTreasuryFees += communityTreasuryFees;
 
         if (sequencerFees > 0) {
             andeToken.safeTransfer(sequencerRegistry, sequencerFees);
@@ -180,11 +181,11 @@ contract AndeFeeDistributor is
         if (protocolFees > 0) {
             andeToken.safeTransfer(protocolTreasury, protocolFees);
         }
-        if (pachamamaFees > 0) {
-            andeToken.safeTransfer(pachamamaFund, pachamamaFees);
+        if (communityTreasuryFees > 0) {
+            andeToken.safeTransfer(communityTreasury, communityTreasuryFees);
         }
 
-        emit FeesDistributed(currentEpoch, sequencerFees, stakersFees, protocolFees, pachamamaFees);
+        emit FeesDistributed(currentEpoch, sequencerFees, stakersFees, protocolFees, communityTreasuryFees);
     }
 
     function endEpoch() external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -200,13 +201,20 @@ contract AndeFeeDistributor is
         epochStats[currentEpoch].startTime = block.timestamp;
     }
 
+    /**
+     * @notice Actualiza configuración de distribución (Governor o Admin)
+     * @dev Permite a governance ajustar la distribución de fees
+     */
     function updateDistributionConfig(
         uint256 sequencerShare,
         uint256 stakersShare,
         uint256 protocolShare,
-        uint256 pachamamaShare
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (sequencerShare + stakersShare + protocolShare + pachamamaShare != BASIS_POINTS) {
+        uint256 communityTreasuryShare
+    ) external {
+        if (!hasRole(GOVERNOR_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert AccessControlUnauthorizedAccount(msg.sender, GOVERNOR_ROLE);
+        }
+        if (sequencerShare + stakersShare + protocolShare + communityTreasuryShare != BASIS_POINTS) {
             revert InvalidDistributionShares();
         }
 
@@ -214,34 +222,49 @@ contract AndeFeeDistributor is
             sequencerShare: sequencerShare,
             stakersShare: stakersShare,
             protocolShare: protocolShare,
-            pachamamaShare: pachamamaShare
+            communityTreasuryShare: communityTreasuryShare
         });
 
-        emit DistributionConfigUpdated(sequencerShare, stakersShare, protocolShare, pachamamaShare);
+        emit DistributionConfigUpdated(sequencerShare, stakersShare, protocolShare, communityTreasuryShare);
     }
 
-    function updateSequencerRegistry(address newAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /**
+     * @notice Actualiza sequencer registry (Governor o Admin)
+     */
+    function updateSequencerRegistry(address newAddress) external {
+        if (!hasRole(GOVERNOR_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert AccessControlUnauthorizedAccount(msg.sender, GOVERNOR_ROLE);
+        }
         if (newAddress == address(0)) revert ZeroAddress();
         sequencerRegistry = newAddress;
         emit ContractAddressUpdated("sequencerRegistry", newAddress);
     }
 
-    function updateStakingContract(address newAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStakingContract(address newAddress) external {
+        if (!hasRole(GOVERNOR_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert AccessControlUnauthorizedAccount(msg.sender, GOVERNOR_ROLE);
+        }
         if (newAddress == address(0)) revert ZeroAddress();
         stakingContract = newAddress;
         emit ContractAddressUpdated("stakingContract", newAddress);
     }
 
-    function updateProtocolTreasury(address newAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateProtocolTreasury(address newAddress) external {
+        if (!hasRole(GOVERNOR_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert AccessControlUnauthorizedAccount(msg.sender, GOVERNOR_ROLE);
+        }
         if (newAddress == address(0)) revert ZeroAddress();
         protocolTreasury = newAddress;
         emit ContractAddressUpdated("protocolTreasury", newAddress);
     }
 
-    function updatePachamamaFund(address newAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateCommunityTreasury(address newAddress) external {
+        if (!hasRole(GOVERNOR_ROLE, msg.sender) && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert AccessControlUnauthorizedAccount(msg.sender, GOVERNOR_ROLE);
+        }
         if (newAddress == address(0)) revert ZeroAddress();
-        pachamamaFund = newAddress;
-        emit ContractAddressUpdated("pachamamaFund", newAddress);
+        communityTreasury = newAddress;
+        emit ContractAddressUpdated("communityTreasury", newAddress);
     }
 
     function getEpochStats(uint256 epoch) external view returns (EpochStats memory) {
@@ -260,7 +283,7 @@ contract AndeFeeDistributor is
             uint256 _totalSequencerFees,
             uint256 _totalStakersFees,
             uint256 _totalProtocolFees,
-            uint256 _totalPachamamaFees
+            uint256 _totalCommunityTreasuryFees
         )
     {
         return (
@@ -268,7 +291,7 @@ contract AndeFeeDistributor is
             totalSequencerFees,
             totalStakersFees,
             totalProtocolFees,
-            totalPachamamaFees
+            totalCommunityTreasuryFees
         );
     }
 

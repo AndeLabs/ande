@@ -11,20 +11,45 @@ import {GovernorCountingSimpleUpgradeable} from
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 import {GovernorVotesUpgradeable} from
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import {GovernorVotesQuorumFractionUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 import {GovernorTimelockControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {AndeTimelockController} from "./AndeTimelockController.sol";
+import {GovernorDualTokenVoting, IAndeNativeStaking} from "./extensions/GovernorDualTokenVoting.sol";
+import {GovernorAdaptiveQuorum} from "./extensions/GovernorAdaptiveQuorum.sol";
+import {GovernorMultiLevel} from "./extensions/GovernorMultiLevel.sol";
+import {GovernorSecurityExtensions} from "./extensions/GovernorSecurityExtensions.sol";
 
 /**
  * @title AndeGovernor
  * @author Ande Labs & Gemini
  * @notice The main governance contract for AndeChain.
- * @dev This contract manages proposals and voting. It is controlled by `stANDE` token holders.
- * It uses a TimelockController to enforce a delay on executed proposals.
- * It is upgradeable using the UUPS pattern.
+ * @dev This contract manages proposals and voting. It is controlled by ANDE token holders.
+ * 
+ * ENHANCED FEATURES (v3.0):
+ * - Dual Token Voting: Combines base token votes + staking bonus
+ * - Users get bonus voting power based on their staking (lock period multipliers)
+ * - Anti-whale protection: max 500% bonus over base votes + max 10% voting power cap
+ * - Adaptive Quorum: Adjusts between 4-15% based on historical participation
+ * - Multi-Level Proposals: 4 types (OPERATIONAL, PROTOCOL, CRITICAL, EMERGENCY)
+ * - Security Extensions: Rate limiting, guardian cancellation, anti-frontrunning
+ * - TimelockController for secure execution
+ * - Upgradeable using UUPS pattern
+ * 
+ * VOTING POWER FORMULA:
+ * totalVotes = baseVotes (from ANDETokenDuality) + stakingBonus (from AndeNativeStaking)
+ * Capped at 10% of total supply per voter
+ * 
+ * QUORUM FORMULA:
+ * - High participation (>20%) → quorum = 4%
+ * - Low participation (<10%) → quorum = 15%
+ * - Medium participation → linear interpolation
+ * 
+ * PROPOSAL TYPES:
+ * - OPERATIONAL: 1M ANDE threshold, 3 days voting
+ * - PROTOCOL: 5M ANDE threshold, 7 days voting
+ * - CRITICAL: 10M ANDE threshold, 10 days voting
+ * - EMERGENCY: Council only, 24 hours voting
  */
 contract AndeGovernor is
     Initializable,
@@ -33,8 +58,10 @@ contract AndeGovernor is
     GovernorUpgradeable,
     GovernorSettingsUpgradeable,
     GovernorCountingSimpleUpgradeable,
-    GovernorVotesUpgradeable,
-    GovernorVotesQuorumFractionUpgradeable,
+    GovernorDualTokenVoting,
+    GovernorAdaptiveQuorum,
+    GovernorMultiLevel,
+    GovernorSecurityExtensions,
     GovernorTimelockControlUpgradeable
 {
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -44,25 +71,31 @@ contract AndeGovernor is
 
     /**
      * @notice Initializes the Governor contract.
-     * @param _token The address of the `stANDE` token (which implements IVotes).
+     * @param _token The address of the ANDE token (which implements IVotes).
+     * @param _stakingContract The address of the AndeNativeStaking contract.
      * @param _timelock The address of the `AndeTimelockController`.
-     * @param _quorumPercentage The quorum required for a vote to pass (e.g., 4 for 4%).
      * @param _votingPeriod The duration of the voting period in blocks.
      * @param _votingDelay The delay before a vote starts in blocks.
      * @param _proposalThreshold The minimum number of votes required to create a proposal.
+     * @param _emergencyCouncil The address of the emergency council for EMERGENCY proposals.
+     * @param _guardian The address of the guardian for emergency cancellations.
      */
     function initialize(
         IVotes _token,
+        IAndeNativeStaking _stakingContract,
         AndeTimelockController _timelock,
-        uint256 _quorumPercentage,
         uint32 _votingPeriod,
         uint48 _votingDelay,
-        uint256 _proposalThreshold
+        uint256 _proposalThreshold,
+        address _emergencyCouncil,
+        address _guardian
     ) public initializer {
         __Governor_init("AndeGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
-        __GovernorVotes_init(_token);
-        __GovernorVotesQuorumFraction_init(_quorumPercentage);
+        __GovernorDualTokenVoting_init(_token, _stakingContract);
+        __GovernorAdaptiveQuorum_init();
+        __GovernorMultiLevel_init(_emergencyCouncil);
+        __GovernorSecurityExtensions_init(_guardian);
         __GovernorTimelockControl_init(_timelock);
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -85,13 +118,13 @@ contract AndeGovernor is
         return super.votingPeriod();
     }
 
-    function quorum(uint256 blockNumber)
+    function quorum(uint256 timepoint)
         public
         view
-        override(GovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
+        override(GovernorUpgradeable, GovernorAdaptiveQuorum)
         returns (uint256)
     {
-        return super.quorum(blockNumber);
+        return GovernorAdaptiveQuorum.quorum(timepoint);
     }
 
     function state(uint256 proposalId)
@@ -115,7 +148,7 @@ contract AndeGovernor is
     function proposalThreshold()
         public
         view
-        override(GovernorUpgradeable, GovernorSettingsUpgradeable)
+        override(GovernorUpgradeable, GovernorSettingsUpgradeable, GovernorMultiLevel)
         returns (uint256)
     {
         return super.proposalThreshold();
@@ -137,8 +170,11 @@ contract AndeGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
-        super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
+    ) internal override(GovernorUpgradeable, GovernorAdaptiveQuorum, GovernorTimelockControlUpgradeable) {
+        GovernorTimelockControlUpgradeable._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
+        
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = _getProposalVotes(proposalId);
+        _recordParticipation(proposalId, forVotes, againstVotes, abstainVotes);
     }
 
     function _cancel(
@@ -146,7 +182,7 @@ contract AndeGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint256) {
+    ) internal override(GovernorUpgradeable, GovernorAdaptiveQuorum, GovernorTimelockControlUpgradeable) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
 
@@ -159,6 +195,23 @@ contract AndeGovernor is
         return super._executor();
     }
 
+    function _propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description,
+        address proposer
+    ) internal override(GovernorUpgradeable, GovernorMultiLevel) returns (uint256) {
+        return super._propose(targets, values, calldatas, description, proposer);
+    }
+
+    function _isValidDescriptionForProposer(
+        address proposer,
+        string memory description
+    ) internal view override(GovernorUpgradeable, GovernorMultiLevel) returns (bool) {
+        return super._isValidDescriptionForProposer(proposer, description);
+    }
+
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -166,5 +219,63 @@ contract AndeGovernor is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function _getVotes(
+        address account,
+        uint256 timepoint,
+        bytes memory params
+    ) internal view override(GovernorUpgradeable, GovernorDualTokenVoting) returns (uint256) {
+        return GovernorDualTokenVoting._getVotes(account, timepoint, params);
+    }
+    
+    function _getTotalSupply(uint256 timepoint) 
+        internal 
+        view 
+        override(GovernorAdaptiveQuorum, GovernorMultiLevel, GovernorSecurityExtensions) 
+        returns (uint256) 
+    {
+        return token().getPastTotalSupply(timepoint);
+    }
+    
+    function _getProposalVotes(uint256 proposalId) internal view override returns (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) {
+        (againstVotes, forVotes, abstainVotes) = proposalVotes(proposalId);
+    }
+    
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(GovernorUpgradeable, GovernorSecurityExtensions) returns (uint256) {
+        return GovernorSecurityExtensions.propose(targets, values, calldatas, description);
+    }
+    
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal override(GovernorUpgradeable, GovernorSecurityExtensions) returns (uint256) {
+        return GovernorSecurityExtensions._castVote(proposalId, account, support, reason, params);
+    }
+    
+    function proposalSnapshot(uint256 proposalId)
+        public
+        view
+        override(GovernorUpgradeable, GovernorMultiLevel)
+        returns (uint256)
+    {
+        return GovernorMultiLevel.proposalSnapshot(proposalId);
+    }
+    
+    function proposalDeadline(uint256 proposalId)
+        public
+        view
+        override(GovernorUpgradeable, GovernorMultiLevel)
+        returns (uint256)
+    {
+        return GovernorMultiLevel.proposalDeadline(proposalId);
     }
 }

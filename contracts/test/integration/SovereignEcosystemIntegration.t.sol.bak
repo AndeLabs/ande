@@ -1,0 +1,626 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
+
+import {Test, console} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
+import {ANDEToken} from "../../src/ANDEToken.sol";
+import {AndeNativeStaking} from "../../src/staking/AndeNativeStaking.sol";
+import {AndeVesting} from "../../src/tokenomics/AndeVesting.sol";
+import {AndeSequencerRegistry} from "../../src/sequencer/AndeSequencerRegistry.sol";
+import {AndeFeeDistributor} from "../../src/tokenomics/AndeFeeDistributor.sol";
+import {CommunityTreasury} from "../../src/community/CommunityTreasury.sol";
+
+/**
+ * @title SovereignEcosystemIntegration
+ * @notice Integration tests for the complete sovereign dual-token ecosystem
+ * @dev Tests the interactions between all core contracts:
+ *      - ANDEToken (native token)
+ *      - AndeNativeStaking (3-tier staking)
+ *      - AndeVesting (token distribution)
+ *      - AndeSequencerRegistry (progressive decentralization)
+ *      - AndeFeeDistributor (fee distribution)
+ *      - CommunityTreasury (grants system)
+ */
+contract SovereignEcosystemIntegration is Test {
+    // Contracts
+    ANDEToken public andeToken;
+    AndeNativeStaking public staking;
+    AndeVesting public vesting;
+    AndeSequencerRegistry public sequencerRegistry;
+    AndeFeeDistributor public feeDistributor;
+    CommunityTreasury public treasury;
+
+    // Actors
+    address public owner = address(0x1);
+    address public foundation = address(0x2);
+    address public alice = address(0x3); // User
+    address public bob = address(0x4); // User
+    address public charlie = address(0x5); // Sequencer operator
+    address public protocolTreasury = address(0x6);
+
+    // Constants
+    uint256 public constant TOTAL_SUPPLY = 1_000_000_000e18; // 1B ANDE
+    uint256 public constant INITIAL_USER_BALANCE = 1_000_000e18; // 1M ANDE per user
+    uint256 public constant SEQUENCER_STAKE = 100_000e18; // 100K ANDE
+    uint256 public constant NETWORK_FEES = 10_000e18; // 10K ANDE in fees
+
+    function setUp() public {
+        vm.startPrank(owner);
+
+        // 1. Deploy ANDE Token
+        ANDEToken tokenImpl = new ANDEToken();
+        bytes memory tokenInitData = abi.encodeWithSelector(
+            ANDEToken.initialize.selector,
+            owner,
+            owner
+        );
+        ERC1967Proxy tokenProxy = new ERC1967Proxy(address(tokenImpl), tokenInitData);
+        andeToken = ANDEToken(address(tokenProxy));
+        andeToken.mint(owner, TOTAL_SUPPLY);
+
+        // 2. Deploy Staking
+        AndeNativeStaking stakingImpl = new AndeNativeStaking();
+        bytes memory stakingInitData = abi.encodeWithSelector(
+            AndeNativeStaking.initialize.selector,
+            address(andeToken),
+            owner
+        );
+        ERC1967Proxy stakingProxy = new ERC1967Proxy(address(stakingImpl), stakingInitData);
+        staking = AndeNativeStaking(address(stakingProxy));
+
+        // 3. Deploy Sequencer Registry
+        AndeSequencerRegistry registryImpl = new AndeSequencerRegistry();
+        bytes memory registryInitData = abi.encodeWithSelector(
+            AndeSequencerRegistry.initialize.selector,
+            owner,
+            foundation
+        );
+        ERC1967Proxy registryProxy = new ERC1967Proxy(address(registryImpl), registryInitData);
+        sequencerRegistry = AndeSequencerRegistry(address(registryProxy));
+
+        // 4. Deploy Fee Distributor
+        AndeFeeDistributor distributorImpl = new AndeFeeDistributor();
+        bytes memory distributorInitData = abi.encodeWithSelector(
+            AndeFeeDistributor.initialize.selector,
+            address(andeToken),
+            address(sequencerRegistry),
+            address(staking),
+            protocolTreasury,
+            address(0), // Community treasury will be set later
+            owner
+        );
+        ERC1967Proxy distributorProxy = new ERC1967Proxy(address(distributorImpl), distributorInitData);
+        feeDistributor = AndeFeeDistributor(address(distributorProxy));
+
+        // 5. Deploy Community Treasury
+        CommunityTreasury treasuryImpl = new CommunityTreasury();
+        bytes memory treasuryInitData = abi.encodeWithSelector(
+            CommunityTreasury.initialize.selector,
+            address(andeToken),
+            owner
+        );
+        ERC1967Proxy treasuryProxy = new ERC1967Proxy(address(treasuryImpl), treasuryInitData);
+        treasury = CommunityTreasury(address(treasuryProxy));
+
+        // 6. Update Fee Distributor with Community Treasury
+        feeDistributor.updateCommunityTreasury(address(treasury));
+
+        // 7. Deploy Vesting
+        AndeVesting vestingImpl = new AndeVesting();
+        bytes memory vestingInitData = abi.encodeWithSelector(
+            AndeVesting.initialize.selector,
+            address(andeToken),
+            owner
+        );
+        ERC1967Proxy vestingProxy = new ERC1967Proxy(address(vestingImpl), vestingInitData);
+        vesting = AndeVesting(address(vestingProxy));
+
+        // 8. Fund users
+        andeToken.transfer(alice, INITIAL_USER_BALANCE);
+        andeToken.transfer(bob, INITIAL_USER_BALANCE);
+        andeToken.transfer(charlie, SEQUENCER_STAKE * 2);
+        
+        // 9. Fund fee distributor for testing
+        andeToken.transfer(address(feeDistributor), NETWORK_FEES * 10);
+
+        vm.stopPrank();
+    }
+
+    // ============================================
+    // TEST 1: Complete Staking → Fee Distribution Flow
+    // ============================================
+    
+    function testStakingFeeDistributionFlow() public {
+        // Alice stakes liquidity
+        vm.startPrank(alice);
+        andeToken.approve(address(staking), 100_000e18);
+        staking.stakeLiquidity(100_000e18);
+        vm.stopPrank();
+
+        // Bob stakes for governance (6 months lock)
+        vm.startPrank(bob);
+        andeToken.approve(address(staking), 50_000e18);
+        staking.stakeGovernance(50_000e18, AndeNativeStaking.LockPeriod.SIX_MONTHS);
+        vm.stopPrank();
+
+        // Collect fees
+        vm.startPrank(owner);
+        andeToken.approve(address(feeDistributor), NETWORK_FEES);
+        feeDistributor.collectFees(NETWORK_FEES);
+        vm.stopPrank();
+
+        // Distribute fees
+        uint256 aliceBalanceBefore = andeToken.balanceOf(alice);
+        uint256 bobBalanceBefore = andeToken.balanceOf(bob);
+        
+        feeDistributor.distributeFees();
+
+        // Verify staking contract received fees
+        uint256 stakingShare = NETWORK_FEES * 3000 / 10000; // 30% to stakers
+        assertGt(andeToken.balanceOf(address(staking)), 0);
+        
+        // Verify community treasury received fees
+        uint256 communityShare = NETWORK_FEES * 1000 / 10000; // 10% to community
+        assertGt(andeToken.balanceOf(address(treasury)), 0);
+        
+        console.log("Staking received:", andeToken.balanceOf(address(staking)));
+        console.log("Community treasury received:", andeToken.balanceOf(address(treasury)));
+    }
+
+    // ============================================
+    // TEST 2: Sequencer → Fee Distribution Flow
+    // ============================================
+    
+    function testSequencerFeeFlow() public {
+        // Check genesis sequencer is registered
+        assertEq(sequencerRegistry.getActiveSequencersCount(), 1);
+        address[] memory activeSequencers = sequencerRegistry.getActiveSequencers();
+        assertEq(activeSequencers[0], foundation);
+
+        // Record blocks produced by genesis sequencer
+        vm.startPrank(owner);
+        for (uint i = 0; i < 10; i++) {
+            sequencerRegistry.recordBlockProduced(foundation);
+        }
+        vm.stopPrank();
+
+        // Collect and distribute fees
+        vm.startPrank(owner);
+        andeToken.approve(address(feeDistributor), NETWORK_FEES);
+        feeDistributor.collectFees(NETWORK_FEES);
+        vm.stopPrank();
+
+        uint256 sequencerBalanceBefore = andeToken.balanceOf(address(sequencerRegistry));
+        
+        feeDistributor.distributeFees();
+
+        // Verify sequencer registry received 40% of fees
+        uint256 sequencerShare = NETWORK_FEES * 4000 / 10000;
+        assertEq(
+            andeToken.balanceOf(address(sequencerRegistry)),
+            sequencerBalanceBefore + sequencerShare
+        );
+
+        console.log("Sequencer share:", sequencerShare);
+    }
+
+    // ============================================
+    // TEST 3: Vesting → Staking Integration
+    // ============================================
+    
+    function testVestingStakingIntegration() public {
+        // Set TGE
+        vm.prank(owner);
+        vesting.setTGE(block.timestamp);
+
+        // Create vesting schedule for Alice
+        vm.prank(owner);
+        andeToken.approve(address(vesting), 1_000_000e18);
+        
+        vm.prank(owner);
+        vesting.createVestingSchedule(
+            alice,
+            1_000_000e18,
+            AndeVesting.AllocationCategory.TEAM,
+            365 days, // 1 year cliff
+            1095 days  // 3 years vesting
+        );
+
+        // Fast forward past cliff
+        vm.warp(block.timestamp + 365 days + 1);
+
+        // Alice claims vested tokens
+        uint256 claimable = vesting.getClaimableAmount(alice, 0);
+        assertGt(claimable, 0);
+
+        vm.prank(alice);
+        vesting.claim(0);
+
+        // Alice stakes her claimed tokens
+        uint256 aliceBalance = andeToken.balanceOf(alice);
+        
+        vm.startPrank(alice);
+        andeToken.approve(address(staking), aliceBalance);
+        staking.stakeLiquidity(aliceBalance);
+        vm.stopPrank();
+
+        // Verify Alice's stake
+        uint256 aliceStake = staking.getLiquidityStake(alice);
+        assertEq(aliceStake, aliceBalance);
+
+        console.log("Alice claimed and staked:", aliceBalance);
+    }
+
+    // ============================================
+    // TEST 4: Complete Tokenomics Cycle
+    // ============================================
+    
+    function testCompleteTokenomicsCycle() public {
+        // 1. Users stake tokens
+        vm.startPrank(alice);
+        andeToken.approve(address(staking), 200_000e18);
+        staking.stakeLiquidity(200_000e18);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        andeToken.approve(address(staking), 100_000e18);
+        staking.stakeGovernance(100_000e18, AndeNativeStaking.LockPeriod.TWELVE_MONTHS);
+        vm.stopPrank();
+
+        // 2. Network generates fees (multiple collections)
+        vm.startPrank(owner);
+        andeToken.approve(address(feeDistributor), NETWORK_FEES * 3);
+        
+        for (uint i = 0; i < 3; i++) {
+            feeDistributor.collectFees(NETWORK_FEES);
+        }
+        vm.stopPrank();
+
+        // 3. Record sequencer activity
+        vm.startPrank(owner);
+        for (uint i = 0; i < 20; i++) {
+            sequencerRegistry.recordBlockProduced(foundation);
+        }
+        vm.stopPrank();
+
+        // 4. Distribute fees
+        uint256 stakingBalanceBefore = andeToken.balanceOf(address(staking));
+        uint256 treasuryBalanceBefore = andeToken.balanceOf(address(treasury));
+        uint256 protocolBalanceBefore = andeToken.balanceOf(protocolTreasury);
+        
+        feeDistributor.distributeFees();
+
+        // 5. Verify distribution
+        uint256 totalFees = NETWORK_FEES * 3;
+        
+        // Stakers should receive 30%
+        uint256 expectedStaking = totalFees * 3000 / 10000;
+        assertEq(
+            andeToken.balanceOf(address(staking)) - stakingBalanceBefore,
+            expectedStaking
+        );
+
+        // Community treasury should receive 10%
+        uint256 expectedCommunity = totalFees * 1000 / 10000;
+        assertEq(
+            andeToken.balanceOf(address(treasury)) - treasuryBalanceBefore,
+            expectedCommunity
+        );
+
+        // Protocol treasury should receive 20%
+        uint256 expectedProtocol = totalFees * 2000 / 10000;
+        assertEq(
+            andeToken.balanceOf(protocolTreasury) - protocolBalanceBefore,
+            expectedProtocol
+        );
+
+        console.log("Total fees distributed:", totalFees);
+        console.log("To stakers:", expectedStaking);
+        console.log("To community:", expectedCommunity);
+        console.log("To protocol:", expectedProtocol);
+    }
+
+    // ============================================
+    // TEST 5: Treasury → Grants Flow
+    // ============================================
+    
+    function testTreasuryGrantsFlow() public {
+        // Fund treasury
+        vm.startPrank(owner);
+        andeToken.approve(address(treasury), 100_000e18);
+        treasury.receiveFunds(100_000e18);
+        vm.stopPrank();
+
+        // Propose grant
+        vm.prank(owner);
+        uint256 grantId = treasury.proposeGrant(
+            alice,
+            10_000e18,
+            "Developer Grant",
+            "Building DeFi tools",
+            "QmHash123",
+            CommunityTreasury.GrantCategory.BUILDER_GRANT
+        );
+
+        // Give voting power to Bob
+        vm.prank(owner);
+        andeToken.transfer(bob, 10_000e18);
+
+        // Grant approval role to Bob
+        vm.prank(owner);
+        treasury.grantRole(treasury.GRANT_APPROVER_ROLE(), bob);
+
+        // Bob votes on grant
+        vm.prank(bob);
+        treasury.voteOnGrant(grantId, true);
+
+        // Owner finalizes grant
+        vm.prank(owner);
+        treasury.finalizeGrant(grantId);
+
+        // Disburse grant
+        uint256 aliceBalanceBefore = andeToken.balanceOf(alice);
+        
+        vm.prank(owner);
+        treasury.disburseGrant(grantId);
+
+        // Verify Alice received the grant
+        assertEq(
+            andeToken.balanceOf(alice) - aliceBalanceBefore,
+            10_000e18
+        );
+
+        console.log("Grant disbursed to Alice:", 10_000e18);
+    }
+
+    // ============================================
+    // TEST 6: Multi-Epoch Fee Distribution
+    // ============================================
+    
+    function testMultiEpochFeeDistribution() public {
+        // Epoch 0: Collect and distribute fees
+        vm.startPrank(owner);
+        andeToken.approve(address(feeDistributor), NETWORK_FEES * 10);
+        feeDistributor.collectFees(NETWORK_FEES);
+        vm.stopPrank();
+
+        feeDistributor.distributeFees();
+
+        // Fast forward 7 days and end epoch
+        vm.warp(block.timestamp + 7 days);
+        
+        vm.prank(owner);
+        feeDistributor.endEpoch();
+
+        assertEq(feeDistributor.currentEpoch(), 1);
+
+        // Epoch 1: Collect more fees
+        vm.startPrank(owner);
+        feeDistributor.collectFees(NETWORK_FEES * 2);
+        vm.stopPrank();
+
+        feeDistributor.distributeFees();
+
+        // Verify epoch stats
+        AndeFeeDistributor.EpochStats memory epoch0 = feeDistributor.getEpochStats(0);
+        assertEq(epoch0.totalFeesCollected, NETWORK_FEES);
+        assertGt(epoch0.endTime, 0);
+
+        AndeFeeDistributor.EpochStats memory epoch1 = feeDistributor.getCurrentEpochStats();
+        assertEq(epoch1.totalFeesCollected, NETWORK_FEES * 2);
+
+        console.log("Epoch 0 fees:", epoch0.totalFeesCollected);
+        console.log("Epoch 1 fees:", epoch1.totalFeesCollected);
+    }
+
+    // ============================================
+    // TEST 7: Phase Transition Integration
+    // ============================================
+    
+    function testPhaseTransitionIntegration() public {
+        // Start in GENESIS phase
+        assertEq(
+            uint(sequencerRegistry.currentPhase()),
+            uint(AndeSequencerRegistry.Phase.GENESIS)
+        );
+
+        // Record blocks in GENESIS
+        vm.startPrank(owner);
+        for (uint i = 0; i < 50; i++) {
+            sequencerRegistry.recordBlockProduced(foundation);
+        }
+        vm.stopPrank();
+
+        // Fast forward 180 days and transition to DUAL phase
+        vm.warp(block.timestamp + 180 days);
+        
+        vm.prank(owner);
+        sequencerRegistry.transitionPhase();
+
+        assertEq(
+            uint(sequencerRegistry.currentPhase()),
+            uint(AndeSequencerRegistry.Phase.DUAL)
+        );
+
+        // Verify sequencer info
+        AndeSequencerRegistry.SequencerInfo memory info = 
+            sequencerRegistry.getSequencerInfo(foundation);
+        
+        assertEq(info.totalBlocksProduced, 50);
+        assertTrue(info.isActive);
+        assertTrue(info.isPermanent);
+
+        console.log("Transitioned to DUAL phase");
+        console.log("Blocks produced in GENESIS:", info.totalBlocksProduced);
+    }
+
+    // ============================================
+    // TEST 8: Staking Tiers Integration
+    // ============================================
+    
+    function testStakingTiersIntegration() public {
+        uint256 amount = 100_000e18;
+
+        // Alice: Liquidity staking
+        vm.startPrank(alice);
+        andeToken.approve(address(staking), amount);
+        staking.stakeLiquidity(amount);
+        vm.stopPrank();
+
+        // Bob: Governance staking (1 year lock)
+        vm.startPrank(bob);
+        andeToken.approve(address(staking), amount);
+        staking.stakeGovernance(amount, AndeNativeStaking.LockPeriod.TWELVE_MONTHS);
+        vm.stopPrank();
+
+        // Charlie: Sequencer staking
+        vm.startPrank(charlie);
+        andeToken.approve(address(staking), amount);
+        staking.stakeSequencer(amount);
+        vm.stopPrank();
+
+        // Verify all stakes
+        assertEq(staking.getLiquidityStake(alice), amount);
+        assertEq(staking.getGovernanceStake(bob), amount);
+        assertEq(staking.getSequencerStake(charlie), amount);
+
+        // Verify voting power (governance should have multiplier)
+        uint256 aliceVotingPower = staking.getVotingPower(alice);
+        uint256 bobVotingPower = staking.getVotingPower(bob);
+        
+        // Bob should have more voting power due to lock multiplier
+        assertGt(bobVotingPower, aliceVotingPower);
+
+        console.log("Alice voting power (liquidity):", aliceVotingPower);
+        console.log("Bob voting power (governance):", bobVotingPower);
+        console.log("Charlie sequencer stake:", staking.getSequencerStake(charlie));
+    }
+
+    // ============================================
+    // TEST 9: Emergency Scenarios
+    // ============================================
+    
+    function testEmergencyPause() public {
+        // Pause all contracts
+        vm.startPrank(owner);
+        staking.grantRole(staking.PAUSER_ROLE(), owner);
+        feeDistributor.grantRole(feeDistributor.PAUSER_ROLE(), owner);
+        treasury.grantRole(treasury.PAUSER_ROLE(), owner);
+        
+        staking.pause();
+        feeDistributor.pause();
+        treasury.pause();
+        vm.stopPrank();
+
+        // Verify operations are blocked
+        vm.startPrank(alice);
+        andeToken.approve(address(staking), 100e18);
+        vm.expectRevert();
+        staking.stakeLiquidity(100e18);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        andeToken.approve(address(feeDistributor), 100e18);
+        vm.expectRevert();
+        feeDistributor.collectFees(100e18);
+        vm.stopPrank();
+
+        // Unpause and verify operations work
+        vm.startPrank(owner);
+        staking.unpause();
+        feeDistributor.unpause();
+        treasury.unpause();
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        staking.stakeLiquidity(100e18);
+        vm.stopPrank();
+
+        assertEq(staking.getLiquidityStake(alice), 100e18);
+
+        console.log("Emergency pause/unpause successful");
+    }
+
+    // ============================================
+    // TEST 10: End-to-End User Journey
+    // ============================================
+    
+    function testEndToEndUserJourney() public {
+        console.log("=== Starting End-to-End User Journey ===");
+        
+        // 1. Alice receives vested tokens
+        vm.prank(owner);
+        vesting.setTGE(block.timestamp);
+        
+        vm.startPrank(owner);
+        andeToken.approve(address(vesting), 500_000e18);
+        vesting.createVestingSchedule(
+            alice,
+            500_000e18,
+            AndeVesting.AllocationCategory.TEAM,
+            0, // No cliff for testing
+            365 days
+        );
+        vm.stopPrank();
+
+        // 2. Alice claims some tokens
+        vm.warp(block.timestamp + 30 days);
+        uint256 claimable = vesting.getClaimableAmount(alice, 0);
+        
+        vm.prank(alice);
+        vesting.claim(0);
+        
+        console.log("Alice claimed:", claimable);
+
+        // 3. Alice stakes her tokens
+        vm.startPrank(alice);
+        uint256 aliceBalance = andeToken.balanceOf(alice);
+        andeToken.approve(address(staking), aliceBalance);
+        staking.stakeLiquidity(aliceBalance / 2);
+        staking.stakeGovernance(aliceBalance / 2, AndeNativeStaking.LockPeriod.SIX_MONTHS);
+        vm.stopPrank();
+
+        console.log("Alice staked:", aliceBalance);
+
+        // 4. Network generates fees
+        vm.startPrank(owner);
+        andeToken.approve(address(feeDistributor), NETWORK_FEES);
+        feeDistributor.collectFees(NETWORK_FEES);
+        vm.stopPrank();
+
+        // 5. Fees are distributed
+        feeDistributor.distributeFees();
+
+        // 6. Alice participates in governance (treasury grant voting)
+        vm.startPrank(owner);
+        andeToken.approve(address(treasury), 50_000e18);
+        treasury.receiveFunds(50_000e18);
+        
+        uint256 grantId = treasury.proposeGrant(
+            bob,
+            5_000e18,
+            "Community Project",
+            "Building tools",
+            "QmHash",
+            CommunityTreasury.GrantCategory.COMMUNITY_EVENT
+        );
+        
+        treasury.grantRole(treasury.GRANT_APPROVER_ROLE(), alice);
+        vm.stopPrank();
+
+        // Alice votes on the grant
+        vm.prank(alice);
+        treasury.voteOnGrant(grantId, true);
+
+        console.log("Alice voted on grant with power:", andeToken.balanceOf(alice));
+
+        // 7. Verify complete cycle
+        assertGt(staking.getLiquidityStake(alice), 0);
+        assertGt(staking.getGovernanceStake(alice), 0);
+        assertGt(staking.getVotingPower(alice), 0);
+        assertTrue(treasury.hasVotedOnGrant(grantId, alice));
+
+        console.log("=== End-to-End Journey Successful ===");
+    }
+}

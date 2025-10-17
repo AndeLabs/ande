@@ -58,6 +58,28 @@ contract AndeNativeStaking is
         uint256 rewardDebt;
         uint256 stakedAt;
         bool isSequencer;
+        uint256 lastStakeBlock;
+        uint256 lastStakeTimestamp;
+    }
+    
+    struct CircuitBreaker {
+        bool stakingPaused;
+        bool unstakingPaused;
+        bool rewardClaimPaused;
+        bool rewardDistributionPaused;
+        uint256 maxStakePerTx;
+        uint256 maxUnstakePerTx;
+        uint256 dailyWithdrawLimit;
+        uint256 withdrawnToday;
+        uint256 lastResetDay;
+    }
+    
+    struct SequencerPerformance {
+        uint256 totalBlocks;
+        uint256 missedBlocks;
+        uint256 lastActivityBlock;
+        bool isActive;
+        uint256 slashCount;
     }
 
     struct RewardPool {
@@ -94,6 +116,16 @@ contract AndeNativeStaking is
     uint256 public totalVotingPower;
     address[] public sequencers;
     mapping(address => bool) public isActiveSequencer;
+    
+    CircuitBreaker public circuitBreaker;
+    mapping(address => SequencerPerformance) public sequencerPerformance;
+    address public treasury;
+    
+    uint256 public constant MIN_VOTING_POWER_BLOCKS = 2;
+    uint256 public constant MIN_VOTING_POWER_TIME = 1 hours;
+    uint256 public constant MAX_SLASHES = 3;
+    uint256 public constant SLASH_PERCENTAGE = 500;
+    uint256 public totalRewardDebt;
 
     event Staked(
         address indexed user,
@@ -108,6 +140,10 @@ contract AndeNativeStaking is
     event SequencerRegistered(address indexed sequencer);
     event SequencerRemoved(address indexed sequencer);
     event LockExtended(address indexed user, LockPeriod newLockPeriod, uint256 newLockUntil);
+    event SequencerSlashed(address indexed sequencer, uint256 amount, string reason);
+    event CircuitBreakerTriggered(string breakerType, bool enabled);
+    event DailyLimitUpdated(uint256 newLimit);
+    event InvariantCheckFailed(string invariantType, uint256 expected, uint256 actual);
 
     error InsufficientStakeAmount();
     error StakeStillLocked();
@@ -117,19 +153,28 @@ contract AndeNativeStaking is
     error SequencerStakeRequired();
     error InvalidStakingLevel();
     error CannotReduceLockPeriod();
+    error InvariantViolation(string reason);
+    error StakingPaused();
+    error UnstakingPaused();
+    error RewardClaimPaused();
+    error RewardDistributionPaused();
+    error ExceedsMaxPerTx();
+    error ExceedsDailyLimit();
+    error MaxSlashesReached();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _andeToken, address defaultAdmin) public initializer {
+    function initialize(address _andeToken, address defaultAdmin, address _treasury) public initializer {
         __AccessControl_init();
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         andeToken = IERC20(_andeToken);
+        treasury = _treasury;
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(PAUSER_ROLE, defaultAdmin);
@@ -139,9 +184,60 @@ contract AndeNativeStaking is
         rewardPools[StakingLevel.SEQUENCER].lastUpdateTime = block.timestamp;
         rewardPools[StakingLevel.GOVERNANCE].lastUpdateTime = block.timestamp;
         rewardPools[StakingLevel.LIQUIDITY].lastUpdateTime = block.timestamp;
+        
+        circuitBreaker.dailyWithdrawLimit = 1_000_000 * 1e18;
+        circuitBreaker.maxStakePerTx = 10_000_000 * 1e18;
+        circuitBreaker.maxUnstakePerTx = 1_000_000 * 1e18;
+        circuitBreaker.lastResetDay = block.timestamp / 1 days;
     }
 
-    function stakeLiquidity(uint256 amount) external whenNotPaused nonReentrant {
+    modifier checkInvariants() {
+        _;
+        _verifyInvariants();
+    }
+    
+    modifier whenStakingEnabled() {
+        if (circuitBreaker.stakingPaused || paused()) revert StakingPaused();
+        _;
+    }
+    
+    modifier whenUnstakingEnabled() {
+        if (circuitBreaker.unstakingPaused || paused()) revert UnstakingPaused();
+        _;
+    }
+    
+    modifier whenRewardClaimEnabled() {
+        if (circuitBreaker.rewardClaimPaused) revert RewardClaimPaused();
+        _;
+    }
+    
+    modifier whenRewardDistributionEnabled() {
+        if (circuitBreaker.rewardDistributionPaused) revert RewardDistributionPaused();
+        _;
+    }
+    
+    modifier checkDailyLimit(uint256 amount) {
+        _resetDailyLimitIfNeeded();
+        if (circuitBreaker.withdrawnToday + amount > circuitBreaker.dailyWithdrawLimit) {
+            revert ExceedsDailyLimit();
+        }
+        circuitBreaker.withdrawnToday += amount;
+        _;
+    }
+    
+    modifier checkMaxPerTx(uint256 amount, bool isStake) {
+        if (isStake && amount > circuitBreaker.maxStakePerTx) revert ExceedsMaxPerTx();
+        if (!isStake && amount > circuitBreaker.maxUnstakePerTx) revert ExceedsMaxPerTx();
+        _;
+    }
+
+    function stakeLiquidity(uint256 amount) 
+        external 
+        whenStakingEnabled 
+        nonReentrant 
+        checkMaxPerTx(amount, true)
+        checkInvariants
+    {
         if (amount < MIN_LIQUIDITY_STAKE) revert InsufficientStakeAmount();
 
         _updateRewardPool(StakingLevel.LIQUIDITY);
@@ -150,8 +246,10 @@ contract AndeNativeStaking is
 
     function stakeGovernance(uint256 amount, LockPeriod lockPeriod)
         external
-        whenNotPaused
+        whenStakingEnabled
         nonReentrant
+        checkMaxPerTx(amount, true)
+        checkInvariants
     {
         if (amount < MIN_GOVERNANCE_STAKE) revert InsufficientStakeAmount();
         if (lockPeriod == LockPeriod.NONE) revert InvalidLockPeriod();
@@ -160,7 +258,13 @@ contract AndeNativeStaking is
         _stake(msg.sender, amount, StakingLevel.GOVERNANCE, lockPeriod);
     }
 
-    function stakeSequencer(uint256 amount) external whenNotPaused nonReentrant {
+    function stakeSequencer(uint256 amount) 
+        external 
+        whenStakingEnabled 
+        nonReentrant 
+        checkMaxPerTx(amount, true)
+        checkInvariants
+    {
         if (amount < MIN_SEQUENCER_STAKE) revert InsufficientStakeAmount();
 
         _updateRewardPool(StakingLevel.SEQUENCER);
@@ -192,7 +296,12 @@ contract AndeNativeStaking is
         stake.lockUntil = block.timestamp + lockDuration;
         stake.votingPower += votingPower;
         stake.stakedAt = block.timestamp;
-        stake.rewardDebt = (stake.amount * rewardPools[level].rewardPerShare) / 1e18;
+        stake.lastStakeBlock = block.number;
+        stake.lastStakeTimestamp = block.timestamp;
+        
+        uint256 newRewardDebt = (stake.amount * rewardPools[level].rewardPerShare) / 1e18;
+        totalRewardDebt = totalRewardDebt - stake.rewardDebt + newRewardDebt;
+        stake.rewardDebt = newRewardDebt;
 
         totalStaked[level] += amount;
         if (level == StakingLevel.GOVERNANCE) {
@@ -202,7 +311,14 @@ contract AndeNativeStaking is
         emit Staked(user, amount, level, lockPeriod, votingPower);
     }
 
-    function unstake() external nonReentrant {
+    function unstake() 
+        external 
+        whenUnstakingEnabled 
+        nonReentrant 
+        checkMaxPerTx(stakes[msg.sender].amount, false)
+        checkDailyLimit(stakes[msg.sender].amount)
+        checkInvariants
+    {
         StakeInfo storage stake = stakes[msg.sender];
         if (stake.amount == 0) revert NoStakeFound();
         if (block.timestamp < stake.lockUntil) revert StakeStillLocked();
@@ -212,8 +328,11 @@ contract AndeNativeStaking is
 
         uint256 amount = stake.amount;
         StakingLevel level = stake.level;
+        uint256 rewardDebt = stake.rewardDebt;
 
         totalStaked[level] -= amount;
+        totalRewardDebt -= rewardDebt;
+        
         if (level == StakingLevel.GOVERNANCE) {
             totalVotingPower -= stake.votingPower;
         }
@@ -229,7 +348,11 @@ contract AndeNativeStaking is
         emit Unstaked(msg.sender, amount, reward);
     }
 
-    function claimRewards() external nonReentrant {
+    function claimRewards() 
+        external 
+        whenRewardClaimEnabled 
+        nonReentrant 
+    {
         StakeInfo storage stake = stakes[msg.sender];
         if (stake.amount == 0) revert NoStakeFound();
 
@@ -247,13 +370,21 @@ contract AndeNativeStaking is
 
         if (pending > 0) {
             andeToken.safeTransfer(user, pending);
-            stake.rewardDebt = (stake.amount * pool.rewardPerShare) / 1e18;
+            uint256 oldRewardDebt = stake.rewardDebt;
+            uint256 newRewardDebt = (stake.amount * pool.rewardPerShare) / 1e18;
+            stake.rewardDebt = newRewardDebt;
+            totalRewardDebt = totalRewardDebt - oldRewardDebt + newRewardDebt;
         }
 
         return pending;
     }
 
-    function distributeRewards(uint256 totalAmount) external onlyRole(REWARD_DISTRIBUTOR_ROLE) {
+    function distributeRewards(uint256 totalAmount) 
+        external 
+        onlyRole(REWARD_DISTRIBUTOR_ROLE) 
+        whenRewardDistributionEnabled
+        checkInvariants
+    {
         uint256 sequencerAmount = (totalAmount * SEQUENCER_SHARE) / BASIS_POINTS;
         uint256 governanceAmount = (totalAmount * GOVERNANCE_SHARE) / BASIS_POINTS;
         uint256 liquidityAmount = (totalAmount * LIQUIDITY_SHARE) / BASIS_POINTS;
@@ -373,6 +504,171 @@ contract AndeNativeStaking is
             }
         }
         return count;
+    }
+
+    function getVotingPowerWithFlashLoanProtection(address user) 
+        external 
+        view 
+        returns (uint256) 
+    {
+        StakeInfo memory stake = stakes[user];
+        
+        if (block.number - stake.lastStakeBlock < MIN_VOTING_POWER_BLOCKS) {
+            return 0;
+        }
+        
+        if (block.timestamp - stake.lastStakeTimestamp < MIN_VOTING_POWER_TIME) {
+            return 0;
+        }
+        
+        return stake.votingPower;
+    }
+    
+    function _verifyInvariants() internal view {
+        uint256 contractBalance = andeToken.balanceOf(address(this));
+        uint256 calculatedTotal = totalStaked[StakingLevel.LIQUIDITY] +
+                                  totalStaked[StakingLevel.GOVERNANCE] +
+                                  totalStaked[StakingLevel.SEQUENCER];
+        
+        if (calculatedTotal > contractBalance) {
+            revert InvariantViolation("Total staked exceeds contract balance");
+        }
+        
+        if (totalStaked[StakingLevel.GOVERNANCE] > 0 || 
+            totalStaked[StakingLevel.LIQUIDITY] > 0 || 
+            totalStaked[StakingLevel.SEQUENCER] > 0) {
+            if (contractBalance == 0) {
+                revert InvariantViolation("Non-zero stakes with zero balance");
+            }
+        }
+    }
+    
+    function _resetDailyLimitIfNeeded() internal {
+        uint256 currentDay = block.timestamp / 1 days;
+        if (currentDay > circuitBreaker.lastResetDay) {
+            circuitBreaker.withdrawnToday = 0;
+            circuitBreaker.lastResetDay = currentDay;
+        }
+    }
+    
+    function slashSequencer(address sequencer, string memory reason)
+        external
+        onlyRole(SEQUENCER_MANAGER_ROLE)
+    {
+        if (!isActiveSequencer[sequencer]) revert NotSequencer();
+        
+        StakeInfo storage stake = stakes[sequencer];
+        if (!stake.isSequencer) revert NotSequencer();
+        
+        if (sequencerPerformance[sequencer].slashCount >= MAX_SLASHES) {
+            revert MaxSlashesReached();
+        }
+        
+        uint256 slashAmount = (stake.amount * SLASH_PERCENTAGE) / BASIS_POINTS;
+        
+        stake.amount -= slashAmount;
+        totalStaked[stake.level] -= slashAmount;
+        
+        if (stake.level == StakingLevel.GOVERNANCE) {
+            uint256 lostVotingPower = (stake.votingPower * SLASH_PERCENTAGE) / BASIS_POINTS;
+            stake.votingPower -= lostVotingPower;
+            totalVotingPower -= lostVotingPower;
+        }
+        
+        andeToken.safeTransfer(treasury, slashAmount);
+        
+        sequencerPerformance[sequencer].slashCount++;
+        
+        emit SequencerSlashed(sequencer, slashAmount, reason);
+        
+        if (sequencerPerformance[sequencer].slashCount >= MAX_SLASHES) {
+            _removeSequencer(sequencer);
+        }
+    }
+    
+    function emergencyPauseStaking() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.stakingPaused = true;
+        emit CircuitBreakerTriggered("staking", true);
+    }
+    
+    function emergencyResumeStaking() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.stakingPaused = false;
+        emit CircuitBreakerTriggered("staking", false);
+    }
+    
+    function emergencyPauseUnstaking() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.unstakingPaused = true;
+        emit CircuitBreakerTriggered("unstaking", true);
+    }
+    
+    function emergencyResumeUnstaking() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.unstakingPaused = false;
+        emit CircuitBreakerTriggered("unstaking", false);
+    }
+    
+    function emergencyPauseRewardClaim() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.rewardClaimPaused = true;
+        emit CircuitBreakerTriggered("rewardClaim", true);
+    }
+    
+    function emergencyResumeRewardClaim() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.rewardClaimPaused = false;
+        emit CircuitBreakerTriggered("rewardClaim", false);
+    }
+    
+    function emergencyPauseRewardDistribution() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.rewardDistributionPaused = true;
+        emit CircuitBreakerTriggered("rewardDistribution", true);
+    }
+    
+    function emergencyResumeRewardDistribution() external onlyRole(PAUSER_ROLE) {
+        circuitBreaker.rewardDistributionPaused = false;
+        emit CircuitBreakerTriggered("rewardDistribution", false);
+    }
+    
+    function setDailyWithdrawLimit(uint256 newLimit) 
+        external 
+        onlyRole(DEFAULT_ADMIN_ROLE) 
+    {
+        circuitBreaker.dailyWithdrawLimit = newLimit;
+        emit DailyLimitUpdated(newLimit);
+    }
+    
+    function setMaxStakePerTx(uint256 newMax) 
+        external 
+        onlyRole(DEFAULT_ADMIN_ROLE) 
+    {
+        circuitBreaker.maxStakePerTx = newMax;
+    }
+    
+    function setMaxUnstakePerTx(uint256 newMax) 
+        external 
+        onlyRole(DEFAULT_ADMIN_ROLE) 
+    {
+        circuitBreaker.maxUnstakePerTx = newMax;
+    }
+    
+    function setTreasury(address newTreasury) 
+        external 
+        onlyRole(DEFAULT_ADMIN_ROLE) 
+    {
+        treasury = newTreasury;
+    }
+    
+    function recordSequencerActivity(address sequencer) 
+        external 
+        onlyRole(SEQUENCER_MANAGER_ROLE) 
+    {
+        sequencerPerformance[sequencer].totalBlocks++;
+        sequencerPerformance[sequencer].lastActivityBlock = block.number;
+        sequencerPerformance[sequencer].isActive = true;
+    }
+    
+    function recordSequencerMiss(address sequencer) 
+        external 
+        onlyRole(SEQUENCER_MANAGER_ROLE) 
+    {
+        sequencerPerformance[sequencer].missedBlocks++;
     }
 
     function pause() external onlyRole(PAUSER_ROLE) {

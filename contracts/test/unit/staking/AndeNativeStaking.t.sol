@@ -29,7 +29,7 @@ contract AndeNativeStakingTest is Test {
 
         AndeNativeStaking implementation = new AndeNativeStaking();
         bytes memory initData =
-            abi.encodeWithSelector(AndeNativeStaking.initialize.selector, address(andeToken), owner);
+            abi.encodeWithSelector(AndeNativeStaking.initialize.selector, address(andeToken), owner, owner);
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         staking = AndeNativeStaking(address(proxy));
