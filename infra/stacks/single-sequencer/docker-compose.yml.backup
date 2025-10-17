@@ -1,0 +1,122 @@
+services:
+  # JWT initialization service
+  jwt-init-sequencer:
+    container_name: jwt-init-sequencer
+    image: alpine:3.22.0
+    volumes:
+      - jwttoken-sequencer:/jwt
+    healthcheck:
+      test: [CMD, test, -f, /jwt/jwt.hex]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    command: >
+      /bin/sh -c "mkdir -p /jwt &&
+      if [ ! -f /jwt/jwt.hex ]; then
+        apk add --no-cache openssl &&
+        openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex;
+      fi"
+
+  # ev-reth-sequencer con ANDE Token Duality
+  ev-reth-sequencer:
+    container_name: ev-reth-sequencer
+    image: andelabs/ev-reth:latest
+    pull_policy: never
+    depends_on:
+      jwt-init-sequencer:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+      - .env.ande
+    ports:
+      - "8545:8545"
+      - "9001:9001"
+    restart: always
+    volumes:
+      - ./genesis.json:/root/genesis.json:ro
+      - jwttoken-sequencer:/root/jwt:ro
+      - ev-reth-sequencer-data:/root/reth
+    entrypoint: /bin/sh -c
+    command:
+      - |
+        echo "🚀 Starting ANDE-enabled ev-reth for AndeChain..."
+        echo "📍 ANDE Precompile: 0x00000000000000000000000000000000000000FD"
+        echo "🔗 Token Duality: ✅ Integrated"
+        echo "⚡ Parallel EVM: ✅ Enabled"
+        echo "🧠 MEV System: ✅ Ready"
+        echo "📦 Build: 2025-10-14 (368ad84)"
+        echo ""
+
+        ev-reth node \
+        --chain /root/genesis.json \
+        --metrics 0.0.0.0:9001 \
+        --log.file.directory /root/logs \
+        --authrpc.addr 0.0.0.0 \
+        --authrpc.port 8551 \
+        --authrpc.jwtsecret /root/jwt/jwt.hex \
+        --http --http.addr 0.0.0.0 --http.port 8545 \
+        --http.api "admin,eth,net,web3,txpool,debug" \
+        --http.corsdomain "*" \
+        --disable-discovery \
+        --txpool.pending-max-count 200000 \
+        --datadir /root/reth \
+        --dev
+    networks:
+      - ande-network
+
+  # Local DA service
+  local-da:
+    image: ghcr.io/andelabs/andechain-local-da:develop
+    container_name: local-da
+    restart: unless-stopped
+    command: ["-listen-all", "-port", "7980"]
+    ports:
+      - "7980:7980"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7980"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ande-network
+
+  # Single sequencer (placeholder for now)
+  single-sequencer:
+    container_name: single-sequencer
+    image: alpine:3.22.0
+    command: tail -f /dev/null
+    env_file: .env
+    ports:
+      - "26660:26660"
+    restart: always
+    depends_on:
+      ev-reth-sequencer:
+        condition: service_started
+      local-da:
+        condition: service_started
+    environment:
+      - EVM_ENGINE_URL=http://ev-reth-sequencer:8551
+      - EVM_ETH_URL=http://ev-reth-sequencer:8545
+      - EVM_JWT_PATH=/root/jwt/jwt.hex
+      - EVM_BLOCK_TIME=500ms
+      - EVM_SIGNER_PASSPHRASE=${EVM_SIGNER_PASSPHRASE}
+      - DA_BLOCK_TIME=30s
+      - DA_ADDRESS=http://local-da:7980
+    networks:
+      - ande-network
+
+networks:
+  ande-network:
+    name: ande-network
+    driver: bridge
+
+volumes:
+  jwttoken-sequencer:
+    driver: local
+  ev-reth-sequencer-data:
+    driver: local
+  sequencer-data:
+    driver: local
+  sequencer-export:
+    name: sequencer-export
+    driver: local

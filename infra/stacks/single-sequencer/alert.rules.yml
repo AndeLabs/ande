@@ -1,0 +1,78 @@
+groups:
+  - name: andechain_alerts
+    interval: 30s
+    rules:
+      - alert: AndeChainNodeDown
+        expr: up{job="andechain-evreth"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AndeChain EV-Reth node is down"
+          description: "AndeChain EV-Reth node has been down for more than 2 minutes"
+
+      - alert: SequencerDown
+        expr: up{job="andechain-sequencer"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AndeChain Sequencer is down"
+          description: "AndeChain Sequencer has been down for more than 2 minutes"
+
+      - alert: CelestiaNodeDown
+        expr: up{job="celestia-node"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celestia Light Node is down"
+          description: "Celestia Light Node has been down for more than 5 minutes"
+
+      - alert: HighBlockProductionTime
+        expr: rate(reth_blockchain_blocks_total[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Block production is slow"
+          description: "Block production rate is below expected threshold"
+
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container memory usage is high"
+          description: "Container {{ $labels.name }} is using more than 90% of its memory limit"
+
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container CPU usage is high"
+          description: "Container {{ $labels.name }} is using more than 80% CPU"
+
+  - name: celestia_da_alerts
+    interval: 30s
+    rules:
+      - alert: DASubmissionFailures
+        expr: rate(celestia_blob_submission_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of DA submission failures"
+          description: "Celestia blob submission failure rate is above threshold"
+
+      - alert: CelestiaHeightNotAdvancing
+        expr: delta(celestia_block_height[10m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celestia block height not advancing"
+          description: "Celestia network height has not changed in 10 minutes"

@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'andechain-local'
+    environment: 'development'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - '/etc/prometheus/alert.rules.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'andechain-evreth'
+    static_configs:
+      - targets: ['ev-reth-sequencer:9001']
+    metrics_path: /metrics
+    scrape_interval: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'reth_.*'
+        action: keep
+
+  - job_name: 'andechain-sequencer'
+    static_configs:
+      - targets: ['single-sequencer:9100']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  - job_name: 'celestia-node'
+    static_configs:
+      - targets: ['celestia-exporter:9100']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'celestia_.*'
+        action: keep
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    metrics_path: /metrics
+    scrape_interval: 15s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'node_.*'
+        action: keep
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s

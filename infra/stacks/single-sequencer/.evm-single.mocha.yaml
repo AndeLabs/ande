@@ -1,0 +1,104 @@
+# AndeChain evm-single Configuration for Celestia Mocha Testnet
+# =============================================================
+
+# General Configuration
+app:
+  name: "AndeChain Mocha Testnet"
+  version: "0.3.0"
+  network: "mocha"
+  chain_id: 1234
+
+# Node Configuration
+node:
+  # Aggregator mode (true for sequencer, false for full node)
+  aggregator: true
+  
+  # Block timing
+  block_time: "2s"
+  
+  # P2P Configuration
+  p2p:
+    listen_address: "/ip4/0.0.0.0/tcp/7676"
+    bootstrap_peers: []
+    
+  # RPC Configuration  
+  rpc:
+    address: "0.0.0.0:7331"
+    
+  # Metrics Configuration
+  metrics:
+    enabled: true
+    listen_address: ":26660"
+    prometheus: true
+
+# EVM Configuration
+evm:
+  # Engine API Configuration
+  engine:
+    url: "http://ev-reth-testnet:8551"
+    jwt_secret_path: "/root/jwt/jwt.hex"
+    
+  # JSON-RPC Configuration
+  rpc:
+    url: "http://ev-reth-testnet:8545"
+    
+  # Genesis Configuration
+  genesis:
+    hash: ""  # Will be populated at runtime
+    
+  # Signer Configuration
+  signer:
+    passphrase: "ande_testnet_passphrase_secure_2025"
+
+# Data Availability Configuration
+da:
+  # Celestia Configuration
+  celestia:
+    # Network Configuration
+    network: "mocha"
+    rpc_url: "http://celestia-light-client:26657"
+    grpc_url: "celestia-light-client:9090"
+    
+    # Block timing
+    block_time: "30s"
+    
+    # Namespace Configuration (will be auto-generated)
+    header_namespace: ""
+    data_namespace: ""
+    
+    # Authentication
+    auth_token: ""
+    
+    # Gateway Configuration
+    gateway:
+      address: "http://celestia-light-client:26659"
+
+# Logging Configuration
+log:
+  level: "info"
+  format: "json"
+  
+# Database Configuration
+db:
+  path: "/root/.evm-single/data"
+  
+# State Management
+state:
+  prune: true
+  prune_interval: "1h"
+  
+# Security Configuration
+security:
+  enable_tls: false
+  cors_origins: ["*"]
+  
+# Development Configuration
+development:
+  mode: true
+  debug: false
+  
+# Health Check Configuration
+health:
+  enabled: true
+  endpoint: "/health"
+  interval: "30s"

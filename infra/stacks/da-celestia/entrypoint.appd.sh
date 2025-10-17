@@ -147,4 +147,4 @@ fi
 
 log "INIT" "Starting celestia-appd with chain-id: $DA_NETWORK"
 log "INFO" "Node is now starting up..."
-celestia-appd start
+celestia-appd start --force-no-bbr

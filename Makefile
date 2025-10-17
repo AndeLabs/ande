@@ -32,6 +32,13 @@ help:
 	@echo "  make faucet             - Inicia servidor de faucet"
 	@echo "  make clean              - Limpia artifacts de compilación"
 	@echo ""
+	@echo "📊 Monitoreo:"
+	@echo "  make start-monitoring   - Inicia Prometheus + Grafana"
+	@echo "  make stop-monitoring    - Detiene stack de monitoreo"
+	@echo "  make status-monitoring  - Estado del monitoreo"
+	@echo "  make metrics            - Muestra métricas en tiempo real"
+	@echo "  make status-full        - Estado completo (sistema + monitoreo)"
+	@echo ""
 	@echo "📦 Version Control:"
 	@echo "  make version            - Muestra información de versiones"
 	@echo "  make version-patch      - Incrementa versión patch"
@@ -343,7 +350,101 @@ redeploy-token:
 		echo "   cast call <NEW_ADDRESS> 'name()' --rpc-url local"
 
 # ==========================================
-# Testnet Deployment Commands
+# Mocha Testnet Deployment Commands
+# ==========================================
+
+# Despliega testnet completo en Celestia Mocha
+deploy-mocha:
+	@echo "🌙 Desplegando AndeChain en Celestia Mocha Testnet..."
+	@./scripts/deploy-mocha.sh
+
+# Verifica salud del testnet Mocha
+health-mocha:
+	@echo "🏥 Verificando salud del testnet Mocha..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "📊 Estado de servicios Mocha:"
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml ps
+	@echo ""
+	@echo "🌙 Estado de Celestia Mocha:"
+	@cd infra && docker compose -f docker-compose.celestia.yml ps
+	@echo ""
+	@echo "🔗 Conectividad RPC:"
+	@curl -s -X POST -H "Content-Type: application/json" \
+		--data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
+		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "Chain ID: {}"
+	@echo ""
+	@echo "🌙 Red Celestia:"
+	@curl -s http://localhost:26657/status | jq -r '.result.node_info.network' | xargs -I {} echo "Network: {}"
+	@echo ""
+	@echo "📦 Último bloque:"
+	@curl -s -X POST -H "Content-Type: application/json" \
+		--data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "Block: {}"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Detiene testnet Mocha
+stop-mocha:
+	@echo "🛑 Deteniendo testnet Mocha..."
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down
+	@cd infra && docker compose -f docker-compose.celestia.yml down
+
+# Limpia testnet Mocha (borra volúmenes)
+clean-mocha:
+	@echo "🧹 Limpiando testnet Mocha..."
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down -v
+	@cd infra && docker compose -f docker-compose.celestia.yml down -v
+	@docker system prune -f --volumes
+
+# Muestra logs del testnet Mocha
+logs-mocha:
+	@echo "📝 Mostrando logs del testnet Mocha..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🚀 AndeChain Services:"
+	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml logs -f
+	@echo ""
+	@echo "🌙 Celestia Services:"
+	@cd infra && docker compose -f docker-compose.celestia.yml logs -f
+
+# Reinicia servicio específico del testnet Mocha
+restart-mocha-service:
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "❌ Especifica SERVICE=nombre_del_servicio"; \
+		echo "Servicios disponibles: ev-reth-testnet, single-sequencer-testnet, local-da-testnet, prometheus-testnet, grafana-testnet, celestia-light-client"; \
+		exit 1; \
+	fi
+	@echo "🔄 Reiniciando servicio $(SERVICE)..."
+	@if echo "$(SERVICE)" | grep -q "celestia"; then \
+		cd infra && docker compose -f docker-compose.celestia.yml restart $(SERVICE); \
+	else \
+		cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml restart $(SERVICE); \
+	fi
+
+# Verifica métricas del testnet Mocha
+metrics-mocha:
+	@echo "📊 Verificando métricas del testnet Mocha..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Prometheus: http://localhost:9090"
+	@echo "Grafana: http://localhost:3000 (admin/ande_testnet_2025)"
+	@echo "AndeChain Metrics: http://localhost:9001/metrics"
+	@echo "Sequencer Metrics: http://localhost:26660/metrics"
+	@echo "Celestia Exporter: http://localhost:9100/metrics"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Despliega contratos en testnet Mocha
+deploy-contracts-mocha:
+	@echo "📜 Desplegando contratos en testnet Mocha..."
+	@cd contracts && \
+		if [ ! -f ".env.mocha" ]; then \
+			echo "Creando .env.mocha..."; \
+			echo "PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" > .env.mocha; \
+			echo "RPC_URL=http://localhost:8545" >> .env.mocha; \
+			echo "CHAIN_ID=1234" >> .env.mocha; \
+		fi && \
+		source .env.mocha && \
+		forge script script/DeploySimple.s.sol --rpc-url $$RPC_URL --broadcast --legacy --private-key $$PRIVATE_KEY
+
+# ==========================================
+# Testnet Deployment Commands (Legacy)
 # ==========================================
 
 # Despliega testnet completo con MEV y ejecución paralela
@@ -444,3 +545,47 @@ health-zk-lazybridging:
 	@curl -s http://localhost:26657/status || echo "❌ Celestia Light Client no responde"
 	@curl -s http://localhost:3000/health || echo "❌ IBC Relayer no responde"
 	@docker ps | grep -E "(zk-prover|celestia|ibc-relayer)" || echo "❌ Contenedores no corriendo"
+
+# ==========================================
+# Monitoring Commands
+# ==========================================
+
+# Inicia el stack de monitoreo completo
+start-monitoring:
+	@echo "📊 Iniciando stack de monitoreo..."
+	@./start-monitoring.sh start
+
+# Detiene el stack de monitoreo
+stop-monitoring:
+	@echo "🛑 Deteniendo stack de monitoreo..."
+	@./start-monitoring.sh stop
+
+# Reinicia el stack de monitoreo
+restart-monitoring:
+	@echo "🔄 Reiniciando stack de monitoreo..."
+	@./start-monitoring.sh restart
+
+# Muestra el estado del stack de monitoreo
+status-monitoring:
+	@echo "📊 Estado del stack de monitoreo..."
+	@./start-monitoring.sh status
+
+# Muestra logs del stack de monitoreo
+logs-monitoring:
+	@echo "📝 Mostrando logs del stack de monitoreo..."
+	@./start-monitoring.sh logs
+
+# Verifica targets de Prometheus
+targets-monitoring:
+	@echo "🎯 Verificando targets de Prometheus..."
+	@./start-monitoring.sh targets
+
+# Muestra métricas en tiempo real
+metrics:
+	@echo "📊 Mostrando métricas de AndeChain..."
+	@./monitor-logs.sh metrics
+
+# Muestra el estado completo del sistema con monitoreo
+status-full:
+	@echo "📊 Estado completo del sistema AndeChain + Monitoreo..."
+	@./monitor-logs.sh status

@@ -15,7 +15,7 @@ node:
   # Run node in light mode
   light: false
   # Block time (duration). Examples: "500ms", "1s", "5s", "1m", "2m30s", "10m".
-  block_time: 1s
+  block_time: 5s
   # Maximum number of headers or data pending DA submission. When this limit is reached, the aggregator pauses block production until some headers or data are confirmed. Use 0 for no limit.
   max_pending_headers_and_data: 0
   # Enables lazy aggregation mode, where blocks are only produced when transactions are available or after LazyBlockTime. Optimizes resources by avoiding empty block creation during periods of inactivity.
@@ -28,9 +28,10 @@ node:
   readiness_max_blocks_behind: 3
 da:
   # Address of the data availability layer service (host:port). This is the endpoint where Rollkit will connect to submit and retrieve data.
-  address: http://localhost:7980
+  # Using local Celestia Light Node v0.27.5 for mocha-4 testnet
+  address: http://localhost:26658
   # Authentication token for the data availability layer service. Required if the DA service needs authentication.
-  auth_token: ""
+  auth_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdLCJOb25jZSI6Ii9JMzdSNmZxZG9MOTIyM0JyNkFNaGJ3YW1hVmx4U2ZLajdBZldhaDVHdlk9IiwiRXhwaXJlc0F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ.OqHgOoHtBz3QQ6guNkQgBNRDAN8rObS9nqHbUQdbB-k"
   # Gas price for data availability transactions. Use -1 for automatic gas price determination. Higher values may result in faster inclusion.
   gas_price: -1.0
   # Multiplier applied to gas price when retrying failed DA submissions. Values > 1 increase gas price on retries to improve chances of inclusion.
@@ -38,13 +39,13 @@ da:
   # Additional options passed to the DA layer when submitting data. Format depends on the specific DA implementation being used.
   submit_options: ""
   # Namespace ID used when submitting blobs to the DA layer. When a DataNamespace is provided, only the header is sent to this namespace.
-  namespace: 5GTvaObP89
+  namespace: "73100c8d"
   # Namespace ID for submitting data to DA layer. Use this to speed-up light clients.
-  data_namespace: ""
+  data_namespace: "f9f23cc5"
   # Average block time of the DA chain (duration). Determines frequency of DA layer syncing, maximum backoff time for retries, and is multiplied by MempoolTTL to calculate transaction expiration. Examples: "15s", "30s", "1m", "2m30s", "10m".
-  block_time: 6s
+  block_time: 12s
   # Starting block height on the DA layer from which to begin syncing. Useful when deploying a new chain on an existing DA chain.
-  start_height: 0
+  start_height: 3000000
   # Number of DA blocks after which a transaction is considered expired and dropped from the mempool. Controls retry backoff timing.
   mempool_ttl: 0
   # Maximum number of attempts to submit data to the DA layer before giving up. Higher values provide more resilience but can delay error reporting.
