@@ -16,7 +16,26 @@
     "terminalTotalDifficultyPassed": true,
     "shanghaiTime": 0,
     "cancunTime": 0,
-    "pragueTime": 0
+    "pragueTime": 0,
+    "andechain": {
+      "name": "AndeChain Sovereign Rollup",
+      "type": "sovereign",
+      "dataAvailability": {
+        "provider": "celestia",
+        "namespace": "andechain-v1"
+      },
+      "nativeCurrency": {
+        "name": "ANDE",
+        "symbol": "ANDE",
+        "decimals": 18,
+        "type": "native"
+      },
+      "tokenDuality": {
+        "enabled": true,
+        "precompileAddress": "0x00000000000000000000000000000000000000FD",
+        "description": "ANDE native currency with ERC-20 compatibility via precompile"
+      }
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x0",
