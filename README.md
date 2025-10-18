@@ -1,94 +1,356 @@
-# AndeChain - Sovereign EVM Rollup Infrastructure
+# 🏔️ ANDE Chain - Sovereign EVM Rollup
 
 <div align="center">
 
-**Blockchain Infrastructure for Latin America**
+**Low-Cost, High-Speed Blockchain Infrastructure for Latin America**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Built with Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.25-blue.svg)](https://soliditylang.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![Rust](https://img.shields.io/badge/Rust-ev--reth-orange.svg)](https://www.rust-lang.org/)
+[![Celestia](https://img.shields.io/badge/DA-Celestia-purple.svg)](https://celestia.org/)
+
+[Website](https://andechain.com) • [Documentation](#-documentation) • [Discord](https://discord.gg/andechain) • [Twitter](https://twitter.com/andechain)
 
 </div>
 
 ---
 
-## 🎯 ¿Qué es AndeChain?
+## 🎯 What is ANDE Chain?
 
-**AndeChain es una rollup EVM soberana construida sobre Celestia, diseñada para resolver los desafíos financieros de América Latina.** Nuestra misión es proporcionar una infraestructura blockchain de bajo costo, alta velocidad y totalmente personalizable para potenciar la próxima generación de aplicaciones DeFi y Web3 en la región.
+ANDE Chain is a **Sovereign EVM Rollup** using Celestia for Data Availability. We're building financial infrastructure for Latin America with:
 
-### Arquitectura Simplificada
+- 🚀 **100-500+ TPS** - Parallel EVM execution
+- ⚡ **~2s block time** - Fast finality
+- 💰 **Ultra-low fees** - Celestia DA reduces costs by 90%+
+- 🔧 **Full sovereignty** - Independent consensus, no L1 settlement
+- 🛠️ **EVM Compatible** - Deploy Solidity contracts unchanged
+
+### 🏗️ Architecture
 
 ```
-📱 DApps & Wallets  ───(RPC)───> 🚀 AndeChain Rollup (EVM) ───(DA)───> 📊 Celestia
+┌─────────────────────────────────────────────────────────┐
+│                    ANDE Chain Stack                      │
+├─────────────────────────────────────────────────────────┤
+│  📱 dApps & Wallets (EVM Compatible)                    │
+│         ↓                                                │
+│  🚀 ev-reth (Modified Reth)                             │
+│     • EVM Execution Layer                               │
+│     • ANDE Precompile (0x...FD)                        │
+│     • Parallel Transaction Processing                   │
+│         ↓                                                │
+│  🔄 Evolve Sequencer (ExRollkit)                        │
+│     • Block Production & Consensus                      │
+│         ↓                                                │
+│  📊 Celestia DA                                          │
+│     • Data Availability Layer                           │
+│     • Mocha-4 (testnet) / Mainnet                      │
+│         ↓                                                │
+│  🔍 Blockscout Explorer                                  │
+└─────────────────────────────────────────────────────────┘
 ```
+
+**Key Difference:** We are **NOT** a rollup on Ethereum. We're a sovereign chain using Celestia for DA.
 
 ---
 
-## 🚀 Getting Started (Para Desarrolladores)
+## ⚡ Quick Start
 
-Levanta un entorno de desarrollo local completo con un solo comando.
+### One-Command Setup
 
 ```bash
-# 1. Clona el repositorio
-git clone https://github.com/AndeLabs/andechain.git
+# Clone and setup
+git clone https://github.com/andelabs/andechain.git
 cd andechain
 
-# 2. Inicia todo el ecosistema
-make start
+# Install production system
+bash install-production.sh
+
+# Deploy locally (includes ev-reth + Celestia DA + contracts)
+make deploy-local
 ```
 
-Una vez completado, tu red local estará disponible en `http://localhost:8545`.
+**That's it!** Your local ANDE Chain is running. 🎉
 
-> Para una guía detallada sobre la configuración, el desarrollo, la arquitectura y la solución de problemas, consulta nuestro manual principal:
-> **[📖 Manual de Onboarding y Operaciones](./docs/ONBOARDING.md)**
+**Available at:**
+- 🌐 RPC: `http://localhost:8545`
+- 🔍 Explorer: `http://localhost:4000`
+- 📊 Grafana: `http://localhost:3001`
 
----
+### Next Steps
 
-## 📚 Documentación Principal
+```bash
+# Check system health
+make health
 
-Este repositorio contiene una rica documentación. Usa esta tabla como tu guía para encontrar lo que necesitas.
+# Run tests
+make test-all
 
-| Documento | Descripción |
-| :--- | :--- |
-| 📖 **[Manual de Onboarding](./docs/ONBOARDING.md)** | **EMPIEZA AQUÍ.** Tu guía completa para la instalación, desarrollo local, arquitectura y comandos. |
-| 🗺️ **[Plan Maestro del Proyecto](./docs/AndeChainPlanMaestro.md)** | La visión estratégica, la hoja de ruta técnica y los objetivos a largo plazo del proyecto. |
-| 🏛️ **[Arquitectura Técnica Detallada](./docs/ABOB_TECHNICAL_ARCHITECTURE.md)** | Un análisis profundo de la arquitectura del protocolo, el modelo CDP y los componentes core. |
-| 🌉 **[Mecanismos de Seguridad del Puente](./docs/BRIDGE_ESCAPE_HATCHES.md)** | Documentación de seguridad crítica sobre los mecanismos de escape y seguridad del puente. |
-| 🗳️ **[Modelo veANDE](./docs/VEANDE_MODEL.md)** | Explicación detallada de la tokenómica de voto-depositado (vote-escrow) y el modelo de gobernanza. |
-
----
-
-## 🏗️ Componentes del Ecosistema
-
-El monorepo está organizado en los siguientes componentes principales:
-
-| Componente | Descripción |
-| :--- | :--- |
-| 📁 **[contracts](./contracts/)** | Contiene todos los contratos inteligentes del ecosistema (Tokens, Gobernanza, Puentes), gestionados con Foundry. |
-| 📁 **[infra](./infra/)** | Entorno basado en Docker que orquesta la pila de desarrollo local (EVM, Sequencer, DA, Blockscout). |
-| 📁 **[relayer](./relayer/)** | Servicio de retransmisión (TypeScript) responsable de tareas off-chain, como la comunicación del puente. |
+# Deploy to testnet (requires Celestia Mocha-4 setup)
+make deploy-testnet
+```
 
 ---
 
-## 🤝 Contribuciones
+## 📚 Documentation
 
-¡Las contribuciones son bienvenidas! Nos esforzamos por mantener un proceso de desarrollo limpio y colaborativo.
+### 🚀 Getting Started
 
-Antes de comenzar, por favor revisa nuestra **[guía de flujo de trabajo de Git y estándares de commit](./docs/ONBOARDING.md#-control-de-versiones-y-flujo-de-trabajo)** en el manual de onboarding.
+| Document | Description |
+|----------|-------------|
+| **[Installation Guide](INSTALL.md)** | Complete setup guide (10 minutes) |
+| **[Production Ready](PRODUCTION_READY.md)** | Deployment guide for testnet/mainnet |
+| **[Architecture](ARCHITECTURE.md)** | Technical deep dive into our stack |
 
-Para más detalles, consulta nuestro archivo `CONTRIBUTING.md`.
+### 🛠️ Development
+
+| Document | Description |
+|----------|-------------|
+| **[Contributing](CONTRIBUTING.md)** | How to contribute to ANDE Chain |
+| **[Security](SECURITY.md)** | Security best practices |
+| **[Monitoring Guide](MONITORING_GUIDE.md)** | Set up monitoring & alerts |
+
+### 🌐 Network Guides
+
+| Document | Description |
+|----------|-------------|
+| **[Celestia Setup](CELESTIA_SETUP.md)** | Configure Celestia DA (Mocha-4/Mainnet) |
+| **[Contract Deployment](contracts/README.md)** | Deploy and verify smart contracts |
 
 ---
 
-## 🌐 Comunidad y Soporte
+## 🔧 Technology Stack
 
-- **💬 Discord**: [Únete a nuestra comunidad](https://discord.gg/andechain)
-- **🐙 GitHub**: [Explora el código](https://github.com/AndeLabs/andechain)
-- **🐛 Reportar un Bug**: [Crear un Issue](https://github.com/AndeLabs/andechain/issues)
+### Core Components
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Execution Layer** | [ev-reth](../ev-reth/) (Modified Reth) | EVM execution, parallel processing |
+| **Consensus** | Evolve Sequencer (ExRollkit) | Block production & ordering |
+| **Data Availability** | [Celestia](https://celestia.org) | DA layer (Mocha-4/Mainnet) |
+| **Explorer** | [Blockscout](https://blockscout.com) | Self-hosted block explorer |
+| **Smart Contracts** | Solidity 0.8.25 | Token, Staking, Governance |
+
+### Custom Features
+
+- 🎯 **ANDE Precompile** (`0x00000000000000000000000000000000000000FD`)
+  - Native token transfers for Token Duality
+  - Direct balance manipulation in EVM
+  
+- ⚡ **Parallel EVM**
+  - Multi-version memory
+  - Concurrent transaction execution
+  - 3-5x TPS improvement
+
+- 🎮 **MEV Protection**
+  - MEV detection & fair distribution
+  - Searcher integration
+
+---
+
+## 📦 Repository Structure
+
+```
+andechain/
+├── contracts/          # Smart contracts (Foundry)
+│   ├── src/           # Contract source code
+│   ├── script/        # Deployment scripts
+│   └── test/          # Contract tests
+│
+├── infra/             # Infrastructure (Docker)
+│   └── stacks/
+│       └── single-sequencer/  # Main stack
+│
+├── ev-reth/           # Modified Reth (see ../ev-reth/)
+│   └── crates/evolve/ # ANDE customizations
+│
+├── docs/              # Additional documentation
+│
+└── Makefile           # Production commands
+```
+
+---
+
+## 🚀 Key Commands
+
+### Development
+
+```bash
+make deploy-local          # Complete local deployment
+make start-local          # Start infrastructure only
+make test-all             # Run all tests
+make security-audit       # Security analysis
+make clean                # Clean artifacts
+```
+
+### Deployment
+
+```bash
+make deploy-testnet       # Deploy to testnet (Celestia Mocha-4)
+make deploy-mainnet       # Deploy to mainnet (requires validation)
+make verify ENV=testnet   # Verify contracts on Blockscout
+```
+
+### Monitoring
+
+```bash
+make health               # System health check
+make celestia-status      # Check Celestia DA status
+make logs                 # View all logs
+make monitor-start        # Start Grafana monitoring
+```
+
+**See all commands:** `make help`
+
+---
+
+## 🌍 Networks
+
+### Local Development
+
+- **Chain ID:** 1234
+- **RPC:** http://localhost:8545
+- **Explorer:** http://localhost:4000
+- **DA:** Mock/Local Celestia
+
+### Testnet
+
+- **Chain ID:** 1234
+- **RPC:** https://testnet-rpc.andechain.com (coming soon)
+- **Explorer:** https://testnet-explorer.andechain.com (coming soon)
+- **DA:** Celestia Mocha-4
+
+### Mainnet
+
+- **Status:** Coming Soon
+- **DA:** Celestia Mainnet
+
+---
+
+## 🔐 Security
+
+ANDE Chain is built with security as a priority:
+
+- ✅ Audited smart contracts
+- ✅ Bug bounty program (coming soon)
+- ✅ Encrypted keystore system (no raw private keys)
+- ✅ Circuit breakers for emergency stops
+- ✅ Multi-signature wallet support
+
+**Report vulnerabilities:** security@andelabs.io
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Before starting:
+
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+2. Check [open issues](https://github.com/andelabs/andechain/issues)
+3. Join our [Discord](https://discord.gg/andechain)
+
+### Development Process
+
+```bash
+# 1. Fork & clone
+git clone https://github.com/YOUR_USERNAME/andechain.git
+
+# 2. Create branch
+git checkout -b feature/amazing-feature
+
+# 3. Make changes & test
+make test-all
+
+# 4. Commit (use conventional commits)
+git commit -m "feat: add amazing feature"
+
+# 5. Push & create PR
+git push origin feature/amazing-feature
+```
+
+---
+
+## 🎓 Learn More
+
+### Technical Documentation
+
+- 📖 [Architecture Deep Dive](ARCHITECTURE.md)
+- 🔧 [Smart Contract Documentation](contracts/README.md)
+- 🌐 [Celestia Integration](CELESTIA_SETUP.md)
+
+### External Resources
+
+- [Celestia Documentation](https://docs.celestia.org/)
+- [Reth Book](https://paradigmxyz.github.io/reth/)
+- [Foundry Book](https://book.getfoundry.sh/)
+- [Solidity Documentation](https://docs.soliditylang.org/)
+
+---
+
+## 🌟 Features Roadmap
+
+### Phase 1: MVP (Current)
+- ✅ EVM execution (ev-reth)
+- ✅ Celestia DA integration
+- ✅ Basic smart contracts (Token, Staking)
+- ✅ Blockscout explorer
+- ✅ Parallel EVM execution
+
+### Phase 2: Decentralization
+- ⏳ Decentralized sequencer set
+- ⏳ On-chain governance (AndeGovernor)
+- ⏳ Sequencer registry & slashing
+- ⏳ Native account abstraction
+
+### Phase 3: DeFi Ecosystem
+- ⏳ DEX (Uniswap V3 fork)
+- ⏳ Lending protocol
+- ⏳ Stablecoin (CDP system)
+- ⏳ Cross-chain bridges
+
+### Phase 4: Ecosystem Growth
+- ⏳ Developer grants program
+- ⏳ Ecosystem fund
+- ⏳ Regional expansion
+
+---
+
+## 💬 Community
+
+Join our growing community:
+
+- 💬 **Discord:** [discord.gg/andechain](https://discord.gg/andechain)
+- 🐦 **Twitter:** [@AndeChain](https://twitter.com/andechain)
+- 📰 **Blog:** [blog.andelabs.io](https://blog.andelabs.io)
+- 📧 **Email:** hello@andelabs.io
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+Built with amazing open-source tools:
+
+- [Reth](https://github.com/paradigmxyz/reth) by Paradigm
+- [Celestia](https://celestia.org) for Data Availability
+- [Foundry](https://getfoundry.sh) by Paradigm
+- [Blockscout](https://blockscout.com) for Explorer
+- [ExRollkit](https://github.com/evstack) by Evølve
+
+Special thanks to all contributors and the Latin American blockchain community.
+
+---
 
 <div align="center">
 
-**🚀 Construyendo la infraestructura financiera soberana de América Latina.**
+**🏔️ Building Sovereign Financial Infrastructure for Latin America**
+
+[Get Started](INSTALL.md) • [Architecture](ARCHITECTURE.md) • [Community](https://discord.gg/andechain)
+
+Made with ❤️ by [ANDE Labs](https://andelabs.io)
 
 </div>

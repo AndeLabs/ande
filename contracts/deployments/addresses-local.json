@@ -1,0 +1,33 @@
+{
+  "network": "andechain-local",
+  "chainId": 1234,
+  "timestamp": 1760752510,
+  "blockNumber": 1475,
+  "contracts": {
+    "ANDEToken": {
+      "address": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      "type": "ERC20"
+    },
+    "AndeNativeStaking": {
+      "proxy": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+      "implementation": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      "type": "UUPS"
+    },
+    "AndeGovernor": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "deployed": false
+    },
+    "AndeSequencerRegistry": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "deployed": false
+    },
+    "WAndeVault": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "deployed": false
+    }
+  },
+  "urls": {
+    "rpc": "http://localhost:8545",
+    "explorer": "http://localhost:4000"
+  }
+}

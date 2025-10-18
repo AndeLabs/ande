@@ -23,7 +23,7 @@ contract NativeTransferPrecompileMock {
     // ========================================
 
     /// @notice Dirección autorizada para llamar este contrato (ANDEToken)
-    address public immutable authorizedCaller;
+    address public authorizedCaller;
 
     /// @notice Mapping que simula balances nativos
     /// @dev En producción, esto será address.balance real
@@ -57,10 +57,20 @@ contract NativeTransferPrecompileMock {
 
     /**
      * @notice Inicializa el mock con la dirección autorizada
-     * @param _authorizedCaller Dirección del contrato ANDEToken
+     * @param _authorizedCaller Dirección del contrato ANDEToken (puede ser address(0) si se configura después)
      */
     constructor(address _authorizedCaller) {
-        require(_authorizedCaller != address(0), "Authorized caller cannot be zero address");
+        authorizedCaller = _authorizedCaller;
+    }
+
+    /**
+     * @notice Configura el authorized caller después del deploy
+     * @dev Solo puede ser llamado una vez si authorizedCaller es address(0)
+     * @param _authorizedCaller Nueva dirección autorizada
+     */
+    function setAuthorizedCaller(address _authorizedCaller) external {
+        require(authorizedCaller == address(0), "Authorized caller already set");
+        require(_authorizedCaller != address(0), "Cannot set to zero address");
         authorizedCaller = _authorizedCaller;
     }
 

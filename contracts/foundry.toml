@@ -32,6 +32,14 @@ optimizer_runs = 20000
 # Habilita la compilación a través de IR (Intermediate Representation) para evitar errores de "Stack too deep".
 via_ir = true
 
+# --- File System Permissions ---
+# Allow scripts to write deployment files
+fs_permissions = [
+    { access = "read-write", path = "./deployments" },
+    { access = "read-write", path = "./broadcast" },
+    { access = "read-write", path = "../andefrontend/src/contracts" }
+]
+
 # --- Perfiles de Ejecución ---
 
 # Perfil específico para nuestro rollup local. Hereda la configuración de `default`.

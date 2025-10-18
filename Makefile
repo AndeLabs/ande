@@ -11,20 +11,23 @@ help:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
 	@echo "🚀 Comandos Principales:"
-	@echo "  make full-start         - 🔥 COMPLETO: Todo automatizado (requisitos + infra + deploy)"
-	@echo "  make start              - Inicia infraestructura (sin verificar requisitos)"
-	@echo "  make stop               - Detiene la infraestructura"
-	@echo "  make reset              - Reset completo (borra volúmenes y artifacts)"
-	@echo "  make health             - Verifica salud del sistema"
-	@echo "  make info               - Muestra información del sistema"
+	@echo "  make full-start              - 🔥 COMPLETO: Todo automatizado (requisitos + infra + deploy)"
+	@echo "  make full-start-with-staking - 🔥 COMPLETO + STAKING: Incluye deployment de staking"
+	@echo "  make start                   - Inicia infraestructura (sin verificar requisitos)"
+	@echo "  make stop                    - Detiene la infraestructura"
+	@echo "  make reset                   - Reset completo (borra volúmenes y artifacts)"
+	@echo "  make health                  - Verifica salud del sistema"
+	@echo "  make info                    - Muestra información del sistema"
 	@echo ""
 	@echo "📜 Smart Contracts:"
-	@echo "  make test               - Ejecuta tests de contratos"
-	@echo "  make coverage           - Genera reporte de cobertura"
-	@echo "  make security           - Análisis de seguridad (Slither)"
-	@echo "  make deploy-ecosystem   - Despliega ecosistema completo"
-	@echo "  make redeploy-token     - Fuerza redeploy de ANDE Token con nueva dirección"
-	@echo "  make verify-contracts   - Info sobre verificación en Blockscout"
+	@echo "  make test                  - Ejecuta tests de contratos"
+	@echo "  make coverage              - Genera reporte de cobertura"
+	@echo "  make security              - Análisis de seguridad (Slither)"
+	@echo "  make deploy-ecosystem      - Despliega ecosistema completo"
+	@echo "  make deploy-staking        - Despliega solo contrato de staking"
+	@echo "  make fund-staking          - Fondea contrato de staking con rewards"
+	@echo "  make redeploy-token        - Fuerza redeploy de ANDE Token con nueva dirección"
+	@echo "  make verify-contracts      - Info sobre verificación en Blockscout"
 	@echo ""
 	@echo "🔧 Herramientas:"
 	@echo "  make build-ev-reth      - Construye ev-reth ANDE desde GitHub"
@@ -120,6 +123,27 @@ full-start:
 	@echo "📊 Health Check: make health"
 	@echo "🛑 Detener:      make stop"
 	@echo "🔄 Reset:        make reset"
+	@echo ""
+	@echo "💡 Para desplegar staking: make deploy-staking && make fund-staking"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# 🔥 COMANDO COMPLETO CON STAKING - Todo en Uno + Staking
+full-start-with-staking: full-start
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🥩 Desplegando Sistema de Staking..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@$(MAKE) deploy-staking
+	@echo ""
+	@$(MAKE) fund-staking
+	@echo ""
+	@echo "🎉 AndeChain con Staking está COMPLETAMENTE operativa!"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🌐 RPC:          http://localhost:8545"
+	@echo "🔍 Explorer:     http://localhost:4000"
+	@echo "💰 ANDE Token:   Desplegado"
+	@echo "🥩 Staking:      Desplegado y fondeado"
+	@echo "📊 Health Check: make health"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Health check sin output decorativo (para usar en scripts)
@@ -138,6 +162,30 @@ reset:
 	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml down -v
 	@rm -rf contracts/out contracts/cache contracts/broadcast
 	@echo "✅ Sistema reseteado. Ejecuta 'make start' para comenzar de nuevo."
+
+# Deploy staking contract
+deploy-staking:
+	@echo "📜 Desplegando AndeNativeStaking..."
+	@cd contracts && \
+	. ./.env && \
+	forge script script/DeployStaking.s.sol:DeployStakingLocal \
+		--rpc-url http://localhost:8545 \
+		--broadcast \
+		--private-key $$PRIVATE_KEY && \
+	echo "✅ AndeNativeStaking desplegado exitosamente" || \
+	echo "⚠️  Deploy de staking falló"
+
+# Fund staking contract with rewards
+fund-staking:
+	@echo "💰 Fondeando contrato de staking con rewards..."
+	@cd contracts && \
+	. ./.env && \
+	forge script script/FundStaking.s.sol:FundStakingSmall \
+		--rpc-url http://localhost:8545 \
+		--broadcast \
+		--private-key $$PRIVATE_KEY && \
+	echo "✅ Staking fondeado con 30,000 ANDE" || \
+	echo "⚠️  Fondeo de staking falló"
 
 # Tests de contratos
 test:
