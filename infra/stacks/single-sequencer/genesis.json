@@ -1,6 +1,6 @@
 {
   "config": {
-    "chainId": 1234,
+    "chainId": 2019,
     "homesteadBlock": 0,
     "eip150Block": 0,
     "eip155Block": 0,
@@ -11,6 +11,8 @@
     "istanbulBlock": 0,
     "berlinBlock": 0,
     "londonBlock": 0,
+    "arrowGlacierBlock": 0,
+    "grayGlacierBlock": 0,
     "mergeNetsplitBlock": 0,
     "terminalTotalDifficulty": 0,
     "terminalTotalDifficultyPassed": true,
@@ -19,38 +21,74 @@
     "pragueTime": 0,
     "andechain": {
       "name": "AndeChain Sovereign Rollup",
+      "version": "1.0.0-beta",
       "type": "sovereign",
+      "network": "mainnet-beta",
       "dataAvailability": {
         "provider": "celestia",
-        "namespace": "andechain-v1"
+        "network": "mocha-4",
+        "namespace": "000000000000000000000000000000000000616e6465636861696e2d7631",
+        "namespaceVersion": 0,
+        "description": "Celestia Mocha-4 testnet for production testing"
+      },
+      "consensus": {
+        "type": "evolve-sequencer",
+        "blockTime": "2s",
+        "epochLength": 10000,
+        "proposer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       },
       "nativeCurrency": {
         "name": "ANDE",
         "symbol": "ANDE",
         "decimals": 18,
-        "type": "native"
+        "type": "native",
+        "totalSupply": "1000000000000000000000000000"
       },
       "tokenDuality": {
         "enabled": true,
         "precompileAddress": "0x00000000000000000000000000000000000000FD",
         "description": "ANDE native currency with ERC-20 compatibility via precompile"
+      },
+      "governance": {
+        "enabled": true,
+        "votingPeriod": 50400,
+        "votingDelay": 1,
+        "proposalThreshold": "1000000000000000000000000",
+        "quorumPercentage": 4
+      },
+      "features": {
+        "mevProtection": true,
+        "parallelExecution": true,
+        "crossChainBridge": true
       }
     }
   },
   "nonce": "0x0",
   "timestamp": "0x0",
-  "extraData": "0x",
-  "gasLimit": "0x1c9c38000",
+  "extraData": "0x416e6465436861696e2053657175656e636572205631",
+  "gasLimit": "0x1c9c380",
   "difficulty": "0x0",
   "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "coinbase": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "alloc": {
     "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {
-      "balance": "0x21E19E0C9BAB2400000"
+      "balance": "0x33b2e3c9fd0803ce8000000"
+    },
+    "0x00000000000000000000000000000000000000FD": {
+      "balance": "0x0",
+      "code": "0x"
+    },
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": {
+      "balance": "0xd3c21bcecceda1000000"
+    },
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
+      "balance": "0x52b7d2dcc80cd2e4000000"
     }
   },
   "number": "0x0",
   "gasUsed": "0x0",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "baseFeePerGas": "0x3b9aca00"
+  "baseFeePerGas": "0x3b9aca00",
+  "excessBlobGas": "0x0",
+  "blobGasUsed": "0x0"
 }
