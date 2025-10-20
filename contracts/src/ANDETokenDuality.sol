@@ -17,17 +17,17 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 /**
  * @title ANDETokenDuality
  * @author Ande Labs
- * @notice Token ANDE con funcionalidad Token Duality
+ * @notice ANDE - Moneda Nativa de AndeChain con funcionalidad Token Duality
  *
  * @dev Este contrato implementa Token Duality, permitiendo que ANDE funcione como:
- *      1. Token nativo para pagar gas fees
- *      2. Token ERC-20 estándar para dApps
+ *      1. Moneda nativa para pagar gas fees (como ETH en Ethereum)
+ *      2. Compatible con interfaz ERC-20 para dApps
  *
  *      Características:
  *      - balanceOf() lee del precompile (balance nativo en producción)
  *      - _update() delega transferencias al precompile
  *      - Mantiene TODA la funcionalidad de ERC20Votes, Permit, Pausable
- *      - Compatible 100% con estándar ERC-20
+ *      - Compatible 100% con estándar ERC-20 para interoperabilidad
  *
  * @custom:security-contact security@andelabs.io
  */
@@ -45,10 +45,10 @@ contract ANDETokenDuality is
     // CONSTANTS
     // ========================================
 
-    /// @notice Rol para acuñar nuevos tokens
+    /// @notice Rol para acuñar nuevas unidades de ANDE
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    /// @notice Rol para quemar tokens
+    /// @notice Rol para quemar ANDE
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     /// @notice Rol para pausar/reanudar transferencias
@@ -96,10 +96,10 @@ contract ANDETokenDuality is
      * @param precompile Dirección del precompile de transferencia nativa
      */
     function initialize(address defaultAdmin, address minter, address precompile) public initializer {
-        __ERC20_init("ANDE Token", "ANDE");
+        __ERC20_init("ANDE", "ANDE");
         __AccessControl_init();
         __UUPSUpgradeable_init();
-        __ERC20Permit_init("ANDE Token");
+        __ERC20Permit_init("ANDE");
         __ERC20Votes_init();
         __ERC20Burnable_init();
         __Pausable_init();

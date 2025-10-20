@@ -18,7 +18,7 @@ import {AndeTimelockController} from "./AndeTimelockController.sol";
 import {GovernorDualTokenVoting, IAndeNativeStaking} from "./extensions/GovernorDualTokenVoting.sol";
 import {GovernorAdaptiveQuorum} from "./extensions/GovernorAdaptiveQuorum.sol";
 import {GovernorMultiLevel} from "./extensions/GovernorMultiLevel.sol";
-import {GovernorSecurityExtensions} from "./extensions/GovernorSecurityExtensions.sol";
+// import {GovernorSecurityExtensions} from "./extensions/GovernorSecurityExtensions.sol"; // TODO: Add via upgrade v2
 
 /**
  * @title AndeGovernor
@@ -32,8 +32,9 @@ import {GovernorSecurityExtensions} from "./extensions/GovernorSecurityExtension
  * - Anti-whale protection: max 500% bonus over base votes + max 10% voting power cap
  * - Adaptive Quorum: Adjusts between 4-15% based on historical participation
  * - Multi-Level Proposals: 4 types (OPERATIONAL, PROTOCOL, CRITICAL, EMERGENCY)
- * - Security Extensions: Rate limiting, guardian cancellation, anti-frontrunning
  * - TimelockController for secure execution
+ * 
+ * NOTE: Security Extensions (anti-whale, rate limiting, guardian) will be added in v2 upgrade
  * - Upgradeable using UUPS pattern
  * 
  * VOTING POWER FORMULA:
@@ -61,7 +62,6 @@ contract AndeGovernor is
     GovernorDualTokenVoting,
     GovernorAdaptiveQuorum,
     GovernorMultiLevel,
-    GovernorSecurityExtensions,
     GovernorTimelockControlUpgradeable
 {
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -78,7 +78,6 @@ contract AndeGovernor is
      * @param _votingDelay The delay before a vote starts in blocks.
      * @param _proposalThreshold The minimum number of votes required to create a proposal.
      * @param _emergencyCouncil The address of the emergency council for EMERGENCY proposals.
-     * @param _guardian The address of the guardian for emergency cancellations.
      */
     function initialize(
         IVotes _token,
@@ -87,15 +86,13 @@ contract AndeGovernor is
         uint32 _votingPeriod,
         uint48 _votingDelay,
         uint256 _proposalThreshold,
-        address _emergencyCouncil,
-        address _guardian
+        address _emergencyCouncil
     ) public initializer {
         __Governor_init("AndeGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorDualTokenVoting_init(_token, _stakingContract);
         __GovernorAdaptiveQuorum_init();
         __GovernorMultiLevel_init(_emergencyCouncil);
-        __GovernorSecurityExtensions_init(_guardian);
         __GovernorTimelockControl_init(_timelock);
         __AccessControl_init();
         __UUPSUpgradeable_init();
@@ -232,7 +229,7 @@ contract AndeGovernor is
     function _getTotalSupply(uint256 timepoint) 
         internal 
         view 
-        override(GovernorAdaptiveQuorum, GovernorMultiLevel, GovernorSecurityExtensions) 
+        override(GovernorAdaptiveQuorum, GovernorMultiLevel) 
         returns (uint256) 
     {
         return token().getPastTotalSupply(timepoint);
@@ -247,8 +244,8 @@ contract AndeGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public override(GovernorUpgradeable, GovernorSecurityExtensions) returns (uint256) {
-        return GovernorSecurityExtensions.propose(targets, values, calldatas, description);
+    ) public override returns (uint256) {
+        return super.propose(targets, values, calldatas, description);
     }
     
     function _castVote(
@@ -257,8 +254,8 @@ contract AndeGovernor is
         uint8 support,
         string memory reason,
         bytes memory params
-    ) internal override(GovernorUpgradeable, GovernorSecurityExtensions) returns (uint256) {
-        return GovernorSecurityExtensions._castVote(proposalId, account, support, reason, params);
+    ) internal override returns (uint256) {
+        return super._castVote(proposalId, account, support, reason, params);
     }
     
     function proposalSnapshot(uint256 proposalId)
