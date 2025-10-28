@@ -93,13 +93,33 @@ make deploy-testnet
 
 ## 📚 Documentation
 
-### 🚀 Getting Started
+### 🚀 Deployment & Quick Start
+
+**New to ANDE Chain?** Start here for testnet deployment:
+
+| Document | Time | Description |
+|----------|------|-------------|
+| **[Quick Start](docs/deployment/QUICK_START.md)** | 5 min | Deploy ANDE Chain in 5 minutes |
+| **[Deployment Guide](docs/deployment/TESTNET_DEPLOYMENT_GUIDE.md)** | 30 min | Complete step-by-step deployment with explanations |
+| **[Readiness Checklist](docs/deployment/TESTNET_READINESS_CHECKLIST.md)** | 15 min | Production readiness verification |
+| **[Deployment Scripts](scripts/quick-testnet-deploy.sh)** | Auto | Fully automated one-command deployment |
+
+### 📖 Architecture & Reference
 
 | Document | Description |
 |----------|-------------|
-| **[Installation Guide](INSTALL.md)** | Complete setup guide (10 minutes) |
-| **[Production Ready](PRODUCTION_READY.md)** | Deployment guide for testnet/mainnet |
-| **[Architecture](ARCHITECTURE.md)** | Technical deep dive into our stack |
+| **[Repositories Guide](docs/reference/REPOSITORIES_GUIDE.md)** | Multi-repository structure and management |
+| **[Version Compatibility](docs/reference/VERSIONS.md)** | Component versions and compatibility matrix |
+| **[Documentation Index](docs/reference/DOCUMENTATION_INDEX.md)** | Master index of all documentation |
+
+### 🔧 Operations & Monitoring
+
+| Document | Description |
+|----------|-------------|
+| **[Executive Summary](docs/operations/EXECUTIVE_SUMMARY.md)** | System overview and readiness status |
+| **[Production Status](docs/operations/PRODUCTION_STATUS.md)** | Current component health and metrics |
+| **[Production Ready](docs/operations/PRODUCTION_READY.md)** | Comprehensive production readiness checklist |
+| **[Docker Specification](docs/operations/DOCKER_PRODUCTION_SPEC.md)** | Container configuration and requirements |
 
 ### 🛠️ Development
 
@@ -107,13 +127,11 @@ make deploy-testnet
 |----------|-------------|
 | **[Contributing](CONTRIBUTING.md)** | How to contribute to ANDE Chain |
 | **[Security](SECURITY.md)** | Security best practices |
-| **[Monitoring Guide](MONITORING_GUIDE.md)** | Set up monitoring & alerts |
 
-### 🌐 Network Guides
+### 🌐 Smart Contracts
 
 | Document | Description |
 |----------|-------------|
-| **[Celestia Setup](CELESTIA_SETUP.md)** | Configure Celestia DA (Mocha-4/Mainnet) |
 | **[Contract Deployment](contracts/README.md)** | Deploy and verify smart contracts |
 
 ---
