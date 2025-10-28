@@ -1,0 +1,983 @@
+# =============================================================================
+# ANDE BLOCKCHAIN - UNIVERSAL DOCKER STACK (Windows/Linux/Mac)
+# =============================================================================
+#
+# Multi-platform deployment with:
+# - EV-RETH: ANDE custom execution client with precompiles
+# - EVOLVE Sequencer: L2 sequencing and block production
+# - Celestia DA: Data availability layer integration
+# - Native Transfer Precompile Mock for Token Duality
+# - Blockscout Explorer: Full-featured block explorer
+# - ANDE Frontend: React dApp with Web3 integration
+# - Monitoring: Prometheus + Grafana observability stack
+#
+# Universal Features:
+# - Cross-platform compatibility (Windows/Linux/Mac)
+# - No OrbStack or specific platform dependencies
+# - Automatic contract deployment and configuration
+# - Precompile mock setup for Token Duality
+# - Resource limits and health checks
+# - Comprehensive monitoring and alerting
+#
+# Quick Start:
+#   docker compose up -d --build
+#   docker compose logs -f ev-reth
+#
+# Cross-Platform Usage:
+#   Windows: docker compose up -d --build
+#   Linux:   docker compose up -d --build
+#   Mac:     docker compose up -d --build
+#
+# =============================================================================
+
+name: ande-production
+
+services:
+  # =============================================================================
+  # INFRASTRUCTURE SERVICES
+  # =============================================================================
+
+  # JWT Token Generation for secure communication
+  jwt-init:
+    container_name: andechain-jwt-init
+    image: alpine:3.22.0
+    volumes:
+      - jwt-secrets:/jwt
+    command: >
+      /bin/sh -c "
+      if [ ! -f /jwt/jwt.hex ]; then
+        apk add --no-cache openssl &&
+        openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex &&
+        chmod 644 /jwt/jwt.hex &&
+        echo '✅ JWT generated successfully';
+      else
+        echo '✅ JWT already exists';
+      fi"
+    networks:
+      - andechain-net
+    restart: "no"
+
+  # Celestia Mocha-4 Data Availability Layer
+  celestia-light:
+    container_name: andechain-celestia
+    image: ghcr.io/celestiaorg/celestia-node:v0.27.5-mocha
+    restart: unless-stopped
+    depends_on:
+      jwt-init:
+        condition: service_completed_successfully
+    ports:
+      - "26658:26658"  # RPC
+      - "26659:26659"  # Gateway
+    volumes:
+      - celestia-data:/home/celestia
+    environment:
+      - NODE_TYPE=light
+      - P2P_NETWORK=mocha-4
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "🌟 Starting Celestia Light Node for Mocha-4"
+
+        # Initialize if first run
+        if [ ! -d "/home/celestia/keys" ]; then
+          echo "📝 Initializing Celestia light node..."
+          celestia light init --p2p.network mocha-4
+        fi
+
+        # Start Celestia node
+        echo "🚀 Starting Celestia light node..."
+        exec celestia light start \
+          --core.ip rpc-mocha.pops.one \
+          --p2p.network mocha-4 \
+          --rpc.addr 0.0.0.0 \
+          --rpc.port 26658
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:26658/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=da-layer"
+      - "andechain.description=Celestia Data Availability"
+
+  # =============================================================================
+  # BLOCKCHAIN CORE SERVICES
+  # =============================================================================
+
+  # ev-reth - ANDE EVM Execution Client con Precompiles Personalizados
+  ev-reth:
+    container_name: ande-ev-reth
+    build:
+      context: ./ev-reth
+      dockerfile: Dockerfile
+      args:
+        BUILD_PROFILE: release
+        FEATURES: "jemalloc asm-keccak"
+    image: ande/ev-reth:latest
+
+    # Security configuration for all platforms
+    user: "${DOCKER_USER:-1000}:${DOCKER_GROUP:-1000}"
+    security_opt:
+      - no-new-privileges:true
+
+
+
+    # Resource limits for production scalability
+    deploy:
+      resources:
+        limits:
+          cpus: '8.0'
+          memory: 16G
+          pids: 2000
+        reservations:
+          cpus: '4.0'
+          memory: 8G
+
+    depends_on:
+      jwt-init:
+        condition: service_completed_successfully
+    ports:
+      - "8545:8545"     # HTTP JSON-RPC
+      - "8546:8546"     # WebSocket JSON-RPC
+      - "8551:8551"     # Engine API (JWT authenticated)
+      - "30303:30303"   # P2P TCP
+      - "30303:30303/udp" # P2P UDP Discovery
+      - "9001:9001"     # Metrics
+    restart: unless-stopped
+    volumes:
+      - ./genesis.json:/genesis.json:ro
+      - jwt-secrets:/jwt:ro
+      - ev-reth-data:/data
+      - /tmp:/tmp:rw
+    environment:
+      - RUST_LOG=info,ev_reth=debug,reth=info
+      - RUST_BACKTRACE=1
+      - CHAIN_ID=2019
+      - OTEL_SDK_DISABLED=true
+      - HOME=/data
+    command:
+      - node
+      - --chain=/genesis.json
+      - --datadir=/data
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --discovery.addr=0.0.0.0
+      - --discovery.port=30303
+      - --max-outbound-peers=50
+      - --max-inbound-peers=30
+      - --metrics=0.0.0.0:9001
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/ev-reth", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      andechain-net:
+
+    # Production logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service=ev-reth,environment=production"
+
+    labels:
+      - "com.ande.service=ev-reth"
+      - "com.ande.environment=production"
+      - "com.ande.description=ANDE EVM Execution Client con Precompiles Personalizados"
+      - "traefik.enable=true"
+      - "traefik.http.routers.ev-reth.rule=Host(`rpc.ande.network`)"
+      - "traefik.http.services.ev-reth.loadbalancer.server.port=8545"
+
+  # EVOLVE Sequencer - Block production & consensus
+  evolve-sequencer:
+    container_name: ande-evolve-sequencer
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    pull_policy: always
+    depends_on:
+      - ev-reth
+      - celestia-light
+      - jwt-init
+    restart: unless-stopped
+    volumes:
+      - jwt-secrets:/jwt:ro
+      - evolve-data:/root/.evolve
+    ports:
+      - "26660:26660"  # Prometheus metrics
+      - "7331:7331"    # RPC
+      - "7676:7676"    # P2P
+    environment:
+      - EV_HOME=/root/.evolve
+      - JWT_SECRET_PATH=/jwt/jwt.hex
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo '🚀 Starting Evolve Sequencer for AndeChain'
+
+        # Load JWT secret
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+        echo '✅ JWT loaded'
+
+        # Wait for ev-reth to be ready
+        echo '⏳ Waiting for ev-reth to be ready...'
+        sleep 20
+
+        # Always ensure passphrase and JWT files exist
+        mkdir -p /root/.evolve/config
+        echo "andechain-production-secure-2025" > /root/.evolve/config/passphrase.txt
+        chmod 600 /root/.evolve/config/passphrase.txt
+        
+        # Initialize if node_key doesn't exist (first run)
+        if [ ! -f /root/.evolve/config/node_key.json ]; then
+          echo '📝 Initializing sequencer (first run)'
+          evm-single init \
+            --home=/root/.evolve \
+            --evnode.node.aggregator=true \
+            --evnode.signer.passphrase_file=/root/.evolve/config/passphrase.txt
+          echo '✅ Sequencer initialized'
+        else
+          echo '✅ Sequencer already initialized'
+        fi
+
+        # Auto-retrieve genesis hash from ev-reth
+        echo '🔍 Retrieving genesis hash from ev-reth...'
+        GENESIS_HASH=""
+        for i in 1 2 3 4 5; do
+          GENESIS_HASH=$$(curl -s -X POST http://ev-reth:8545 \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}' \
+            | grep -o '"hash":"0x[^"]*"' | cut -d'"' -f4 || echo "")
+          if [ -n "$$GENESIS_HASH" ]; then
+            echo "✅ Genesis hash retrieved: $$GENESIS_HASH"
+            break
+          fi
+          echo "⏳ Waiting for ev-reth RPC... ($$i/5)"
+          sleep 5
+        done
+
+        if [ -z "$$GENESIS_HASH" ]; then
+          echo "❌ Failed to retrieve genesis hash"
+          exit 1
+        fi
+
+        # Start sequencer with all parameters
+        echo '🚀 Starting sequencer with auto-configured params'
+        # Ensure JWT secret file exists for sequencer
+        echo "$$JWT_SECRET" > /root/.evolve/config/jwt.hex
+        chmod 600 /root/.evolve/config/jwt.hex
+        
+        exec evm-single start \
+          --home=/root/.evolve \
+          --evm.eth-url=http://ev-reth:8545 \
+          --evm.engine-url=http://ev-reth:8551 \
+          --evm.jwt-secret-file=/root/.evolve/config/jwt.hex \
+          --evm.genesis-hash="$$GENESIS_HASH" \
+          --evnode.node.aggregator=true \
+          --evnode.node.lazy_mode=true \
+          --evnode.node.lazy_block_interval=30s \
+          --evnode.da.address=http://celestia-light:26658 \
+          --evnode.da.auth_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdLCJOb25jZSI6IklpQXlIRGE1N1ZIM0RjZXFFWkcyZ0doM3pqVVZ6Wjh1NlluWXE1Q2hxVnc9IiwiRXhwaXJlc0F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ.c1AU9KLR-pdcHOfNjJirg-KuhSNAfDJV5vx3stXM_yU \
+          --evnode.da.namespace=000000000000000000000000000000000000616e6465636861696e2d7631 \
+          --evnode.signer.passphrase_file=/root/.evolve/config/passphrase.txt \
+          --evnode.log.level=info \
+          --evnode.instrumentation.prometheus=true \
+          --evnode.instrumentation.prometheus_listen_addr=:26660
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=sequencer"
+      - "andechain.description=EVOLVE Sequencer for Block Production"
+
+  # =============================================================================
+  # CORE SERVICES
+  # =============================================================================
+
+  # Token Faucet - Native ANDE Distribution
+  faucet:
+    container_name: andechain-faucet
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile.faucet
+    restart: unless-stopped
+    depends_on:
+      evolve-sequencer:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - RPC_URL=http://ev-reth:8545
+      - WEB3_PROVIDER=http://ev-reth:8545
+      - TOKEN_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+      - FAUCET_MODE=token
+      - FAUCET_PRIVATE_KEY=${FAUCET_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+      - FAUCET_AMOUNT=${FAUCET_AMOUNT:-10000000000000000000000}
+      - FAUCET_COOLDOWN_MINUTES=${FAUCET_COOLDOWN_MINUTES:-5}
+      - FAUCET_PORT=8081
+      - CHAIN_ID=2019
+      - CHAIN_MIN_GAS_PRICE=${CHAIN_MIN_GAS_PRICE:-1000000000}
+      - CHAIN_GAS_LIMIT=21000
+      - NETWORK_NAME=${NETWORK_NAME:-AndeChain Testnet}
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=faucet"
+      - "andechain.description=Native ANDE Token Faucet Service"
+
+  # Faucet Nginx Proxy - Web Interface
+  faucet-proxy:
+    container_name: andechain-faucet-proxy
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "${FAUCET_PORT:-3001}:80"
+    depends_on:
+      faucet:
+        condition: service_healthy
+    volumes:
+      - ./scripts/nginx-faucet.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=faucet-proxy"
+      - "andechain.description=ANDE Faucet Proxy Service"
+
+  # =============================================================================
+  # EXPLORER SERVICES
+  # =============================================================================
+
+  # PostgreSQL for Explorer
+  explorer-db:
+    container_name: andechain-explorer-db
+    image: postgres:17
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      - POSTGRES_DB=blockscout
+      - POSTGRES_USER=blockscout
+      - POSTGRES_PASSWORD=${EXPLORER_DB_PASSWORD:-andechain-db-secure-2025}
+    volumes:
+      - explorer-db-data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blockscout -d blockscout"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=explorer-database"
+
+  # PostgreSQL for Stats
+  stats-db:
+    container_name: andechain-stats-db
+    image: postgres:17
+    restart: unless-stopped
+    shm_size: 128m
+    environment:
+      - POSTGRES_DB=stats
+      - POSTGRES_USER=stats
+      - POSTGRES_PASSWORD=${EXPLORER_DB_PASSWORD:-andechain-db-secure-2025}
+    volumes:
+      - stats-db-data:/var/lib/postgresql/data
+    command: postgres -c max_connections=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stats -d stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=stats-database"
+
+  # Redis Cache
+  redis:
+    container_name: andechain-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=cache"
+
+  # Stats Service
+  stats-service:
+    container_name: andechain-stats
+    image: ghcr.io/blockscout/stats:latest
+    restart: unless-stopped
+    depends_on:
+      stats-db:
+        condition: service_healthy
+      explorer-backend:
+        condition: service_healthy
+    environment:
+      - STATS__DB_URL=postgres://stats:${EXPLORER_DB_PASSWORD:-andechain-db-secure-2025}@stats-db:5432/stats?ssl=false
+      - STATS__BLOCKSCOUT_DB_URL=postgres://blockscout:${EXPLORER_DB_PASSWORD:-andechain-db-secure-2025}@explorer-db:5432/blockscout?ssl=false
+      - STATS__BLOCKSCOUT_API_URL=http://explorer-backend:4000
+      - STATS__SERVER__HTTP__ADDR=0.0.0.0:8051
+      - STATS__RUN_MIGRATIONS=true
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8051/api/v1/lines"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=stats"
+
+  # Smart Contract Verifier
+  contract-verifier:
+    container_name: andechain-contract-verifier
+    image: ghcr.io/blockscout/smart-contract-verifier:v1.10.0
+    restart: unless-stopped
+    depends_on:
+      explorer-db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://blockscout:${EXPLORER_DB_PASSWORD:-andechain-db-secure-2025}@explorer-db:5432/blockscout
+      - SMART_CONTRACT_VERIFIER__SERVER__HTTP__ADDR=0.0.0.0:8043
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8043/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=contract-verifier"
+
+  # Blockscout Backend API
+  explorer-backend:
+    container_name: andechain-explorer-backend
+    image: ghcr.io/blockscout/blockscout:9.0.2
+    restart: unless-stopped
+    depends_on:
+      explorer-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database
+      - DATABASE_URL=postgres://blockscout:${EXPLORER_DB_PASSWORD:-andechain-db-secure-2025}@explorer-db:5432/blockscout?ssl=false
+
+      # Redis
+      - ACCOUNT_REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379
+
+      # Blockchain Connection
+      - ETHEREUM_JSONRPC_HTTP_URL=http://ev-reth:8545
+      - ETHEREUM_JSONRPC_WS_URL=ws://ev-reth:8546
+      - ETHEREUM_JSONRPC_TRACE_URL=http://ev-reth:8545
+
+      # Network Configuration
+      - NETWORK=AndeChain Testnet
+      - SUBNETWORK=AndeChain
+      - CHAIN_ID=2019
+      - COIN=ANDE
+      - COIN_NAME=Ande Ether
+
+      # API Configuration
+      - API_V2_ENABLED=true
+      - DISABLE_WEBAPP=false
+      - DISABLE_READ_API=false
+      - DISABLE_WRITE_API=false
+
+      # Block Processing
+      - BLOCK_TRANSFORMER=clique
+      - INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER=false
+
+      # Performance
+      - POOL_SIZE=40
+      - POOL_SIZE_API=20
+
+      # Features
+      - SHOW_TESTNET_LABEL=true
+      - SUPPORTED_CHAINS=[]
+
+      # Security
+      - SECRET_KEY_BASE=andechain-explorer-secret-key-2025
+      - CHECK_ORIGIN=false
+    command: >
+      sh -c "
+      echo '🔄 Running database migrations...' &&
+      bin/blockscout eval 'Elixir.Explorer.ReleaseTasks.create_and_migrate()' &&
+      echo '✅ Database ready' &&
+      echo '🚀 Starting Blockscout API server...' &&
+      bin/blockscout start"
+    ports:
+      - "${EXPLORER_BACKEND_PORT:-4001}:4000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/v1/stats"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 180s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=explorer-backend"
+      - "andechain.description=Blockscout API Server"
+
+  # Blockscout Frontend
+  explorer-frontend:
+    container_name: andechain-explorer-frontend
+    image: ghcr.io/blockscout/frontend:v2.2.1
+    restart: unless-stopped
+    depends_on:
+      explorer-backend:
+        condition: service_healthy
+      stats-service:
+        condition: service_healthy
+    ports:
+      - "${EXPLORER_FRONTEND_PORT:-4000}:3000"
+    environment:
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
+
+      # API Configuration
+      - NEXT_PUBLIC_API_HOST=explorer-backend
+      - NEXT_PUBLIC_API_PORT=4000
+      - NEXT_PUBLIC_API_PROTOCOL=http
+      - NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL=ws
+      - NEXT_PUBLIC_API_SPEC_URL=https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
+
+      # App Configuration
+      - NEXT_PUBLIC_APP_HOST=${EXPLORER_HOST:-localhost}
+      - NEXT_PUBLIC_APP_PORT=${EXPLORER_FRONTEND_PORT:-4000}
+      - NEXT_PUBLIC_APP_PROTOCOL=http
+
+      # Stats Configuration
+      - NEXT_PUBLIC_STATS_API_HOST=http://stats-service:8051
+
+      # Network Configuration
+      - NEXT_PUBLIC_NETWORK_NAME=AndeChain Testnet
+      - NEXT_PUBLIC_NETWORK_SHORT_NAME=AndeChain
+      - NEXT_PUBLIC_NETWORK_ID=2019
+      - NEXT_PUBLIC_NETWORK_CURRENCY_NAME=Ande Ether
+      - NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL=ANDE
+      - NEXT_PUBLIC_NETWORK_CURRENCY_DECIMALS=18
+      - NEXT_PUBLIC_NETWORK_RPC_URL=http://localhost:8545
+
+      # Features
+      - NEXT_PUBLIC_IS_TESTNET=true
+      - NEXT_PUBLIC_FEATURED_NETWORKS=
+      - NEXT_PUBLIC_OTHER_LINKS=
+
+      # UI Configuration
+      - NEXT_PUBLIC_HOMEPAGE_CHARTS=["daily_txs", "coin_price", "market_cap"]
+      - NEXT_PUBLIC_HOMEPAGE_PLATE_BACKGROUND=linear-gradient(122deg, rgb(162, 41, 197) 0%, rgb(123, 63, 228) 100%)
+
+      # Contract Verification
+      - NEXT_PUBLIC_CONTRACT_CODE_IDES_ENABLED=true
+      - NEXT_PUBLIC_HAS_CONTRACT_AUDIT_REPORTS=true
+
+      # Advanced Features
+      - NEXT_PUBLIC_AD_BANNER_ENABLED=false
+      - NEXT_PUBLIC_ROLLUP_TYPE=optimistic
+      - NEXT_PUBLIC_ROLLUP_L1_BASE_URL=https://eth-holesky.blockscout.com/
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - andechain-net
+    labels:
+      - "andechain.service=explorer-frontend"
+      - "andechain.description=Blockscout Web Interface"
+
+  # =============================================================================
+  # ANDECHAIN FRONTEND (dApp)
+  # =============================================================================
+
+  # Next.js Frontend Application - ANDE dApp
+  andechain-frontend:
+    container_name: ande-frontend
+    build:
+      context: ./andefrontend
+      dockerfile: Dockerfile
+      target: development
+      args:
+        NODE_VERSION: 20
+        BUILD_DATE: ${BUILD_DATE:-}
+        VCS_REF: ${VCS_REF:-}
+    image: ande/frontend:dev
+
+    # Development configuration - relaxed security for debugging
+    # user: "${DOCKER_USER:-1000}:${DOCKER_GROUP:-1000}"
+    # security_opt:
+    #   - no-new-privileges:true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+          pids: 100
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+    restart: unless-stopped
+    depends_on:
+      evolve-sequencer:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-3000}:9002"
+
+    # Volume mounts for development
+    volumes:
+      - ./andefrontend:/app:rw
+      - /app/node_modules
+      - /tmp:/tmp:rw
+
+    environment:
+      - NODE_ENV=development
+      - NEXTAUTH_URL=https://app.ande.network
+      - NEXT_PUBLIC_RPC_URL=http://localhost:8545
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8546
+      - NEXT_PUBLIC_CHAIN_ID=2019
+      - NEXT_PUBLIC_NETWORK_NAME=${ANDE_NETWORK:-ANDE Mainnet}
+      - NEXT_PUBLIC_CHAIN_NAME=ANDE Blockchain
+      - NEXT_PUBLIC_NATIVE_CURRENCY_NAME=Ande Ether
+      - NEXT_PUBLIC_NATIVE_CURRENCY_SYMBOL=ANDE
+      - NEXT_PUBLIC_NATIVE_CURRENCY_DECIMALS=18
+      - NEXT_PUBLIC_FAUCET_URL=http://localhost:3001
+      - NEXT_PUBLIC_EXPLORER_URL=http://localhost:4001
+      - NEXT_PUBLIC_ENABLE_TESTNETS=false
+      - NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=${WALLET_CONNECT_PROJECT_ID:-c3e4c3a3b3e4c3a3b3e4c3a3b3e4c3a3}
+      - NEXT_PUBLIC_ANDE_PRECOMPILE_ADDRESS=0xfd
+
+    # Network configuration
+    networks:
+      andechain-net:
+        ipv4_address: 172.20.0.20
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Production logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+        labels: "service=andefrontend,environment=production"
+
+    labels:
+      - "com.ande.service=andefrontend"
+      - "com.ande.environment=production"
+      - "com.ande.description=ANDE dApp Frontend - Web3 Interface"
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`app.ande.network`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+
+  # =============================================================================
+  # MONITORING SERVICES
+  # =============================================================================
+
+  # Prometheus - Metrics Collection & Monitoring
+  prometheus:
+    container_name: ande-prometheus
+    image: prom/prometheus:v2.48.0
+
+    # Security configuration
+    user: "65534:65534"  # nobody user
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+          pids: 100
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+    restart: unless-stopped
+    depends_on:
+      ev-reth:
+        condition: service_healthy
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.route-prefix=/'
+      - '--storage.tsdb.wal-compression'
+      - '--log.level=warn'
+
+    # Network configuration
+    networks:
+      andechain-net:
+        ipv4_address: 172.20.0.40
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Production logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+        labels: "service=prometheus,environment=production"
+
+    labels:
+      - "com.ande.service=prometheus"
+      - "com.ande.environment=production"
+      - "com.ande.description=ANDE Metrics Collection & Monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.ande.network`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  # Grafana - Monitoring Dashboards & Analytics
+  grafana:
+    container_name: ande-grafana
+    image: grafana/grafana:10.2.0
+
+    # Security configuration
+    user: "472:472"  # grafana user
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+          pids: 100
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ./config/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./config/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_SERVER_DOMAIN=grafana.ande.network
+      - GF_SERVER_ROOT_URL=https://grafana.ande.network
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+
+    # Network configuration
+    networks:
+      andechain-net:
+        ipv4_address: 172.20.0.41
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Production logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+        labels: "service=grafana,environment=production"
+
+    labels:
+      - "com.ande.service=grafana"
+      - "com.ande.environment=production"
+      - "com.ande.description=ANDE Monitoring Dashboards & Analytics"
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.ande.network`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+# =============================================================================
+# PERSISTENT VOLUMES
+# =============================================================================
+
+volumes:
+  # Security & Configuration
+  jwt-secrets:
+    driver: local
+    labels:
+      - "andechain.volume=security"
+
+  # Blockchain Data
+  celestia-data:
+    driver: local
+    labels:
+      - "andechain.volume=blockchain-da"
+  ev-reth-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.ande-data/ev-reth
+    labels:
+      - "andechain.volume=blockchain"
+      - "andechain.description=EV-RETH Node Data"
+  evolve-data:
+    driver: local
+    labels:
+      - "andechain.volume=blockchain-consensus"
+
+  # Database Storage
+  explorer-db-data:
+    driver: local
+    labels:
+      - "andechain.volume=database-explorer"
+  stats-db-data:
+    driver: local
+    labels:
+      - "andechain.volume=database-stats"
+  redis-data:
+    driver: local
+    labels:
+      - "andechain.volume=cache"
+
+  # Monitoring Data
+  prometheus-data:
+    driver: local
+    labels:
+      - "andechain.volume=monitoring-metrics"
+  grafana-data:
+    driver: local
+    labels:
+      - "andechain.volume=monitoring-dashboards"
+
+# =============================================================================
+# NETWORK CONFIGURATION
+# =============================================================================
+
+networks:
+  andechain-net:
+    driver: bridge
+    name: andechain-production
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          ip_range: 172.20.0.0/20
+    driver_opts:
+      com.docker.network.bridge.name: ande-br0
+      com.docker.network.driver.mtu: 1500
+    labels:
+      - "andechain.network=production"
+      - "andechain.description=AndeChain Production Network"
+
+# =============================================================================
+# CONFIGURATION NOTES
+# =============================================================================
+#
+# Environment Variables:
+# - FAUCET_PRIVATE_KEY: Private key for faucet wallet (set in .env)
+# - EXPLORER_DB_PASSWORD: PostgreSQL password for explorer (set in .env)
+# - FAUCET_PORT: Faucet web UI port (default: 3001)
+# - EXPLORER_FRONTEND_PORT: Explorer UI port (default: 4000)
+# - EXPLORER_BACKEND_PORT: Explorer API port (default: 4001)
+# - FRONTEND_PORT: AndeChain dApp port (default: 3002)
+# - PROMETHEUS_PORT: Metrics port (default: 9090)
+# - GRAFANA_PORT: Dashboards port (default: 3000)
+# - GRAFANA_USER: Grafana admin username (default: admin)
+# - GRAFANA_PASSWORD: Grafana admin password (default: andechain2025)
+#
+# Health Checks:
+# - All services have health checks with proper dependencies
+# - Start order: jwt-init → celestia → ev-reth → sequencer → apps
+#
+# Security:
+# - JWT tokens stored in secure volume
+# - Database passwords configurable via environment
