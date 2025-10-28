@@ -7,3 +7,6 @@
 [submodule "infra/stacks/da-local/ev-node"]
 	path = infra/stacks/da-local/ev-node
 	url = https://github.com/evstack/ev-node
+[submodule "contracts/lib/solady"]
+	path = contracts/lib/solady
+	url = https://github.com/Vectorized/solady
