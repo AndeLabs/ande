@@ -156,8 +156,8 @@ contract DeployEcosystem is Script {
         console2.log("};");
         console2.log("```");
         console2.log("");
-        console2.log("✅ Ecosystem deployed successfully!");
-        console2.log("✅ Users can now stake and earn rewards");
+        console2.log(unicode"✅ Ecosystem deployed successfully!");
+        console2.log(unicode"✅ Users can now stake and earn rewards");
         console2.log("==============================================");
     }
     

@@ -1,0 +1,721 @@
+# 🌐 AndeChain Production Ready - Multi-Node Decentralized Testnet
+# Celestia Mocha-4 Data Availability
+# Stack: Evolve Sequencer + ev-reth + Celestia DA
+
+networks:
+  andechain-p2p:
+    name: andechain-p2p
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  sequencer-data:
+    driver: local
+  evolve-data:
+    driver: local
+  fullnode1-data:
+    driver: local
+  fullnode2-data:
+    driver: local
+  celestia-data:
+    driver: local
+  jwttoken-sequencer:
+    driver: local
+  jwttoken-fullnode1:
+    driver: local
+  jwttoken-fullnode2:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  blockscout-db-data:
+    driver: local
+
+services:
+  # ============================================
+  # 1. JWT Secrets Initialization
+  # ============================================
+  jwt-init-sequencer:
+    container_name: jwt-init-sequencer
+    image: alpine:3.22.0
+    volumes:
+      - jwttoken-sequencer:/jwt
+    command: ["/bin/sh", "-c", "if [ ! -f /jwt/jwt.hex ]; then apk add --no-cache openssl && openssl rand -hex 32 | tr -d '\\n' > /jwt/jwt.hex && echo '✅ JWT generated for AndeChain sequencer'; else echo '✅ JWT exists for AndeChain sequencer'; fi"]
+    networks:
+      - andechain-p2p
+
+  jwt-init-fullnode1:
+    container_name: jwt-init-fullnode1
+    image: alpine:3.22.0
+    volumes:
+      - jwttoken-fullnode1:/jwt
+    command: ["/bin/sh", "-c", "if [ ! -f /jwt/jwt.hex ]; then apk add --no-cache openssl && openssl rand -hex 32 | tr -d '\\n' > /jwt/jwt.hex && echo '✅ JWT generated for AndeChain fullnode1'; else echo '✅ JWT exists for AndeChain fullnode1'; fi"]
+    networks:
+      - andechain-p2p
+
+  jwt-init-fullnode2:
+    container_name: jwt-init-fullnode2
+    image: alpine:3.22.0
+    volumes:
+      - jwttoken-fullnode2:/jwt
+    command: |
+      /bin/sh -c "
+      if [ ! -f /jwt/jwt.hex ]; then
+        apk add --no-cache openssl &&
+        openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex &&
+        echo '✅ JWT generated for AndeChain fullnode2';
+      else
+        echo '✅ JWT exists for AndeChain fullnode2';
+      fi"
+    networks:
+      - andechain-p2p
+
+  
+  # ============================================
+  # 2. Celestia Light Node (Shared DA Layer)
+  # ============================================
+  celestia-light:
+    container_name: celestia-light
+    image: ghcr.io/celestiaorg/celestia-node:v0.27.5-mocha
+    restart: unless-stopped
+    ports:
+      - "26658:26658"  # RPC API
+      - "2121:2121"    # P2P
+    volumes:
+      - celestia-data:/home/celestia
+    networks:
+      - andechain-p2p
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -d "/home/celestia/keys" ]; then
+          echo "🌙 Initializing Celestia light node for AndeChain..."
+          celestia light init --p2p.network mocha-4
+
+          # Configure trusted height and hash for mocha-4
+          TRUSTED_HEIGHT=8428847
+          TRUSTED_HASH="0679C900DAFF13F9F240931DC01A9CC589A7D12BE045D1D4EAF541BBB8DF48BF"
+          CONFIG_FILE="/home/celestia/config.toml"
+
+          sed -i "s/SyncFromHash = \"\"/SyncFromHash = \"$$TRUSTED_HASH\"/" "$$CONFIG_FILE"
+          sed -i "s/SyncFromHeight = 0/SyncFromHeight = $$TRUSTED_HEIGHT/" "$$CONFIG_FILE"
+
+          echo "✅ Celestia configured with trusted height: $$TRUSTED_HEIGHT"
+        fi
+
+        echo "🚀 Starting Celestia light node for AndeChain..."
+        celestia light start \
+          --core.ip rpc-mocha.pops.one \
+          --p2p.network mocha-4 \
+          --rpc.addr 0.0.0.0 \
+          --rpc.port 26658
+
+  # ============================================
+  # 3. AndeChain Sequencer (Block Producer)
+  # ============================================
+  ev-reth-sequencer:
+    container_name: ev-reth-sequencer
+    image: ev-reth-andechain:latest
+    depends_on:
+      jwt-init-sequencer:
+        condition: service_completed_successfully
+    ports:
+      - "8545:8545"   # HTTP RPC
+      - "8546:8546"   # WebSocket
+      - "8551:8551"   # Engine API
+      - "9001:9001"   # Metrics
+      - "30303:30303" # P2P
+    volumes:
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+      - jwttoken-sequencer:/jwt:ro
+      - sequencer-data:/data
+    environment:
+      - RUST_LOG=info,ev_reth=debug,ande_precompile=trace
+      - RUST_BACKTRACE=1
+    command:
+      - --datadir=/data
+      - --override.genesis=/genesis.json
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --maxpeers=50
+      - --nodiscover=false
+      - --syncmode=full
+      - --networkid=2019
+      - --state.scheme=path
+      - --gcmode=full
+    networks:
+      - andechain-p2p
+
+  evolve-sequencer:
+    container_name: evolve-sequencer
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    depends_on:
+      ev-reth-sequencer:
+        condition: service_started
+      celestia-light:
+        condition: service_started
+      jwt-init-sequencer:
+        condition: service_completed_successfully
+    ports:
+      - "7331:7331"    # RPC
+      - "7676:7676"    # P2P
+      - "26660:26660"  # Metrics
+    volumes:
+      - jwttoken-sequencer:/jwt:ro
+      - evolve-data:/root/.evolve
+    environment:
+      - EVM_ENGINE_URL=http://ev-reth-sequencer:8551
+      - EVM_ETH_URL=http://ev-reth-sequencer:8545
+      - EVM_JWT_PATH=/jwt/jwt.hex
+      - EVM_BLOCK_TIME=2s
+      - DA_BLOCK_TIME=30s
+      - DA_ADDRESS=http://celestia-light:26658
+      - DA_HEADER_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_DATA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_START_HEIGHT=8428847
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo '🚀 Starting AndeChain Sequencer (Multi-Node Network Mode)'
+
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+        echo '✅ JWT loaded for AndeChain'
+
+        # Wait for ev-reth to be ready
+        echo '⏳ Waiting for ev-reth to be ready...'
+        sleep 20
+
+        # Get genesis hash from ev-reth
+        echo '🔍 Retrieving genesis hash from ev-reth...'
+        GENESIS_HASH=""
+        for i in 1 2 3 4 5; do
+          GENESIS_HASH=$$(curl -s -X POST http://ev-reth-sequencer:8545 \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}' \
+            | grep -o '"hash":"0x[^"]*"' | cut -d'"' -f4 || echo "")
+          if [ -n "$$GENESIS_HASH" ]; then
+            echo "✅ Genesis hash retrieved: $$GENESIS_HASH"
+            break
+          fi
+          echo "⏳ Waiting for ev-reth RPC... ($$i/5)"
+          sleep 5
+        done
+
+        if [ -z "$$GENESIS_HASH" ]; then
+          echo "❌ Failed to retrieve genesis hash"
+          exit 1
+        fi
+
+        # Initialize if node_key doesn't exist (first run)
+        if [ ! -f /root/.evolve/config/node_key.json ]; then
+          echo '📝 Initializing AndeChain sequencer (first run)'
+          evm-single init \
+            --home=/root/.evolve \
+            --evnode.node.aggregator=true \
+            --evnode.signer.passphrase=andechain-sequencer-secure-2025
+          echo '✅ AndeChain sequencer initialized'
+        else
+          echo '✅ AndeChain sequencer already initialized'
+        fi
+
+        # Start sequencer with P2P enabled
+        echo '🚀 Starting AndeChain sequencer with P2P network enabled'
+        exec evm-single start \
+          --home=/root/.evolve \
+          --evm.eth-url=http://ev-reth-sequencer:8545 \
+          --evm.engine-url=http://ev-reth-sequencer:8551 \
+          --evm.jwt-secret="$$JWT_SECRET" \
+          --evm.genesis-hash="$$GENESIS_HASH" \
+          --evnode.node.aggregator=true \
+          --evnode.node.block_time=2s \
+          --evnode.da.address=http://celestia-light:26658 \
+          --evnode.da.namespace=000000000000000000000000000000000000616e6465636861696e2d7631 \
+          --evnode.signer.passphrase=andechain-sequencer-secure-2025 \
+          --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --rollkit.rpc.address=0.0.0.0:7331 \
+          --rollkit.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --rollkit.instrumentation.prometheus=true \
+          --rollkit.instrumentation.prometheus_listen_addr=:26660
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 4. Full Node 1 (Validator)
+  # ============================================
+  ev-reth-fullnode1:
+    container_name: ev-reth-fullnode1
+    image: ev-reth-andechain:latest
+    depends_on:
+      jwt-init-fullnode1:
+        condition: service_completed_successfully
+    ports:
+      - "8547:8545"   # HTTP RPC (different port)
+      - "8548:8546"   # WebSocket
+      - "8552:8551"   # Engine API
+      - "9002:9001"   # Metrics
+      - "30304:30303" # P2P
+    volumes:
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+      - jwttoken-fullnode1:/jwt:ro
+      - fullnode1-data:/data
+    environment:
+      - RUST_LOG=info,ev_reth=debug
+      - RUST_BACKTRACE=1
+    command:
+      - --datadir=/data
+      - --override.genesis=/genesis.json
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --maxpeers=50
+      - --nodiscover=false
+      - --syncmode=full
+      - --networkid=2019
+      - --datadir=/data
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --maxpeers=50
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --syncmode=full
+    networks:
+      - andechain-p2p
+
+  fullnode1:
+    container_name: fullnode1
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    depends_on:
+      ev-reth-fullnode1:
+        condition: service_started
+      evolve-sequencer:
+        condition: service_started
+    ports:
+      - "7332:7331"    # RPC
+      - "7677:7676"    # P2P
+      - "26661:26660"  # Metrics
+    volumes:
+      - jwttoken-fullnode1:/jwt:ro
+      - fullnode1-data:/root/.evm-single
+    environment:
+      - EVM_ENGINE_URL=http://ev-reth-fullnode1:8551
+      - EVM_ETH_URL=http://ev-reth-fullnode1:8545
+      - EVM_JWT_PATH=/jwt/jwt.hex
+      - EVM_BLOCK_TIME=2s
+      - DA_BLOCK_TIME=30s
+      - DA_ADDRESS=http://celestia-light:26658
+      - DA_HEADER_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_DATA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_START_HEIGHT=8428847
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo '🚀 Starting AndeChain Full Node 1'
+
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+        echo '✅ JWT loaded for AndeChain fullnode1'
+
+        # Wait for sequencer to be ready
+        echo '⏳ Waiting for AndeChain sequencer...'
+        sleep 30
+
+        # Get sequencer peer info
+        SEQUENCER_PEER_ID=$$(docker exec evolve-sequencer evm-single status 2>/dev/null | grep "ID:" | cut -d' ' -f2 || echo "")
+
+        if [ -z "$$SEQUENCER_PEER_ID" ]; then
+          echo "⚠️  Could not get sequencer peer ID, starting without bootstrap"
+          BOOTSTRAP_PEERS=""
+        else
+          echo "✅ Sequencer peer ID: $$SEQUENCER_PEER_ID"
+          BOOTSTRAP_PEERS="$$SEQUENCER_PEER_ID@evolve-sequencer:7676"
+        fi
+
+        # Initialize if needed
+        if [ ! -f /root/.evm-single/config/node_key.json ]; then
+          echo '📝 Initializing AndeChain full node 1...'
+          evm-single init \
+            --home=/root/.evm-single \
+            --evnode.node.aggregator=false \
+            --evnode.signer.passphrase=andechain-fullnode1-secure-2025
+          echo '✅ AndeChain full node 1 initialized'
+        fi
+
+        # Start full node
+        echo '🚀 Starting AndeChain full node 1 with P2P networking'
+        exec evm-single start \
+          --home=/root/.evm-single \
+          --evm.eth-url=http://ev-reth-fullnode1:8545 \
+          --evm.engine-url=http://ev-reth-fullnode1:8551 \
+          --evm.jwt-secret="$$JWT_SECRET" \
+          --evnode.node.aggregator=false \
+          --evnode.da.address=http://celestia-light:26658 \
+          --evnode.da.namespace=000000000000000000000000000000000000616e6465636861696e2d7631 \
+          --evnode.signer.passphrase=andechain-fullnode1-secure-2025 \
+          --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --rollkit.rpc.address=0.0.0.0:7331 \
+          --rollkit.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --rollkit.p2p.bootstrap_peers="$$BOOTSTRAP_PEERS" \
+          --rollkit.instrumentation.prometheus=true \
+          --rollkit.instrumentation.prometheus_listen_addr=:26660
+    networks:
+      - andechain-p2p
+
+   # ============================================
+  # 5. Full Node 2 (Validator)
+  # ============================================
+  ev-reth-fullnode2:
+    container_name: ev-reth-fullnode2
+    image: ev-reth-andechain:latest
+    depends_on:
+      jwt-init-fullnode2:
+        condition: service_completed_successfully
+    ports:
+      - "8549:8545"   # HTTP RPC (different port)
+      - "8550:8546"   # WebSocket
+      - "8553:8551"   # Engine API
+      - "9003:9001"   # Metrics
+      - "30305:30303" # P2P
+    volumes:
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+      - jwttoken-fullnode2:/jwt:ro
+      - fullnode2-data:/data
+    environment:
+      - RUST_LOG=info,ev_reth=debug
+      - RUST_BACKTRACE=1
+    command:
+      - --datadir=/data
+      - --override.genesis=/genesis.json
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --maxpeers=50
+      - --nodiscover=false
+      - --syncmode=full
+      - --networkid=2019
+      - --datadir=/data
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --maxpeers=50
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --syncmode=full
+    networks:
+      - andechain-p2p
+
+  fullnode2:
+    container_name: fullnode2
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    depends_on:
+      ev-reth-fullnode2:
+        condition: service_started
+      evolve-sequencer:
+        condition: service_started
+    ports:
+      - "7333:7331"    # RPC
+      - "7678:7676"    # P2P
+      - "26662:26660"  # Metrics
+    volumes:
+      - jwttoken-fullnode2:/jwt:ro
+      - fullnode2-data:/root/.evm-single
+    environment:
+      - EVM_ENGINE_URL=http://ev-reth-fullnode2:8551
+      - EVM_ETH_URL=http://ev-reth-fullnode2:8545
+      - EVM_JWT_PATH=/jwt/jwt.hex
+      - EVM_BLOCK_TIME=2s
+      - DA_BLOCK_TIME=30s
+      - DA_ADDRESS=http://celestia-light:26658
+      - DA_HEADER_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_DATA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_START_HEIGHT=8428847
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo '🚀 Starting AndeChain Full Node 2'
+
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+        echo '✅ JWT loaded for AndeChain fullnode2'
+
+        # Wait for sequencer and fullnode1
+        echo '⏳ Waiting for AndeChain network...'
+        sleep 45
+
+        # Get sequencer and fullnode1 peer info
+        SEQUENCER_PEER_ID=$$(docker exec evolve-sequencer evm-single status 2>/dev/null | grep "ID:" | cut -d' ' -f2 || echo "")
+        FULLNODE1_PEER_ID=$$(docker exec fullnode1 evm-single status 2>/dev/null | grep "ID:" | cut -d' ' -f2 || echo "")
+
+        if [ -z "$$SEQUENCER_PEER_ID" ]; then
+          echo "⚠️  Could not get peer IDs"
+          BOOTSTRAP_PEERS=""
+        else
+          echo "✅ Bootstrap peers found for AndeChain"
+          if [ -n "$$FULLNODE1_PEER_ID" ]; then
+            BOOTSTRAP_PEERS="$$SEQUENCER_PEER_ID@evolve-sequencer:7676,$$FULLNODE1_PEER_ID@fullnode1:7676"
+          else
+            BOOTSTRAP_PEERS="$$SEQUENCER_PEER_ID@evolve-sequencer:7676"
+          fi
+        fi
+
+        # Initialize if needed
+        if [ ! -f /root/.evm-single/config/node_key.json ]; then
+          echo '📝 Initializing AndeChain full node 2...'
+          evm-single init \
+            --home=/root/.evm-single \
+            --evnode.node.aggregator=false \
+            --evnode.signer.passphrase=andechain-fullnode2-secure-2025
+          echo '✅ AndeChain full node 2 initialized'
+        fi
+
+        # Start full node
+        echo '🚀 Starting AndeChain full node 2 with P2P networking'
+        exec evm-single start \
+          --home=/root/.evm-single \
+          --evm.eth-url=http://ev-reth-fullnode2:8545 \
+          --evm.engine-url=http://ev-reth-fullnode2:8551 \
+          --evm.jwt-secret="$$JWT_SECRET" \
+          --evnode.node.aggregator=false \
+          --evnode.da.address=http://celestia-light:26658 \
+          --evnode.da.namespace=000000000000000000000000000000000000616e6465636861696e2d7631 \
+          --evnode.signer.passphrase=andechain-fullnode2-secure-2025 \
+          --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --rollkit.rpc.address=0.0.0.0:7331 \
+          --rollkit.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --rollkit.p2p.bootstrap_peers="$$BOOTSTRAP_PEERS" \
+          --rollkit.instrumentation.prometheus=true \
+          --rollkit.instrumentation.prometheus_listen_addr=:26660
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 6. Monitoring Stack
+  # ============================================
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    depends_on:
+      ev-reth-sequencer:
+        condition: service_started
+      evolve-sequencer:
+        condition: service_started
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/stacks/single-sequencer/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - andechain-p2p
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./infra/stacks/single-sequencer/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./infra/stacks/single-sequencer/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./infra/stacks/single-sequencer/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=andechain-admin-2025
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 7. Blockscout Explorer
+  # ============================================
+  blockscout-db:
+    container_name: blockscout-db
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: blockscout
+      POSTGRES_USER: blockscout
+      POSTGRES_PASSWORD: blockscout-password-2025
+    volumes:
+      - blockscout-db-data:/var/lib/postgresql/data
+    networks:
+      - andechain-p2p
+
+  blockscout-backend:
+    container_name: blockscout-backend
+    image: blockscout/blockscout:latest
+    restart: unless-stopped
+    depends_on:
+      blockscout-db:
+        condition: service_healthy
+      ev-reth-sequencer:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://blockscout:blockscout-password-2025@blockscout-db:5432/blockscout
+      ETHEREUM_JSONRPC_VARIANT: geth
+      ETHEREUM_JSONRPC_HTTP_URL: http://ev-reth-sequencer:8545
+      ETHEREUM_JSONRPC_WS_URL: ws://ev-reth-sequencer:8546
+      CHAIN_ID: "2019"
+      ETHEREUM_JSONRPC_TRACE_URL: http://ev-reth-sequencer:8545
+      ETHEREUM_JSONRPC_TRANSPORT: http
+      SUBNETWORK: AndeChain
+      COIN_NAME: ANDE
+      COIN_SYMBOL: ANDE
+      HIDDEN_CONTRACTS_ADDRESSES: "0x0000000000000000000000000000000000000000"
+      BLOCKSCOUT_HOST: http://localhost:4000
+      BLOCKSCOUT_PROTOCOL: http
+      BLOCKSCOUT_PORT: "4000"
+      LOGO: /images/blockscout_logo.svg
+      LOGO_TEXT: AndeChain Explorer
+      SUPPORT_LINK: https://github.com/ande-labs/andechain
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./infra/blockscout/logo.svg:/images/blockscout_logo.svg:ro
+    networks:
+      - andechain-p2p
+
+  blockscout-frontend:
+    container_name: blockscout-frontend
+    image: blockscout/frontend:latest
+    restart: unless-stopped
+    depends_on:
+      blockscout-backend:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_API_HOSTNAME: http://localhost:4000
+      NEXT_PUBLIC_GRAPHQL_URL: http://blockscout-backend:4000/api/v1/graphql
+      NEXT_PUBLIC_NETWORK_NAME: AndeChain Testnet
+      NEXT_PUBLIC_NETWORK_ID: 2019
+      NEXT_PUBLIC_NETWORK_SHORT_NAME: AndeChain
+      NEXT_PUBLIC_TESTNET: "true"
+      NEXT_PUBLIC_NETWORK_ICON: /images/andechain-icon.svg
+      NEXT_PUBLIC_NETWORK_CURRENCY_NAME: ANDE
+      NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL: ANDE
+      NEXT_PUBLIC_EXPLORER_API_HOSTNAME: http://localhost:4000
+    ports:
+      - "4001:3000"
+    volumes:
+      - ./infra/blockscout/andechain-icon.svg:/images/andechain-icon.svg:ro
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 8. AndeChain Faucet (Token Distribution)
+  # ============================================
+  faucet:
+    container_name: andechain-faucet
+    build:
+      context: .
+      dockerfile: Dockerfile.faucet
+    restart: unless-stopped
+    depends_on:
+      ev-reth-sequencer:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      RPC_URL: http://ev-reth-sequencer:8545
+      CHAIN_ID: "2019"
+      TOKEN_ADDRESS: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F"
+      FAUCET_AMOUNT: "500000"
+      FAUCET_PRIVATE_KEY: ${FAUCET_PRIVATE_KEY}
+    ports:
+      - "3001:3001"
+    networks:
+      - andechain-p2p

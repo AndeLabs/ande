@@ -1,6 +1,6 @@
 {
   "config": {
-    "chainId": 2019,
+    "chainId": 6174,
     "homesteadBlock": 0,
     "eip150Block": 0,
     "eip155Block": 0,
@@ -21,9 +21,9 @@
     "pragueTime": 0,
     "andechain": {
       "name": "AndeChain Sovereign Rollup",
-      "version": "1.0.0-beta",
+      "version": "1.0.0",
       "type": "sovereign",
-      "network": "mainnet-beta",
+      "network": "testnet",
       "dataAvailability": {
         "provider": "celestia",
         "network": "mocha-4",
@@ -60,7 +60,13 @@
         "mevProtection": true,
         "parallelExecution": true,
         "crossChainBridge": true
-      }
+      },
+      "icaro": "Sonk'o wachay",
+      "data": [
+        "0x4e435f3033303630312e31",
+        "0x48513234373230302e31",
+        "0x4c433635313136352e31"
+      ]
     }
   },
   "nonce": "0x0",
@@ -88,7 +94,5 @@
   "number": "0x0",
   "gasUsed": "0x0",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "baseFeePerGas": "0x3b9aca00",
-  "excessBlobGas": "0x0",
-  "blobGasUsed": "0x0"
+  "baseFeePerGas": "0x3b9aca00"
 }

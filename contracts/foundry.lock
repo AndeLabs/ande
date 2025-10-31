@@ -19,5 +19,8 @@
       "name": "v5.4.0",
       "rev": "e725abddf1e01cf05ace496e950fc8e243cc7cab"
     }
+  },
+  "lib/solady": {
+    "rev": "836c169fe357b3c23ad5d5755a9b4fbbfad7a99b"
   }
 }

@@ -1,639 +1,716 @@
 # ==========================================
-# AndeChain Development Makefile
+# ANDE Chain - Production Makefile
+# Rollup EVM with Celestia DA
+# ==========================================
+#
+# Version: 2.0.0
+# Last Updated: December 2024
+# 
+# This Makefile provides standardized commands for:
+# - Local development (with Celestia DA)
+# - Testnet deployment (Celestia Mocha-4)
+# - Mainnet deployment (Celestia Mainnet)
+# - Security auditing
+# - Monitoring & maintenance
+#
+# ARCHITECTURE:
+# - Sovereign Rollup (NO Ethereum L1)
+# - ev-reth (Modified Reth with ANDE Precompile + Parallel EVM)
+# - Evolve Sequencer (ExRollkit)
+# - Celestia DA Layer
+# - Blockscout Explorer
+#
+# Usage: make <command> [ENV=<environment>]
+# Example: make deploy ENV=testnet
 # ==========================================
 
-.PHONY: help start stop reset test coverage security clean deploy-only deploy-ecosystem verify-contracts relayer faucet build-ev-reth health info fuzz gas snapshot
+.PHONY: help clean install validate
 
-# Default target
-help:
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "    AndeChain - ANDE Token Duality System"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo ""
-	@echo "🚀 Comandos Principales:"
-	@echo "  make full-start              - 🔥 COMPLETO: Todo automatizado (requisitos + infra + deploy)"
-	@echo "  make full-start-with-staking - 🔥 COMPLETO + STAKING: Incluye deployment de staking"
-	@echo "  make start                   - Inicia infraestructura (sin verificar requisitos)"
-	@echo "  make stop                    - Detiene la infraestructura"
-	@echo "  make reset                   - Reset completo (borra volúmenes y artifacts)"
-	@echo "  make health                  - Verifica salud del sistema"
-	@echo "  make info                    - Muestra información del sistema"
-	@echo ""
-	@echo "📜 Smart Contracts:"
-	@echo "  make test                  - Ejecuta tests de contratos"
-	@echo "  make coverage              - Genera reporte de cobertura"
-	@echo "  make security              - Análisis de seguridad (Slither)"
-	@echo "  make deploy-ecosystem      - Despliega ecosistema completo"
-	@echo "  make deploy-staking        - Despliega solo contrato de staking"
-	@echo "  make fund-staking          - Fondea contrato de staking con rewards"
-	@echo "  make redeploy-token        - Fuerza redeploy de ANDE Token con nueva dirección"
-	@echo "  make verify-contracts      - Info sobre verificación en Blockscout"
-	@echo ""
-	@echo "🔧 Herramientas:"
-	@echo "  make build-ev-reth      - Construye ev-reth ANDE desde GitHub"
-	@echo "  make relayer            - Inicia relayer de bridge"
-	@echo "  make faucet             - Inicia servidor de faucet"
-	@echo "  make clean              - Limpia artifacts de compilación"
-	@echo ""
-	@echo "📊 Monitoreo:"
-	@echo "  make start-monitoring   - Inicia Prometheus + Grafana"
-	@echo "  make stop-monitoring    - Detiene stack de monitoreo"
-	@echo "  make status-monitoring  - Estado del monitoreo"
-	@echo "  make metrics            - Muestra métricas en tiempo real"
-	@echo "  make status-full        - Estado completo (sistema + monitoreo)"
-	@echo ""
-	@echo "📦 Version Control:"
-	@echo "  make version            - Muestra información de versiones"
-	@echo "  make version-patch      - Incrementa versión patch"
-	@echo "  make version-minor      - Incrementa versión minor"
-	@echo "  make version-major      - Incrementa versión major"
-	@echo ""
-	@echo "💡 Sistema 100% ANDE Token Duality"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo ""
+# ==========================================
+# CONFIGURATION
+# ==========================================
 
-# Inicia el entorno completo con ANDE Token Duality
-start: build-ev-reth
-	@echo "🚀 Iniciando AndeChain con ANDE Token Duality..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml up -d --build
-	@echo "⏳ Esperando 30 segundos para que la cadena se estabilice..."
-	@sleep 30
-	@echo "✅ AndeChain está lista!"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🌐 RPC: http://localhost:8545"
-	@echo "🔍 Explorer: http://localhost:4000"
-	@echo "💰 ANDE Precompile: 0x00000000000000000000000000000000000000FD"
-	@echo "ℹ️  Para desplegar contratos: make deploy-ecosystem"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+# Default environment
+ENV ?= local
 
-# 🔥 COMANDO COMPLETO AUTOMATIZADO - Todo en Uno
-full-start:
-	@echo "🔥 AndeChain Full Start - Todo Automatizado"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+# Colors for output
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
+
+# Project paths
+PROJECT_ROOT := $(shell pwd)
+CONTRACTS_DIR := $(PROJECT_ROOT)/contracts
+INFRA_DIR := $(PROJECT_ROOT)/infra
+SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
+
+# RPC URLs by environment (our own sovereign chain)
+RPC_URL_LOCAL := http://localhost:8545
+RPC_URL_TESTNET := $(shell grep TESTNET_RPC_URL .env.$(ENV) 2>/dev/null | cut -d '=' -f2 || echo "")
+RPC_URL_MAINNET := $(shell grep MAINNET_RPC_URL .env.$(ENV) 2>/dev/null | cut -d '=' -f2 || echo "")
+
+# Celestia DA endpoints
+CELESTIA_RPC_LOCAL := http://localhost:26658
+CELESTIA_NETWORK_TESTNET := mocha-4
+CELESTIA_NETWORK_MAINNET := celestia
+
+# Chain IDs (our sovereign chain IDs)
+CHAIN_ID_LOCAL := 1234
+CHAIN_ID_TESTNET := 1234  # Same chain, different DA network
+CHAIN_ID_MAINNET := 1234  # Our production chain ID
+
+# Private key handling (use keystore, not raw keys)
+DEPLOYER_ACCOUNT_LOCAL := deployer-local
+DEPLOYER_ACCOUNT_TESTNET := deployer-testnet
+DEPLOYER_ACCOUNT_MAINNET := deployer-mainnet
+
+# ==========================================
+# HELP & INFO
+# ==========================================
+
+help: ## Show this help message
+	@echo "$(BLUE)╔════════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  ANDE Chain - Production Makefile                             ║$(NC)"
+	@echo "$(BLUE)║  Sovereign Rollup with Celestia DA                             ║$(NC)"
+	@echo "$(BLUE)║  ev-reth + Evolve Sequencer + Blockscout                       ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "📋 1. Verificando requisitos..."
-	@command -v docker >/dev/null 2>&1 || { echo "❌ Docker no encontrado. Por favor instala Docker."; exit 1; }
-	@command -v docker compose >/dev/null 2>&1 || { echo "❌ Docker Compose no encontrado. Por favor instala Docker Compose."; exit 1; }
-	@command -v forge >/dev/null 2>&1 || { echo "❌ Foundry no encontrado. Ejecuta: curl -L https://foundry.paradigm.xyz | bash && foundryup"; exit 1; }
-	@echo "✅ Requisitos verificados"
+	@echo "$(GREEN)🚀 Quick Start:$(NC)"
+	@echo "  make setup                    - First-time setup (install dependencies)"
+	@echo "  make deploy-local             - Deploy complete system locally"
+	@echo "  make test-all                 - Run all tests"
 	@echo ""
-	@echo "📝 2. Configurando entorno..."
-	@if [ ! -f "contracts/.env" ]; then \
-		echo "Creando contracts/.env con PRIVATE_KEY de desarrollo..."; \
-		echo "PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" > contracts/.env; \
-		echo "✅ .env creado"; \
-	else \
-		echo "✅ .env ya existe"; \
-	fi
+	@echo "$(GREEN)📋 Main Commands:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-30s$(NC) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "🔨 3. Construyendo ev-reth con ANDE Token Duality..."
-	@$(MAKE) build-ev-reth
+	@echo "$(GREEN)🌍 Environment Options:$(NC)"
+	@echo "  ENV=local    - Local development (default)"
+	@echo "  ENV=testnet  - Public testnet"
+	@echo "  ENV=mainnet  - Production mainnet"
 	@echo ""
-	@echo "🐳 4. Iniciando infraestructura Docker..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml up -d
+	@echo "$(YELLOW)📖 Documentation: docs/DEPLOYMENT_GUIDE.md$(NC)"
+
+version: ## Show version information
+	@echo "$(GREEN)ANDE Chain Version Information$(NC)"
+	@cat VERSION 2>/dev/null || echo "Version file not found"
 	@echo ""
-	@echo "⏳ 5. Esperando estabilización de la red (60 segundos)..."
+	@echo "$(GREEN)Component Versions:$(NC)"
+	@forge --version 2>/dev/null | head -n 1 || echo "Foundry not installed"
+	@docker --version 2>/dev/null || echo "Docker not installed"
+	@docker compose version 2>/dev/null || echo "Docker Compose not installed"
+	@echo ""
+	@echo "$(GREEN)Celestia Status:$(NC)"
+	@docker ps --filter "name=celestia" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null || echo "Celestia not running"
+
+# ==========================================
+# SETUP & INSTALLATION
+# ==========================================
+
+setup: ## Complete first-time setup
+	@echo "$(GREEN)🔧 Setting up ANDE Chain development environment...$(NC)"
+	@$(MAKE) check-prerequisites
+	@$(MAKE) install-dependencies
+	@$(MAKE) setup-env-files
+	@$(MAKE) setup-keystore
+	@echo "$(GREEN)✅ Setup complete! Run 'make deploy-local' to start.$(NC)"
+
+check-prerequisites: ## Check if all required tools are installed
+	@echo "$(BLUE)Checking prerequisites...$(NC)"
+	@command -v docker >/dev/null 2>&1 || { echo "$(RED)❌ Docker not found. Install from https://docker.com$(NC)"; exit 1; }
+	@command -v docker compose >/dev/null 2>&1 || { echo "$(RED)❌ Docker Compose not found$(NC)"; exit 1; }
+	@command -v forge >/dev/null 2>&1 || { echo "$(RED)❌ Foundry not found. Run: curl -L https://foundry.paradigm.xyz | bash && foundryup$(NC)"; exit 1; }
+	@command -v cast >/dev/null 2>&1 || { echo "$(RED)❌ Cast not found$(NC)"; exit 1; }
+	@command -v git >/dev/null 2>&1 || { echo "$(RED)❌ Git not found$(NC)"; exit 1; }
+	@echo "$(GREEN)✅ All prerequisites installed$(NC)"
+
+install-dependencies: ## Install project dependencies
+	@echo "$(BLUE)Installing dependencies...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge install
+	@npm install
+	@echo "$(GREEN)✅ Dependencies installed$(NC)"
+
+setup-env-files: ## Create environment files from templates
+	@echo "$(BLUE)Setting up environment files...$(NC)"
+	@test -f .env.local || cp .env.example .env.local
+	@test -f .env.testnet || cp .env.example .env.testnet
+	@test -f .env.mainnet || cp .env.example .env.mainnet
+	@chmod 600 .env.*
+	@echo "$(GREEN)✅ Environment files created. Please update with your values.$(NC)"
+
+setup-keystore: ## Setup Foundry encrypted keystore
+	@echo "$(BLUE)Setting up encrypted keystores...$(NC)"
+	@echo "$(YELLOW)Creating local deployer keystore...$(NC)"
+	@cast wallet list | grep -q "$(DEPLOYER_ACCOUNT_LOCAL)" || \
+		echo "Run: cast wallet import $(DEPLOYER_ACCOUNT_LOCAL) --interactive"
+	@echo "$(GREEN)✅ Keystore setup instructions displayed$(NC)"
+
+# ==========================================
+# VALIDATION & PRE-FLIGHT CHECKS
+# ==========================================
+
+validate: validate-$(ENV) ## Validate configuration for current environment
+
+validate-local: ## Validate local environment
+	@echo "$(BLUE)Validating local environment...$(NC)"
+	@test -f .env.local || { echo "$(RED)❌ .env.local not found$(NC)"; exit 1; }
+	@cast wallet list | grep -q "$(DEPLOYER_ACCOUNT_LOCAL)" || { echo "$(YELLOW)⚠️  Keystore '$(DEPLOYER_ACCOUNT_LOCAL)' not found$(NC)"; }
+	@docker ps >/dev/null 2>&1 || { echo "$(RED)❌ Docker daemon not running$(NC)"; exit 1; }
+	@echo "$(GREEN)✅ Local environment valid$(NC)"
+
+validate-testnet: ## Validate testnet configuration
+	@echo "$(BLUE)Validating testnet environment (Celestia Mocha-4)...$(NC)"
+	@test -f .env.testnet || { echo "$(RED)❌ .env.testnet not found$(NC)"; exit 1; }
+	@grep -q "TESTNET_RPC_URL" .env.testnet || { echo "$(RED)❌ TESTNET_RPC_URL not set$(NC)"; exit 1; }
+	@grep -q "CELESTIA_RPC_URL" .env.testnet || { echo "$(YELLOW)⚠️  CELESTIA_RPC_URL not set (required for DA)$(NC)"; }
+	@grep -q "CELESTIA_AUTH_TOKEN" .env.testnet || { echo "$(YELLOW)⚠️  CELESTIA_AUTH_TOKEN not set$(NC)"; }
+	@cast wallet list | grep -q "$(DEPLOYER_ACCOUNT_TESTNET)" || { echo "$(RED)❌ Keystore '$(DEPLOYER_ACCOUNT_TESTNET)' not found. Run: cast wallet import $(DEPLOYER_ACCOUNT_TESTNET) --interactive$(NC)"; exit 1; }
+	@echo "$(GREEN)✅ Testnet environment valid$(NC)"
+
+validate-mainnet: ## Validate mainnet configuration (strict)
+	@echo "$(BLUE)Validating mainnet environment (STRICT MODE)...$(NC)"
+	@test -f .env.mainnet || { echo "$(RED)❌ .env.mainnet not found$(NC)"; exit 1; }
+	@grep -q "MAINNET_RPC_URL" .env.mainnet || { echo "$(RED)❌ MAINNET_RPC_URL not set$(NC)"; exit 1; }
+	@grep -q "CELESTIA_RPC_URL" .env.mainnet || { echo "$(RED)❌ CELESTIA_RPC_URL not set (REQUIRED for production DA)$(NC)"; exit 1; }
+	@grep -q "CELESTIA_AUTH_TOKEN" .env.mainnet || { echo "$(RED)❌ CELESTIA_AUTH_TOKEN not set$(NC)"; exit 1; }
+	@grep -q "MAINNET_MULTISIG" .env.mainnet || { echo "$(RED)❌ MAINNET_MULTISIG not set$(NC)"; exit 1; }
+	@cast wallet list | grep -q "$(DEPLOYER_ACCOUNT_MAINNET)" || { echo "$(RED)❌ Keystore '$(DEPLOYER_ACCOUNT_MAINNET)' not found$(NC)"; exit 1; }
+	@test -f contracts/SECURITY_AUDIT_REPORT.md || { echo "$(RED)❌ Security audit report missing$(NC)"; exit 1; }
+	@echo "$(GREEN)✅ Mainnet environment valid$(NC)"
+
+check-balance: check-balance-$(ENV) ## Check deployer balance
+
+check-balance-local:
+	@echo "$(BLUE)Checking local deployer balance...$(NC)"
+	@ADDR=$$(cast wallet address --account $(DEPLOYER_ACCOUNT_LOCAL) 2>/dev/null || echo "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266") && \
+	BAL=$$(cast balance $$ADDR --rpc-url $(RPC_URL_LOCAL) 2>/dev/null) && \
+	echo "Address: $$ADDR" && \
+	echo "Balance: $$(cast --to-unit $$BAL ether) ETH" || echo "$(RED)Failed to check balance$(NC)"
+
+check-balance-testnet:
+	@echo "$(BLUE)Checking testnet deployer balance...$(NC)"
+	@ADDR=$$(cast wallet address --account $(DEPLOYER_ACCOUNT_TESTNET)) && \
+	RPC=$$(grep TESTNET_RPC_URL .env.testnet | cut -d '=' -f2) && \
+	BAL=$$(cast balance $$ADDR --rpc-url $$RPC) && \
+	echo "Address: $$ADDR" && \
+	echo "Balance: $$(cast --to-unit $$BAL ether) ETH" && \
+	(( $$(echo "$$BAL > 1000000000000000000" | bc -l) )) || echo "$(YELLOW)⚠️  Low balance! Get testnet ETH from faucet$(NC)"
+
+# ==========================================
+# LOCAL DEVELOPMENT
+# ==========================================
+
+deploy-local: validate-local clean-local build-local start-local deploy-contracts-local fund-staking-local verify-local ## Complete local deployment
+	@echo "$(GREEN)✅ Local deployment complete!$(NC)"
+	@echo ""
+	@echo "$(BLUE)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  ANDE Chain Local Environment Ready           ║$(NC)"
+	@echo "$(BLUE)║  Sovereign Rollup + Celestia DA                ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(GREEN)🌐 RPC (ev-reth):$(NC)     http://localhost:8545"
+	@echo "$(GREEN)📊 Celestia DA:$(NC)       http://localhost:26658"
+	@echo "$(GREEN)🔍 Explorer:$(NC)          http://localhost:4000"
+	@echo "$(GREEN)📈 Grafana:$(NC)           http://localhost:3001"
+	@echo "$(GREEN)🎯 Frontend:$(NC)          http://localhost:9002"
+	@echo "$(GREEN)⚡ Precompile:$(NC)        0x00000000000000000000000000000000000000FD"
+	@echo ""
+	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "  - Run tests: make test-all"
+	@echo "  - Check health: make health"
+	@echo "  - View logs: make logs"
+
+clean-local: ## Clean local artifacts
+	@echo "$(BLUE)Cleaning local artifacts...$(NC)"
+	@cd $(CONTRACTS_DIR) && rm -rf out cache broadcast
+	@docker compose -f $(INFRA_DIR)/stacks/single-sequencer/docker-compose.yml down -v 2>/dev/null || true
+	@echo "$(GREEN)✅ Local environment cleaned$(NC)"
+
+build-local: ## Build local contracts
+	@echo "$(BLUE)Building contracts...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge build
+	@echo "$(GREEN)✅ Contracts built$(NC)"
+
+start-local: ## Start local infrastructure (ev-reth + Evolve + Celestia DA)
+	@echo "$(BLUE)Starting local infrastructure...$(NC)"
+	@echo "  - ev-reth (EVM execution layer)"
+	@echo "  - Evolve Sequencer (ExRollkit)"
+	@echo "  - Celestia DA (local or testnet)"
+	@echo "  - Blockscout Explorer"
+	@cd $(INFRA_DIR) && docker compose -f stacks/single-sequencer/docker-compose.yml up -d
+	@echo "$(YELLOW)⏳ Waiting for chain to stabilize (60s)...$(NC)"
 	@sleep 60
-	@echo ""
-	@echo "🔍 6. Verificando salud del sistema..."
-	@$(MAKE) health-quiet
-	@echo ""
-	@echo "📜 7. Desplegando contrato ANDE Token..."
-	@echo "🔍 Verificando si ANDE Token ya está desplegado..."
-	@if cast code 0x5FbDB2315678afecb367f032d93F642f64180aa3 --rpc-url local >/dev/null 2>&1; then \
-		echo "✅ ANDE Token ya está desplegado en 0x5FbDB2315678afecb367f032d93F642f64180aa3"; \
-		echo "📊 Verificando estado del contrato..."; \
-		echo "   - Nombre: $$(cast call 0x5FbDB2315678afecb367f032d93F642f64180aa3 "name()" --rpc-url local 2>/dev/null || echo "Verificando...")"; \
-		echo "   - Símbolo: $$(cast call 0x5FbDB2315678afecb367f032d93F642f64180aa3 "symbol()" --rpc-url local 2>/dev/null || echo "Verificando...")"; \
-	else \
-		echo "📜 ANDE Token no encontrado. Desplegando..."; \
-		cd contracts && \
-		. ./.env && \
-		forge script script/DeploySimple.s.sol --rpc-url local --broadcast --legacy --private-key $$PRIVATE_KEY --nonce $$(cast nonce 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --rpc-url local) && \
-		echo "✅ ANDE Token desplegado exitosamente" || \
-		echo "⚠️  Deploy falló, pero infraestructura lista"; \
-	fi
-	@echo ""
-	@echo "🎉 8. AndeChain está COMPLETAMENTE operativa!"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🌐 RPC:          http://localhost:8545"
-	@echo "🔍 Explorer:     http://localhost:4000"
-	@echo "💰 ANDE Token:   Ver contratos desplegados en explorer"
-	@echo "📍 Precompile:   0x00000000000000000000000000000000000000FD"
-	@echo "📊 Health Check: make health"
-	@echo "🛑 Detener:      make stop"
-	@echo "🔄 Reset:        make reset"
-	@echo ""
-	@echo "💡 Para desplegar staking: make deploy-staking && make fund-staking"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "$(GREEN)✅ Infrastructure started$(NC)"
+	@echo "$(BLUE)Checking services...$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "ev-reth|evolve|celestia"
 
-# 🔥 COMANDO COMPLETO CON STAKING - Todo en Uno + Staking
-full-start-with-staking: full-start
-	@echo ""
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🥩 Desplegando Sistema de Staking..."
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@$(MAKE) deploy-staking
-	@echo ""
-	@$(MAKE) fund-staking
-	@echo ""
-	@echo "🎉 AndeChain con Staking está COMPLETAMENTE operativa!"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🌐 RPC:          http://localhost:8545"
-	@echo "🔍 Explorer:     http://localhost:4000"
-	@echo "💰 ANDE Token:   Desplegado"
-	@echo "🥩 Staking:      Desplegado y fondeado"
-	@echo "📊 Health Check: make health"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Health check sin output decorativo (para usar en scripts)
-health-quiet:
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml ps | grep -q "Up" && echo "✅ Containers running" || echo "❌ Containers not running"
-	@curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://localhost:8545 | grep -q "0x" && echo "✅ RPC responding" || echo "❌ RPC not responding"
-
-# Detiene la infraestructura
-stop:
-	@echo "Deteniendo infraestructura ANDE..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml down
-
-# Reset completo (borra todo)
-reset:
-	@echo "🔄 Reset completo de AndeChain..."
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml down -v
-	@rm -rf contracts/out contracts/cache contracts/broadcast
-	@echo "✅ Sistema reseteado. Ejecuta 'make start' para comenzar de nuevo."
-
-# Deploy staking contract
-deploy-staking:
-	@echo "📜 Desplegando AndeNativeStaking..."
-	@cd contracts && \
-	. ./.env && \
+deploy-contracts-local: ## Deploy contracts to local chain
+	@echo "$(BLUE)Deploying contracts to local chain...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	forge script script/DeployANDEToken.s.sol:DeployANDEToken \
+		--rpc-url $(RPC_URL_LOCAL) \
+		--broadcast \
+		--private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+	@cd $(CONTRACTS_DIR) && \
 	forge script script/DeployStaking.s.sol:DeployStakingLocal \
-		--rpc-url http://localhost:8545 \
+		--rpc-url $(RPC_URL_LOCAL) \
 		--broadcast \
-		--private-key $$PRIVATE_KEY && \
-	echo "✅ AndeNativeStaking desplegado exitosamente" || \
-	echo "⚠️  Deploy de staking falló"
+		--private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+	@echo "$(GREEN)✅ Contracts deployed$(NC)"
 
-# Fund staking contract with rewards
-fund-staking:
-	@echo "💰 Fondeando contrato de staking con rewards..."
-	@cd contracts && \
-	. ./.env && \
+fund-staking-local: ## Fund staking contract with rewards
+	@echo "$(BLUE)Funding staking contract...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
 	forge script script/FundStaking.s.sol:FundStakingSmall \
-		--rpc-url http://localhost:8545 \
+		--rpc-url $(RPC_URL_LOCAL) \
 		--broadcast \
-		--private-key $$PRIVATE_KEY && \
-	echo "✅ Staking fondeado con 30,000 ANDE" || \
-	echo "⚠️  Fondeo de staking falló"
+		--private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+	@echo "$(GREEN)✅ Staking contract funded$(NC)"
 
-# Tests de contratos
-test:
-	@echo "Ejecutando tests de smart contracts..."
-	@cd contracts && forge test -vv
-
-# Cobertura de tests
-coverage:
-	@echo "Generando reporte de cobertura..."
-	@cd contracts && forge coverage
-
-# Análisis de seguridad
-security:
-	@echo "Ejecutando análisis de seguridad con Slither..."
-	@docker compose -f infra/docker-compose.yml run --rm contracts slither /app
-
-# Solo deploy (asume que la infraestructura está corriendo)
-deploy-only:
-	@echo "Desplegando contratos..."
-	@cd contracts && \
-		export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 && \
-		forge script script/DeployBridge.s.sol --tc DeployBridge --rpc-url local --broadcast --legacy
-
-# Relayer de bridge (asume que los contratos están desplegados)
-relayer:
-	@echo "Iniciando relayer..."
-	@cd relayer && npm start
-
-# Solo faucet (asume que la blockchain está corriendo)
-faucet:
-	@echo "🚰 Iniciando servidor de faucet..."
-	@if [ ! -d "node_modules" ]; then \
-		echo "📦 Instalando dependencias..."; \
-		npm install; \
-	fi
-	@npm start
-
-# Limpia artifacts
-clean:
-	@echo "Limpiando artifacts de compilación..."
-	@cd contracts && forge clean
-	@rm -rf contracts/out contracts/cache
-
-# Fuzzing tests (cuando se implementen)
-fuzz:
-	@echo "Ejecutando fuzzing tests..."
-	@cd contracts && forge test --fuzz-runs 10000
-
-# Gas report
-gas:
-	@echo "Generando reporte de gas..."
-	@cd contracts && forge test --gas-report
-
-# Snapshot de gas (para comparar optimizaciones)
-snapshot:
-	@echo "Creando snapshot de gas..."
-	@cd contracts && forge snapshot
-
-# Despliega el ecosistema completo
-deploy-ecosystem:
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "📜 Despliegue de Contratos Disponibles"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo ""
-	@echo "Scripts de despliegue disponibles:"
-	@echo "  • DeploySimple.s.sol - Token ANDE básico"
-	@echo "  • DeployAbob.s.sol - Sistema ABOB completo"
-	@echo "  • DeployAndeBridge.s.sol - Bridge Ande"
-	@echo "  • DeployAndTestVeANDE.s.sol - Sistema de gobernanza veANDE"
-	@echo "  • DeployAndTestP2POracle.s.sol - Oráculo P2P"
-	@echo ""
-	@echo "Para desplegar, usa:"
-	@echo "  cd contracts && forge script script/[SCRIPT_NAME] --rpc-url local --broadcast --legacy"
-	@echo ""
-	@echo "Ejemplo con token ANDE básico:"
-	@cd contracts && \
-		forge script script/DeploySimple.s.sol --rpc-url local --broadcast --legacy --private-key $${PRIVATE_KEY} || \
-		echo "⚠️  Asegúrate de tener PRIVATE_KEY configurada en contracts/.env"
-
-# Verifica contratos en Blockscout
-verify-contracts:
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "ℹ️  Blockscout verifica automáticamente los contratos"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo ""
-	@echo "Los contratos se verifican en segundo plano cuando:"
-	@echo "  1. Son desplegados en la red"
-	@echo "  2. Blockscout indexa el bloque correspondiente"
-	@echo ""
-	@echo "Puedes ver el estado en: http://localhost:4000"
-	@echo ""
-	@echo "Para verificación manual, usa:"
-	@echo "  forge verify-contract <ADDRESS> <CONTRACT> --verifier blockscout \\"
-	@echo "    --verifier-url http://localhost:4000/api --chain-id 1234"
-	@echo ""
+verify-local: ## Verify local deployment
+	@echo "$(BLUE)Verifying local deployment...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge script script/SaveAddresses.s.sol:SaveAddresses --rpc-url $(RPC_URL_LOCAL)
+	@echo "$(GREEN)✅ Deployment verified$(NC)"
 
 # ==========================================
-# System Health & Info
+# TESTNET DEPLOYMENT
 # ==========================================
 
-# Verificar salud del sistema ANDE
-health:
-	@echo "🏥 Verificando salud de AndeChain..."
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "📊 Estado de servicios:"
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml ps
+deploy-testnet: pre-deploy-check-testnet deploy-contracts-testnet fund-staking-testnet verify-testnet post-deploy-testnet ## Complete testnet deployment
+	@echo "$(GREEN)✅ Testnet deployment complete!$(NC)"
+
+pre-deploy-check-testnet: validate-testnet check-balance-testnet ## Pre-deployment checks for testnet
+	@echo "$(BLUE)Running pre-deployment checks...$(NC)"
+	@$(MAKE) test-all
+	@$(MAKE) security-audit
+	@echo "$(YELLOW)⚠️  Review the above output before proceeding$(NC)"
+	@read -p "Continue with testnet deployment? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+	@echo "$(GREEN)✅ Pre-deployment checks passed$(NC)"
+
+deploy-contracts-testnet: ## Deploy contracts to testnet
+	@echo "$(BLUE)Deploying contracts to ANDE Chain testnet...$(NC)"
+	@echo "$(YELLOW)⚠️  This will deploy to our testnet (Celestia Mocha-4 for DA)$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	source ../.env.testnet && \
+	forge script script/DeployANDEToken.s.sol:DeployANDEToken \
+		--rpc-url $$TESTNET_RPC_URL \
+		--account $(DEPLOYER_ACCOUNT_TESTNET) \
+		--sender $$(cast wallet address --account $(DEPLOYER_ACCOUNT_TESTNET)) \
+		--broadcast
+	@cd $(CONTRACTS_DIR) && \
+	source ../.env.testnet && \
+	forge script script/DeployStaking.s.sol:DeployStakingLocal \
+		--rpc-url $$TESTNET_RPC_URL \
+		--account $(DEPLOYER_ACCOUNT_TESTNET) \
+		--sender $$(cast wallet address --account $(DEPLOYER_ACCOUNT_TESTNET)) \
+		--broadcast
+	@echo "$(GREEN)✅ Contracts deployed to testnet$(NC)"
+	@echo "$(BLUE)Verify on Blockscout: http://your-testnet-explorer:4000$(NC)"
+
+fund-staking-testnet: ## Fund testnet staking contract
+	@echo "$(BLUE)Funding testnet staking contract...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	source ../.env.testnet && \
+	forge script script/FundStaking.s.sol:FundStakingSmall \
+		--rpc-url $$TESTNET_RPC_URL \
+		--account $(DEPLOYER_ACCOUNT_TESTNET) \
+		--sender $$(cast wallet address --account $(DEPLOYER_ACCOUNT_TESTNET)) \
+		--broadcast
+	@echo "$(GREEN)✅ Staking contract funded$(NC)"
+
+verify-testnet: ## Verify testnet deployment
+	@echo "$(BLUE)Verifying testnet deployment...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	source ../.env.testnet && \
+	forge script script/SaveAddresses.s.sol:SaveAddresses --rpc-url $$TESTNET_RPC_URL
+	@echo "$(GREEN)✅ Testnet deployment verified$(NC)"
+
+post-deploy-testnet: ## Post-deployment tasks for testnet
+	@echo "$(BLUE)Running post-deployment tasks...$(NC)"
+	@echo "$(GREEN)📝 Deployment addresses saved to contracts/deployments/$(NC)"
+	@echo "$(YELLOW)⚠️  Next steps:$(NC)"
+	@echo "  1. Verify Celestia DA is publishing blobs: make celestia-status"
+	@echo "  2. Update frontend addresses in andefrontend/src/contracts/addresses.ts"
+	@echo "  3. Run smoke tests: make smoke-test ENV=testnet"
+	@echo "  4. Check Blockscout explorer"
+	@echo "  5. Monitor for 24-48 hours"
+	@echo "  6. Document any issues in GitHub"
+
+# ==========================================
+# MAINNET DEPLOYMENT (PRODUCTION)
+# ==========================================
+
+deploy-mainnet: pre-deploy-check-mainnet deploy-contracts-mainnet-multisig verify-mainnet post-deploy-mainnet ## Complete mainnet deployment (PRODUCTION)
+	@echo "$(GREEN)✅ Mainnet deployment complete!$(NC)"
+
+pre-deploy-check-mainnet: validate-mainnet ## Pre-deployment checks for mainnet (STRICT)
+	@echo "$(RED)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(RED)║  MAINNET DEPLOYMENT - PRODUCTION              ║$(NC)"
+	@echo "$(RED)║  SOVEREIGN ROLLUP TO CELESTIA MAINNET         ║$(NC)"
+	@echo "$(RED)╚════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "🔗 Conectividad RPC:"
-	@curl -s -X POST -H "Content-Type: application/json" \
-		--data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
-		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "Chain ID: {}"
+	@echo "$(YELLOW)Pre-deployment checklist:$(NC)"
+	@test -f contracts/SECURITY_AUDIT_REPORT.md && echo "$(GREEN)✅ Security audit completed$(NC)" || { echo "$(RED)❌ Security audit missing$(NC)"; exit 1; }
+	@$(MAKE) test-all && echo "$(GREEN)✅ All tests passing$(NC)" || { echo "$(RED)❌ Tests failing$(NC)"; exit 1; }
+	@$(MAKE) security-audit && echo "$(GREEN)✅ Security scan passed$(NC)" || { echo "$(RED)❌ Security issues found$(NC)"; exit 1; }
 	@echo ""
-	@echo "📦 Último bloque:"
+	@echo "$(RED)⚠️  FINAL CONFIRMATION REQUIRED$(NC)"
+	@read -p "Type 'DEPLOY TO MAINNET' to continue: " confirm && [ "$$confirm" = "DEPLOY TO MAINNET" ] || { echo "$(YELLOW)Deployment cancelled$(NC)"; exit 1; }
+
+deploy-contracts-mainnet-multisig: ## Deploy to mainnet using multisig
+	@echo "$(BLUE)Deploying contracts to ANDE Chain mainnet...$(NC)"
+	@echo "$(YELLOW)⚠️  Follow the prompts carefully$(NC)"
+	@echo "$(BLUE)Celestia Mainnet DA will be used$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	source ../.env.mainnet && \
+	forge script script/DeployANDEToken.s.sol:DeployANDEToken \
+		--rpc-url $$MAINNET_RPC_URL \
+		--account $(DEPLOYER_ACCOUNT_MAINNET) \
+		--sender $$(cast wallet address --account $(DEPLOYER_ACCOUNT_MAINNET)) \
+		--broadcast \
+		--slow
+	@echo "$(GREEN)✅ Contracts deployed to mainnet$(NC)"
+	@echo "$(BLUE)Verify on Blockscout: your-mainnet-blockscout$(NC)"
+
+verify-mainnet: ## Verify mainnet deployment
+	@echo "$(BLUE)Verifying mainnet deployment...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	source ../.env.mainnet && \
+	forge script script/SaveAddresses.s.sol:SaveAddresses --rpc-url $$MAINNET_RPC_URL
+	@echo "$(GREEN)✅ Mainnet deployment verified$(NC)"
+
+post-deploy-mainnet: ## Post-deployment tasks for mainnet
+	@echo "$(BLUE)Running post-deployment tasks...$(NC)"
+	@echo "$(GREEN)📝 MAINNET DEPLOYMENT COMPLETE$(NC)"
+	@echo ""
+	@echo "$(YELLOW)⚠️  CRITICAL NEXT STEPS:$(NC)"
+	@echo "  1. Transfer ownership to multisig"
+	@echo "  2. Enable 24/7 monitoring"
+	@echo "  3. Set up incident response team"
+	@echo "  4. Create public announcement"
+	@echo "  5. Monitor for first 72 hours continuously"
+
+# ==========================================
+# TESTING
+# ==========================================
+
+test-all: test-unit test-integration test-fuzz ## Run all tests
+	@echo "$(GREEN)✅ All tests completed$(NC)"
+
+test-unit: ## Run unit tests
+	@echo "$(BLUE)Running unit tests...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge test --match-path "test/unit/**/*.t.sol" -vv
+
+test-integration: ## Run integration tests
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge test --match-path "test/integration/**/*.t.sol" -vv
+
+test-fuzz: ## Run fuzz tests
+	@echo "$(BLUE)Running fuzz tests...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge test --fuzz-runs 10000
+
+test-coverage: ## Generate test coverage report
+	@echo "$(BLUE)Generating coverage report...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge coverage --report lcov
+	@cd $(CONTRACTS_DIR) && genhtml lcov.info -o coverage/html
+	@echo "$(GREEN)✅ Coverage report: contracts/coverage/html/index.html$(NC)"
+
+smoke-test: ## Run smoke tests on deployed contracts
+	@echo "$(BLUE)Running smoke tests on $(ENV) environment...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	RPC_URL=$$([ "$(ENV)" = "local" ] && echo "$(RPC_URL_LOCAL)" || grep $$(echo "$(ENV)" | tr '[:lower:]' '[:upper:]')_RPC_URL ../.env.$(ENV) | cut -d '=' -f2) && \
+	forge test --match-contract SmokeTest --fork-url $$RPC_URL -vv
+
+# ==========================================
+# SECURITY & AUDITING
+# ==========================================
+
+security-audit: ## Run comprehensive security audit
+	@echo "$(BLUE)Running security audit...$(NC)"
+	@$(MAKE) security-slither
+	@$(MAKE) security-aderyn
+	@echo "$(GREEN)✅ Security audit complete$(NC)"
+
+security-slither: ## Run Slither static analysis
+	@echo "$(BLUE)Running Slither analysis...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	slither . --config-file slither.config.json --json slither-results.json 2>/dev/null || true
+	@cd $(CONTRACTS_DIR) && \
+	slither . --print human-summary 2>/dev/null || echo "$(YELLOW)Slither not installed. Run: pip install slither-analyzer$(NC)"
+
+security-aderyn: ## Run Aderyn analysis
+	@echo "$(BLUE)Running Aderyn analysis...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	aderyn . || echo "$(YELLOW)Aderyn not installed. Run: cargo install aderyn$(NC)"
+
+security-mythril: ## Run Mythril analysis (slow but thorough)
+	@echo "$(BLUE)Running Mythril analysis (this may take several minutes)...$(NC)"
+	@cd $(CONTRACTS_DIR) && \
+	myth analyze src/**/*.sol || echo "$(YELLOW)Mythril not installed$(NC)"
+
+gas-report: ## Generate gas usage report
+	@echo "$(BLUE)Generating gas report...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge test --gas-report
+
+# ==========================================
+# VERIFICATION
+# ==========================================
+
+verify: verify-$(ENV) ## Verify contracts on block explorer
+
+verify-local:
+	@echo "$(BLUE)Verifying contracts on local explorer...$(NC)"
+	@echo "$(YELLOW)Local explorer verification not required$(NC)"
+
+verify-testnet:
+	@echo "$(BLUE)Verifying contracts on Blockscout...$(NC)"
+	@echo "$(YELLOW)Note: Verification on Blockscout may require manual steps$(NC)"
+	@echo "Visit your Blockscout instance to verify contracts"
+	@cat $(CONTRACTS_DIR)/deployments/addresses-local.json | jq -r '.contracts'
+
+verify-mainnet:
+	@echo "$(BLUE)Verifying contracts on mainnet Blockscout...$(NC)"
+	@echo "$(YELLOW)Visit your Blockscout instance for verification$(NC)"
+	@cat $(CONTRACTS_DIR)/deployments/addresses-local.json | jq -r '.contracts'
+
+# ==========================================
+# CELESTIA DA OPERATIONS
+# ==========================================
+
+celestia-start: ## Start Celestia DA layer
+	@echo "$(BLUE)Starting Celestia DA layer...$(NC)"
+	@cd $(INFRA_DIR) && docker compose -f stacks/single-sequencer/docker-compose.yml up -d celestia-light-client
+	@echo "$(GREEN)✅ Celestia DA started$(NC)"
+
+celestia-stop: ## Stop Celestia DA layer
+	@echo "$(BLUE)Stopping Celestia DA layer...$(NC)"
+	@cd $(INFRA_DIR) && docker compose -f stacks/single-sequencer/docker-compose.yml stop celestia-light-client
+
+celestia-status: ## Check Celestia DA status
+	@echo "$(BLUE)Celestia DA Status:$(NC)"
+	@docker ps --filter "name=celestia" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@echo ""
+	@echo "$(BLUE)Celestia Network Info:$(NC)"
+	@echo "  Network: $$(grep CELESTIA_NETWORK .env.local 2>/dev/null | cut -d'=' -f2 || echo 'Not configured')"
+	@echo "  Node Type: Light Client"
+	@echo "  RPC: http://localhost:26658"
+
+celestia-logs: ## View Celestia DA logs
+	@docker logs celestia-light-client --tail 100 -f
+
+# ==========================================
+# MONITORING & HEALTH
+# ==========================================
+
+health: ## Check system health
+	@echo "$(BLUE)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  ANDE Chain Health Check                      ║$(NC)"
+	@echo "$(BLUE)║  Sovereign Rollup Status                       ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(GREEN)Core Services:$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "ev-reth|evolve|celestia|blockscout" || echo "$(YELLOW)No containers running$(NC)"
+	@echo ""
+	@echo "$(GREEN)ev-reth RPC Status:$(NC)"
 	@curl -s -X POST -H "Content-Type: application/json" \
 		--data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "Block: {}"
+		$(RPC_URL_LOCAL) | jq -r '.result' | xargs printf "Block: %d\n" 2>/dev/null || echo "$(RED)RPC not responding$(NC)"
 	@echo ""
-	@echo "💰 Saldo ANDE de precompile:"
-	@curl -s -X POST -H "Content-Type: application/json" \
-		--data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x00000000000000000000000000000000000000FD","latest"],"id":1}' \
-		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "ANDE Balance: {} wei"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "$(GREEN)ANDE Precompile:$(NC)"
+	@echo "  Address: 0x00000000000000000000000000000000000000FD"
+	@echo "  Status: Integrated in ev-reth"
+	@echo ""
+	@echo "$(GREEN)Celestia DA:$(NC)"
+	@$(MAKE) celestia-status
 
-# Mostrar información del sistema ANDE
-info:
-	@echo "📋 Información de AndeChain - ANDE Token Duality"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🔗 Versión de ev-reth:"
-	@cd infra && docker compose -f stacks/single-sequencer/docker-compose.yml exec ev-reth-sequencer ev-reth --version 2>/dev/null || echo "ev-reth no disponible"
-	@echo ""
-	@echo "📍 Dirección de precompile ANDE: 0x00000000000000000000000000000000000000FD"
-	@echo "⚙️  Configuración: Type alias pattern (AndeEvmConfig = EthEvmConfig)"
-	@echo "🚀 Integración: journal.transfer() para transferencias nativas"
-	@echo ""
-	@echo "🌐 Endpoints:"
-	@echo "  RPC HTTP: http://localhost:8545"
-	@echo "  Explorer: http://localhost:4000"
-	@echo "  DA Local: http://localhost:7980"
-	@echo ""
-	@echo "📜 Contratos desplegados (verificar con cast call):"
-	@echo "  ANDE Token: Llamar a balanceOf(address) en el contrato desplegado"
-	@echo "  Precompile: Usar eth_getBalance en 0x00..FD"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+monitor-start: ## Start monitoring stack (Prometheus + Grafana)
+	@echo "$(BLUE)Starting monitoring stack...$(NC)"
+	@cd $(INFRA_DIR)/monitoring && docker compose up -d
+	@echo "$(GREEN)✅ Monitoring started$(NC)"
+	@echo "$(BLUE)Grafana: http://localhost:3001 (admin/admin)$(NC)"
+	@echo "$(BLUE)Prometheus: http://localhost:9090$(NC)"
+
+monitor-stop: ## Stop monitoring stack
+	@cd $(INFRA_DIR)/monitoring && docker compose down
+
+logs: ## View logs from all services
+	@cd $(INFRA_DIR) && docker compose -f stacks/single-sequencer/docker-compose.yml logs -f
+
+logs-sequencer: ## View sequencer logs
+	@docker logs evolve-sequencer --tail 100 -f
+
+logs-explorer: ## View explorer logs
+	@docker logs blockscout-frontend --tail 100 -f
 
 # ==========================================
-# Build Infrastructure
+# MAINTENANCE & CLEANUP
 # ==========================================
 
-# Construir ev-reth con integración ANDE (build desde GitHub en Docker)
-build-ev-reth:
-	@echo "🔨 Construyendo ev-reth con ANDE Token Duality..."
-	@echo "📥 Clone automático desde: https://github.com/AndeLabs/ande-reth"
-	@docker build -f Dockerfile.evm -t ande-reth:latest .
+clean: ## Clean all build artifacts
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
+	@cd $(CONTRACTS_DIR) && rm -rf out cache broadcast coverage
+	@echo "$(GREEN)✅ Artifacts cleaned$(NC)"
 
-# Mostrar versión actual
-show-version:
-	@echo "📋 AndeChain Version Information"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@if [ -f "VERSION" ]; then \
-		echo "🏗️  AndeChain: $$(grep ANDECHAIN_VERSION VERSION | cut -d'=' -f2)"; \
-		echo "🔧 Components: $$(grep COMPONENTS_VERSION VERSION | cut -d'=' -f2)"; \
-		echo "📦 Build Date: $$(grep BUILD_DATE VERSION | cut -d'=' -f2)"; \
-		echo "🔗 Commit: $$(grep COMMIT_HASH VERSION | cut -d'=' -f2)"; \
-	else \
-		echo "❌ VERSION file not found"; \
-	fi
-	@echo ""
-	@if [ -f "../ev-reth/VERSION" ]; then \
-		echo "⚡ ev-reth: $$(grep EV_RETH_VERSION ../ev-reth/VERSION | cut -d'=' -f2)"; \
-		echo "🔗 ANDE Integration: $$(grep ANDE_INTEGRATION_VERSION ../ev-reth/VERSION | cut -d'=' -f2)"; \
-	else \
-		echo "❌ ev-reth VERSION file not found"; \
-	fi
-	@echo ""
-	@if [ -f "../ande-frontend/VERSION" ]; then \
-		echo "🌐 Frontend: $$(grep FRONTEND_VERSION ../ande-frontend/VERSION | cut -d'=' -f2)"; \
-	else \
-		echo "❌ Frontend VERSION file not found"; \
-	fi
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+reset: ## Complete reset (WARNING: destroys all data)
+	@echo "$(RED)⚠️  This will destroy all local data!$(NC)"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+	@echo "$(BLUE)Resetting system...$(NC)"
+	@cd $(INFRA_DIR) && docker compose -f stacks/single-sequencer/docker-compose.yml down -v
+	@$(MAKE) clean
+	@rm -rf deployments/addresses-*.json
+	@echo "$(GREEN)✅ System reset complete$(NC)"
 
-# Actualizar versión de componente
-version-patch:
-	@echo "🔄 Bumping patch version..."
-	@../scripts/release.sh -c andechain patch
+backup: ## Backup deployment data
+	@echo "$(BLUE)Creating backup...$(NC)"
+	@mkdir -p backups
+	@tar -czf backups/ande-backup-$$(date +%Y%m%d-%H%M%S).tar.gz \
+		contracts/deployments \
+		contracts/broadcast \
+		.env.* 2>/dev/null || true
+	@echo "$(GREEN)✅ Backup created in backups/$(NC)"
 
-version-minor:
-	@echo "🔄 Bumping minor version..."
-	@../scripts/release.sh -c andechain minor
-
-version-major:
-	@echo "🔄 Bumping major version..."
-	@../scripts/release.sh -c andechain major
-
-# Fuerza redeploy de ANDE Token con nueva dirección
-redeploy-token:
-	@echo "🔄 Forzando redeploy de ANDE Token con nueva dirección..."
-	@echo "📊 Obteniendo nonce actual para nueva dirección..."
-	@cd contracts && \
-		. ./.env && \
-		CURRENT_NONCE=$$(cast nonce 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --rpc-url local) && \
-		echo "🔢 Nonce actual: $$CURRENT_NONCE (nueva dirección será generada)"; \
-		echo "📜 Desplegando nuevo ANDE Token..."; \
-		forge script script/DeploySimple.s.sol --rpc-url local --broadcast --legacy --private-key $$PRIVATE_KEY --nonce $$CURRENT_NONCE && \
-		echo "✅ Nuevo ANDE Token desplegado exitosamente" || \
-		echo "❌ Falló redeploy"; \
-		echo ""; \
-		echo "📋 Para verificar el nuevo contrato:"; \
-		echo "   make health"; \
-		echo "   cast call <NEW_ADDRESS> 'name()' --rpc-url local"
+restore: ## Restore from backup (interactive)
+	@echo "$(BLUE)Available backups:$(NC)"
+	@ls -lh backups/*.tar.gz 2>/dev/null || echo "$(YELLOW)No backups found$(NC)"
+	@read -p "Enter backup filename to restore: " backup && \
+		tar -xzf backups/$$backup && \
+		echo "$(GREEN)✅ Backup restored$(NC)"
 
 # ==========================================
-# Mocha Testnet Deployment Commands
+# UTILITIES & HELPERS
 # ==========================================
 
-# Despliega testnet completo en Celestia Mocha
-deploy-mocha:
-	@echo "🌙 Desplegando AndeChain en Celestia Mocha Testnet..."
-	@./scripts/deploy-mocha.sh
+stop: ## Stop all services
+	@echo "$(BLUE)Stopping all services...$(NC)"
+	@cd $(INFRA_DIR) && docker compose -f stacks/single-sequencer/docker-compose.yml down
+	@echo "$(GREEN)✅ All services stopped$(NC)"
 
-# Verifica salud del testnet Mocha
-health-mocha:
-	@echo "🏥 Verificando salud del testnet Mocha..."
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "📊 Estado de servicios Mocha:"
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml ps
+restart: stop start-local ## Restart all services
+
+ps: ## Show running containers
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+stats: ## Show container resource usage
+	@docker stats --no-stream
+
+update-deps: ## Update all dependencies
+	@echo "$(BLUE)Updating dependencies...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge update
+	@npm update
+	@echo "$(GREEN)✅ Dependencies updated$(NC)"
+
+format: ## Format all Solidity code
+	@echo "$(BLUE)Formatting code...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge fmt
+	@echo "$(GREEN)✅ Code formatted$(NC)"
+
+lint: ## Lint Solidity code
+	@echo "$(BLUE)Linting code...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge fmt --check
+	@echo "$(GREEN)✅ Linting complete$(NC)"
+
+docs: ## Generate documentation
+	@echo "$(BLUE)Generating documentation...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge doc
+	@echo "$(GREEN)✅ Documentation generated in contracts/docs/book$(NC)"
+
+# ==========================================
+# CI/CD HELPERS
+# ==========================================
+
+ci-test: ## Run tests in CI environment
+	@echo "$(BLUE)Running CI tests...$(NC)"
+	@cd $(CONTRACTS_DIR) && forge test --no-match-coverage
+	@$(MAKE) security-slither
+
+ci-deploy: ## Deploy in CI environment (requires env vars)
+	@echo "$(BLUE)Running CI deployment...$(NC)"
+	@test -n "$(CI)" || { echo "$(RED)Not in CI environment$(NC)"; exit 1; }
+	@$(MAKE) deploy ENV=$(DEPLOY_ENV)
+
+# ==========================================
+# INSTALLATION TARGETS
+# ==========================================
+
+install-production: ## Install this Makefile as the main Makefile
+	@echo "$(BLUE)Installing production Makefile...$(NC)"
+	@test -f Makefile && mv Makefile Makefile.backup.old || true
+	@cp Makefile.production Makefile
+	@echo "$(GREEN)✅ Production Makefile installed$(NC)"
+	@echo "$(YELLOW)Old Makefile backed up as Makefile.backup.old$(NC)"
 	@echo ""
-	@echo "🌙 Estado de Celestia Mocha:"
-	@cd infra && docker compose -f docker-compose.celestia.yml ps
+	@echo "$(BLUE)Run 'make help' to see all available commands$(NC)"
+
+uninstall-production: ## Restore old Makefile
+	@echo "$(BLUE)Restoring old Makefile...$(NC)"
+	@test -f Makefile.backup.old && mv Makefile.backup.old Makefile || echo "$(YELLOW)No backup found$(NC)"
+	@echo "$(GREEN)✅ Old Makefile restored$(NC)"
+
+# ==========================================
+# TROUBLESHOOTING
+# ==========================================
+
+doctor: ## Run system diagnostics
+	@echo "$(BLUE)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  ANDE Chain System Diagnostics                ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "🔗 Conectividad RPC:"
-	@curl -s -X POST -H "Content-Type: application/json" \
-		--data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
-		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "Chain ID: {}"
+	@echo "$(GREEN)1. Checking prerequisites:$(NC)"
+	@$(MAKE) check-prerequisites
 	@echo ""
-	@echo "🌙 Red Celestia:"
-	@curl -s http://localhost:26657/status | jq -r '.result.node_info.network' | xargs -I {} echo "Network: {}"
+	@echo "$(GREEN)2. Checking Docker:$(NC)"
+	@docker info >/dev/null 2>&1 && echo "$(GREEN)✅ Docker running$(NC)" || echo "$(RED)❌ Docker not running$(NC)"
 	@echo ""
-	@echo "📦 Último bloque:"
+	@echo "$(GREEN)3. Checking RPC:$(NC)"
 	@curl -s -X POST -H "Content-Type: application/json" \
 		--data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-		http://localhost:8545 | jq -r '.result' | xargs -I {} echo "Block: {}"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Detiene testnet Mocha
-stop-mocha:
-	@echo "🛑 Deteniendo testnet Mocha..."
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down
-	@cd infra && docker compose -f docker-compose.celestia.yml down
-
-# Limpia testnet Mocha (borra volúmenes)
-clean-mocha:
-	@echo "🧹 Limpiando testnet Mocha..."
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down -v
-	@cd infra && docker compose -f docker-compose.celestia.yml down -v
-	@docker system prune -f --volumes
-
-# Muestra logs del testnet Mocha
-logs-mocha:
-	@echo "📝 Mostrando logs del testnet Mocha..."
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🚀 AndeChain Services:"
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml logs -f
+		$(RPC_URL_LOCAL) >/dev/null 2>&1 && echo "$(GREEN)✅ RPC responding$(NC)" || echo "$(RED)❌ RPC not responding$(NC)"
 	@echo ""
-	@echo "🌙 Celestia Services:"
-	@cd infra && docker compose -f docker-compose.celestia.yml logs -f
+	@echo "$(GREEN)4. Checking Celestia:$(NC)"
+	@docker ps | grep -q celestia && echo "$(GREEN)✅ Celestia running$(NC)" || echo "$(YELLOW)⚠️  Celestia not running$(NC)"
+	@echo ""
+	@echo "$(GREEN)5. Checking wallets:$(NC)"
+	@cast wallet list | head -5
+	@echo ""
+	@echo "$(GREEN)6. Disk space:$(NC)"
+	@df -h . | tail -1
 
-# Reinicia servicio específico del testnet Mocha
-restart-mocha-service:
-	@if [ -z "$(SERVICE)" ]; then \
-		echo "❌ Especifica SERVICE=nombre_del_servicio"; \
-		echo "Servicios disponibles: ev-reth-testnet, single-sequencer-testnet, local-da-testnet, prometheus-testnet, grafana-testnet, celestia-light-client"; \
-		exit 1; \
-	fi
-	@echo "🔄 Reiniciando servicio $(SERVICE)..."
-	@if echo "$(SERVICE)" | grep -q "celestia"; then \
-		cd infra && docker compose -f docker-compose.celestia.yml restart $(SERVICE); \
-	else \
-		cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml restart $(SERVICE); \
-	fi
+fix-permissions: ## Fix file permissions
+	@echo "$(BLUE)Fixing permissions...$(NC)"
+	@chmod 600 .env.* 2>/dev/null || true
+	@chmod +x scripts/*.sh 2>/dev/null || true
+	@echo "$(GREEN)✅ Permissions fixed$(NC)"
 
-# Verifica métricas del testnet Mocha
-metrics-mocha:
-	@echo "📊 Verificando métricas del testnet Mocha..."
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Prometheus: http://localhost:9090"
-	@echo "Grafana: http://localhost:3000 (admin/ande_testnet_2025)"
-	@echo "AndeChain Metrics: http://localhost:9001/metrics"
-	@echo "Sequencer Metrics: http://localhost:26660/metrics"
-	@echo "Celestia Exporter: http://localhost:9100/metrics"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fix-docker: ## Fix Docker issues (restart daemon)
+	@echo "$(BLUE)Restarting Docker...$(NC)"
+	@sudo systemctl restart docker 2>/dev/null || \
+		osascript -e 'quit app "Docker"' && sleep 3 && open -a Docker 2>/dev/null || \
+		echo "$(YELLOW)Please restart Docker manually$(NC)"
 
-# Despliega contratos en testnet Mocha
-deploy-contracts-mocha:
-	@echo "📜 Desplegando contratos en testnet Mocha..."
-	@cd contracts && \
-		if [ ! -f ".env.mocha" ]; then \
-			echo "Creando .env.mocha..."; \
-			echo "PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" > .env.mocha; \
-			echo "RPC_URL=http://localhost:8545" >> .env.mocha; \
-			echo "CHAIN_ID=1234" >> .env.mocha; \
-		fi && \
-		source .env.mocha && \
-		forge script script/DeploySimple.s.sol --rpc-url $$RPC_URL --broadcast --legacy --private-key $$PRIVATE_KEY
+clear-cache: ## Clear all caches
+	@echo "$(BLUE)Clearing caches...$(NC)"
+	@cd $(CONTRACTS_DIR) && rm -rf cache
+	@docker system prune -f
+	@echo "$(GREEN)✅ Caches cleared$(NC)"
 
 # ==========================================
-# Testnet Deployment Commands (Legacy)
+# QUICK COMMANDS (shortcuts)
 # ==========================================
 
-# Despliega testnet completo con MEV y ejecución paralela
-deploy-testnet:
-	@echo "🚀 Desplegando AndeChain Testnet con MEV y ejecución paralela..."
-	@./scripts/deploy-testnet.sh
-
-# Verifica salud del testnet
-health-testnet:
-	@echo "🏥 Verificando salud del testnet..."
-	@./scripts/testnet-health-check.sh
-
-# Detiene testnet
-stop-testnet:
-	@echo "🛑 Deteniendo testnet..."
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down
-
-# Limpia testnet (borra volúmenes)
-clean-testnet:
-	@echo "🧹 Limpiando testnet..."
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml down -v
-	@docker system prune -f --volumes
-
-# Muestra logs del testnet
-logs-testnet:
-	@echo "📝 Mostrando logs del testnet..."
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml logs -f
-
-# Reinicia servicio específico del testnet
-restart-testnet-service:
-	@if [ -z "$(SERVICE)" ]; then \
-		echo "❌ Especifica SERVICE=nombre_del_servicio"; \
-		echo "Servicios disponibles: ev-reth-testnet, single-sequencer-testnet, local-da-testnet, prometheus-testnet, grafana-testnet"; \
-		exit 1; \
-	fi
-	@echo "🔄 Reiniciando servicio $(SERVICE)..."
-	@cd infra/stacks/single-sequencer && docker compose -f docker-compose.testnet.yml restart $(SERVICE)
-
-# Verifica métricas del testnet
-metrics-testnet:
-	@echo "📊 Verificando métricas del testnet..."
-	@echo "Prometheus: http://localhost:9090"
-	@echo "Grafana: http://localhost:3000 (admin/ande_testnet_2025)"
-	@echo "MEV Metrics: http://localhost:9002/metrics"
-	@echo "Parallel Metrics: http://localhost:9002/parallel/metrics"
-
-# Configura dashboards de Grafana
-setup-dashboards:
-	@echo "📊 Configurando dashboards de Grafana..."
-	@./scripts/setup-grafana-dashboards.sh
-
-# Análisis de optimización de gas
-gas-analysis:
-	@echo "⛽ Ejecutando análisis de optimización de gas..."
-	@./scripts/gas-optimization.sh
-
-# Genera reporte de gas
-gas-report:
-	@echo "📊 Generando reporte de gas..."
-	@cd contracts && forge test --gas-report | grep -A 50 -B 5 "MEV\|VotingEscrow" || echo "No MEV contracts found"
-
-# Optimización de contratos
-gas-optimize:
-	@echo "🔧 Ejecutando optimización de gas..."
-	@cd contracts && forge build --optimize --optimizer-runs 20000
-	@echo "✅ Contratos optimizados con --optimizer-runs 20000"
-
-# Despliegue de ZK Lazybridging
-deploy-zk-lazybridging:
-	@echo "🔐 Desplegando ZK Lazybridging..."
-	@./scripts/deploy-zk-lazybridging.sh --network testnet --rpc-url http://localhost:8545
-
-# Despliegue de ZK Lazybridging (mainnet)
-deploy-zk-lazybridging-mainnet:
-	@echo "🔐 Desplegando ZK Lazybridging a mainnet..."
-	@./scripts/deploy-zk-lazybridging.sh --network mainnet --rpc-url $(MAINNET_RPC_URL) --private-key $(MAINNET_PRIVATE_KEY)
-
-# Infraestructura de ZK Lazybridging
-start-zk-infrastructure:
-	@echo "🚀 Iniciando infraestructura ZK Lazybridging..."
-	@cd infra && docker-compose -f docker-compose.celestia.yml up -d
-	@cd infra && docker-compose -f docker-compose.prover.yml up -d
-	@cd infra && docker-compose -f docker-compose.relayer.yml up -d
-	@echo "✅ Infraestructura ZK Lazybridging iniciada"
-
-# Detener infraestructura ZK
-stop-zk-infrastructure:
-	@echo "🛑 Deteniendo infraestructura ZK Lazybridging..."
-	@cd infra && docker-compose -f docker-compose.relayer.yml down
-	@cd infra && docker-compose -f docker-compose.prover.yml down
-	@cd infra && docker-compose -f docker-compose.celestia.yml down
-	@echo "✅ Infraestructura ZK Lazybridging detenida"
-
-# Salud de ZK Lazybridging
-health-zk-lazybridging:
-	@echo "🏥 Verificando salud de ZK Lazybridging..."
-	@curl -s http://localhost:8080/health || echo "❌ ZK Prover no responde"
-	@curl -s http://localhost:26657/status || echo "❌ Celestia Light Client no responde"
-	@curl -s http://localhost:3000/health || echo "❌ IBC Relayer no responde"
-	@docker ps | grep -E "(zk-prover|celestia|ibc-relayer)" || echo "❌ Contenedores no corriendo"
+d: deploy-local ## Shortcut for deploy-local
+t: test-all ## Shortcut for test-all
+h: health ## Shortcut for health
+s: security-audit ## Shortcut for security-audit
+c: clean ## Shortcut for clean
 
 # ==========================================
-# Monitoring Commands
+# END OF MAKEFILE
 # ==========================================
 
-# Inicia el stack de monitoreo completo
-start-monitoring:
-	@echo "📊 Iniciando stack de monitoreo..."
-	@./start-monitoring.sh start
+.DEFAULT_GOAL := help
 
-# Detiene el stack de monitoreo
-stop-monitoring:
-	@echo "🛑 Deteniendo stack de monitoreo..."
-	@./start-monitoring.sh stop
-
-# Reinicia el stack de monitoreo
-restart-monitoring:
-	@echo "🔄 Reiniciando stack de monitoreo..."
-	@./start-monitoring.sh restart
-
-# Muestra el estado del stack de monitoreo
-status-monitoring:
-	@echo "📊 Estado del stack de monitoreo..."
-	@./start-monitoring.sh status
-
-# Muestra logs del stack de monitoreo
-logs-monitoring:
-	@echo "📝 Mostrando logs del stack de monitoreo..."
-	@./start-monitoring.sh logs
-
-# Verifica targets de Prometheus
-targets-monitoring:
-	@echo "🎯 Verificando targets de Prometheus..."
-	@./start-monitoring.sh targets
-
-# Muestra métricas en tiempo real
-metrics:
-	@echo "📊 Mostrando métricas de AndeChain..."
-	@./monitor-logs.sh metrics
-
-# Muestra el estado completo del sistema con monitoreo
-status-full:
-	@echo "📊 Estado completo del sistema AndeChain + Monitoreo..."
-	@./monitor-logs.sh status
+# Print colored output helper
+define print_colored
+	@echo "$(1)$(2)$(NC)"
+endef

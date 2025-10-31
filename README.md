@@ -25,31 +25,49 @@ ANDE Chain is a **Sovereign EVM Rollup** using Celestia for Data Availability. W
 - 🔧 **Full sovereignty** - Independent consensus, no L1 settlement
 - 🛠️ **EVM Compatible** - Deploy Solidity contracts unchanged
 
-### 🏗️ Architecture
+### 🏗️ Decentralized Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    ANDE Chain Stack                      │
-├─────────────────────────────────────────────────────────┤
-│  📱 dApps & Wallets (EVM Compatible)                    │
+┌─────────────────────────────────────────────────────────────┐
+│                    Celestia Mocha-4 Testnet                 │
+│                   (Data Availability Layer)                │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ DA Submissions
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                 AndeChain P2P Network                      │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │  Sequencer  │◄──►│ Full Node 1 │◄──►│ Full Node 2 │◄─►│
+│  │ (Producer)  │    │ (Validator) │    │ (Validator) │     │
+│  │  Port: 7676 │    │ Port: 7677  │    │ Port: 7678  │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                   AndeChain Stack                         │
+│  📱 dApps & Wallets (EVM Compatible)                     │
 │         ↓                                                │
-│  🚀 ev-reth (Modified Reth)                             │
-│     • EVM Execution Layer                               │
-│     • ANDE Precompile (0x...FD)                        │
-│     • Parallel Transaction Processing                   │
+│  🚀 ev-reth (Modified Reth)                              │
+│     • EVM Execution Layer                                │
+│     • ANDE Precompile (0x...FD)                         │
+│     • Parallel Transaction Processing                    │
 │         ↓                                                │
-│  🔄 Evolve Sequencer (ExRollkit)                        │
-│     • Block Production & Consensus                      │
+│  🔄 Evolve Sequencer (ExRollkit)                         │
+│     • Block Production & Consensus                       │
 │         ↓                                                │
 │  📊 Celestia DA                                          │
-│     • Data Availability Layer                           │
-│     • Mocha-4 (testnet) / Mainnet                      │
+│     • Data Availability Layer                            │
+│     • Mocha-4 (testnet)                                  │
 │         ↓                                                │
 │  🔍 Blockscout Explorer                                  │
-└─────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Difference:** We are **NOT** a rollup on Ethereum. We're a sovereign chain using Celestia for DA.
+**Key Features:**
+- 🌐 **Multi-node P2P network** - Decentralized architecture
+- 🔄 **Auto-discovery** - Nodes connect automatically
+- ⚡ **Parallel EVM** - High-throughput transaction processing
+- 🛡️ **Full sovereignty** - Independent consensus using Celestia DA
 
 ---
 
@@ -62,19 +80,21 @@ ANDE Chain is a **Sovereign EVM Rollup** using Celestia for Data Availability. W
 git clone https://github.com/andelabs/andechain.git
 cd andechain
 
-# Install production system
-bash install-production.sh
+# Deploy multi-node testnet (sequencer + 2 full nodes)
+docker-compose up -d
 
-# Deploy locally (includes ev-reth + Celestia DA + contracts)
-make deploy-local
+# Wait 2-3 minutes for initialization
 ```
 
-**That's it!** Your local ANDE Chain is running. 🎉
+**That's it!** Your decentralized ANDE Chain testnet is running. 🎉
 
 **Available at:**
-- 🌐 RPC: `http://localhost:8545`
-- 🔍 Explorer: `http://localhost:4000`
-- 📊 Grafana: `http://localhost:3001`
+- 🌐 **Sequencer RPC**: `http://localhost:8545`
+- 🌐 **Full Node 1 RPC**: `http://localhost:8547`
+- 🌐 **Full Node 2 RPC**: `http://localhost:8549`
+- 🔍 **Explorer**: `http://localhost:4000`
+- 📊 **Grafana**: `http://localhost:3000`
+- 🌐 **Celestia DA**: `http://localhost:26658`
 
 ### Next Steps
 

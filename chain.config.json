@@ -1,0 +1,174 @@
+{
+  "network": {
+    "name": "AndeChain",
+    "chainName": "AndeChain Testnet",
+    "chainId": 6174,
+    "networkType": "testnet",
+    "environment": "production",
+    "dataAvailability": "Celestia Mocha-4",
+    "consensus": "Evolve Sequencer",
+    "executionClient": "ev-reth (modified Reth)"
+  },
+  "rpc": {
+    "local": {
+      "http": "http://localhost:8545",
+      "ws": "ws://localhost:8546",
+      "engineApi": "http://localhost:8551",
+      "evolveRpc": "http://localhost:7331"
+    },
+    "public": {
+      "http": "http://localhost/rpc",
+      "ws": "ws://localhost/ws",
+      "evolveRpc": "http://localhost/evolve"
+    },
+    "publicInternet": {
+      "http": "http://YOUR_IP/rpc",
+      "ws": "ws://YOUR_IP/ws",
+      "evolveRpc": "http://YOUR_IP/evolve"
+    }
+  },
+  "blockchain": {
+    "blockTime": 2,
+    "blockTimeMs": 2000,
+    "estimatedFinality": 30,
+    "gasLimit": 30000000,
+    "baseFeePerGas": "1000000000",
+    "maxTPS": 1000
+  },
+  "contracts": {
+    "ANDE": {
+      "name": "ANDE",
+      "symbol": "ANDE",
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "implementation": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      "precompile": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "decimals": 18,
+      "totalSupply": "100000000000000000000000000",
+      "type": "native+erc20",
+      "chainDeployed": 6174,
+      "deploymentBlock": 1,
+      "features": [
+        "ERC1967Proxy",
+        "TokenDuality",
+        "Precompile",
+        "AccessControl"
+      ],
+      "interfaces": [
+        "ERC20",
+        "IERC1967",
+        "IAccessControl",
+        "ITokenDuality"
+      ]
+    },
+    "governance": {
+      "status": "ready",
+      "description": "Governor + Timelock (Ready to deploy)"
+    },
+    "staking": {
+      "status": "ready",
+      "description": "VotingEscrow + GaugeController (Ready to deploy)"
+    },
+    "dex": {
+      "status": "ready",
+      "description": "AndeSwap Factory V2 + V3 (Ready to deploy)"
+    },
+    "bridge": {
+      "status": "ready",
+      "description": "Cross-chain bridge xERC20 (Ready to deploy)"
+    },
+    "accountAbstraction": {
+      "status": "ready",
+      "description": "ERC-4337 Entry Point (Ready to deploy)"
+    }
+  },
+  "accounts": {
+    "admin": {
+      "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "name": "Admin Account",
+      "balance": "10000000000000000000000",
+      "roles": ["admin", "minter", "deployer"]
+    },
+    "user1": {
+      "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "name": "Test User 1",
+      "balance": "10000000000000000000000"
+    },
+    "user2": {
+      "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "name": "Test User 2",
+      "balance": "10000000000000000000000"
+    }
+  },
+  "monitoring": {
+    "grafana": {
+      "url": "http://localhost:3000",
+      "publicUrl": "http://YOUR_IP:3000",
+      "username": "admin",
+      "password": "andechain-admin-2025"
+    },
+    "prometheus": {
+      "url": "http://localhost:9090",
+      "publicUrl": "http://YOUR_IP:9090"
+    },
+    "loki": {
+      "url": "http://localhost:3100",
+      "publicUrl": "http://YOUR_IP:3100"
+    }
+  },
+  "api": {
+    "blockExplorer": "http://localhost/api/blocks",
+    "transactions": "http://localhost/api/transactions",
+    "status": "http://localhost/api/status",
+    "info": "http://localhost/api/info"
+  },
+  "assets": {
+    "ANDE": {
+      "symbol": "ANDE",
+      "name": "ANDE Token",
+      "decimals": 18,
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "icon": "/assets/ande-token.svg",
+      "color": "#8B5CF6",
+      "description": "Native token of ANDE Chain with token duality"
+    },
+    "ETH": {
+      "symbol": "ETH",
+      "name": "Ethereum (Test)",
+      "decimals": 18,
+      "isNative": true,
+      "icon": "/assets/eth.svg",
+      "color": "#627EEA",
+      "description": "Test ETH for gas fees"
+    }
+  },
+  "features": {
+    "tokenDuality": true,
+    "governance": false,
+    "staking": false,
+    "swap": false,
+    "bridge": false,
+    "accountAbstraction": false,
+    "nftMinting": false
+  },
+  "transactions": {
+    "defaultGasLimit": 100000,
+    "estimatedGasMultiplier": 1.2,
+    "maxSlippage": 0.5,
+    "confirmationBlocks": 1,
+    "waitForFinality": true
+  },
+  "constants": {
+    "ZERO_ADDRESS": "0x0000000000000000000000000000000000000000",
+    "MAX_UINT256": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+    "PRECISION": 18
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-10-30",
+    "status": "production",
+    "environment": "testnet",
+    "website": "https://andelabs.io",
+    "docs": "https://docs.andelabs.io",
+    "github": "https://github.com/andelabs"
+  }
+}
