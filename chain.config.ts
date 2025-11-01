@@ -36,12 +36,12 @@ export const ANDE_CHAIN_CONFIG = {
       ws: 'ws://localhost/ws',
       evolveRpc: 'http://localhost/evolve',
     },
-    // CONFIGURE WITH YOUR PUBLIC IP
-    // Replace 'YOUR_IP' with actual IP
+    // PUBLIC INTERNET ACCESS (HTTPS - Production)
+    // Domain: ande.network
     publicInternet: {
-      http: 'http://YOUR_IP/rpc',
-      ws: 'ws://YOUR_IP/ws',
-      evolveRpc: 'http://YOUR_IP/evolve',
+      http: 'https://rpc.ande.network',
+      ws: 'wss://ws.ande.network',
+      evolveRpc: 'https://api.ande.network/evolve',
     },
   },
 
@@ -164,7 +164,7 @@ export const ANDE_CHAIN_CONFIG = {
   monitoring: {
     grafana: {
       url: 'http://localhost:3000',
-      publicUrl: 'http://YOUR_IP:3000',
+      publicUrl: 'https://api.ande.network/grafana',
       credentials: {
         username: 'admin',
         password: 'andechain-admin-2025',
@@ -172,15 +172,15 @@ export const ANDE_CHAIN_CONFIG = {
     },
     prometheus: {
       url: 'http://localhost:9090',
-      publicUrl: 'http://YOUR_IP:9090',
+      publicUrl: 'https://api.ande.network/prometheus',
     },
     loki: {
       url: 'http://localhost:3100',
-      publicUrl: 'http://YOUR_IP:3100',
+      publicUrl: 'https://api.ande.network/loki',
     },
     cadvisor: {
       url: 'http://localhost:8080',
-      publicUrl: 'http://YOUR_IP:8080',
+      publicUrl: 'https://api.ande.network/cadvisor',
     },
   },
 
