@@ -1,0 +1,366 @@
+# =========================================================================
+# ANDE CHAIN - PRODUCTION MEV INTEGRATION CONFIGURATION
+# =========================================================================
+# Maximal Extractable Value detection, auction, and distribution
+# Designed for: Fair MEV capture and equitable distribution to stakers
+# Revenue Model: MEV → Auction → Distribution → Stakers
+# =========================================================================
+
+[mev_detection]
+
+# =========================================================================
+# MEV DETECTION ENGINE
+# =========================================================================
+
+# Enable MEV opportunity detection
+enable_detection = true
+
+# Minimum MEV value to report (in wei = 0.01 ANDE)
+# Lower threshold = more opportunities captured
+min_mev_value = "10000000000000000"  # 0.01 ANDE
+
+# Maximum MEV detection latency (ms)
+# Lower = faster detection but higher CPU usage
+max_detection_latency = 50
+
+# Enable real-time MEV alerts
+enable_alerts = true
+
+# Alert threshold (in wei = 1.0 ANDE)
+alert_threshold = "1000000000000000000"  # 1.0 ANDE
+
+# =========================================================================
+# MEV TYPE DETECTION
+# =========================================================================
+
+[mev_detection.types]
+
+# Arbitrage detection between DEXes
+enable_arbitrage_detection = true
+# Minimum profit threshold for arbitrage (wei = 0.05 ANDE)
+arbitrage_min_profit = "50000000000000000"  # 0.05 ANDE
+
+# Sandwich attack detection
+enable_sandwich_detection = true
+# Minimum sandwich profit (wei = 0.1 ANDE)
+sandwich_min_profit = "100000000000000000"  # 0.1 ANDE
+
+# Liquidation opportunity detection
+enable_liquidation_detection = true
+# Minimum liquidation bonus (wei = 0.2 ANDE)
+liquidation_min_bonus = "200000000000000000"  # 0.2 ANDE
+
+# Front-running detection
+enable_frontrun_detection = true
+# Minimum frontrun profit (wei = 0.05 ANDE)
+frontrun_min_profit = "50000000000000000"  # 0.05 ANDE
+
+# Back-running detection
+enable_backrun_detection = true
+# Minimum backrun profit (wei = 0.05 ANDE)
+backrun_min_profit = "50000000000000000"  # 0.05 ANDE
+
+# JIT (Just-In-Time) liquidity detection
+enable_jit_detection = true
+# Minimum JIT profit (wei = 0.1 ANDE)
+jit_min_profit = "100000000000000000"  # 0.1 ANDE
+
+# =========================================================================
+# DEX & PROTOCOL MONITORING
+# =========================================================================
+
+[mev_detection.protocols]
+
+# DEX addresses to monitor (add your deployed DEX addresses)
+dex_addresses = [
+    "0x0000000000000000000000000000000000000000",  # UniswapV2-like DEX
+    "0x0000000000000000000000000000000000000000",  # UniswapV3-like DEX
+    "0x0000000000000000000000000000000000000000",  # Custom AMM
+]
+
+# Lending protocol addresses (Aave, Compound-like)
+lending_addresses = [
+    "0x0000000000000000000000000000000000000000",  # Lending Protocol 1
+    "0x0000000000000000000000000000000000000000",  # Lending Protocol 2
+]
+
+# NFT marketplace addresses
+nft_marketplace_addresses = [
+    "0x0000000000000000000000000000000000000000",  # NFT Marketplace
+]
+
+# =========================================================================
+# MEV AUCTION SYSTEM
+# =========================================================================
+
+[mev_auction]
+
+# Enable MEV auction mechanism
+enable_auction = true
+
+# MEV Auction Manager contract address (deploy first)
+# TODO: Update with actual deployed contract address
+auction_manager_address = "0x0000000000000000000000000000000000000000"
+
+# Auction duration (milliseconds)
+# Time window for searchers to submit bids
+auction_duration = 500
+
+# Minimum bid increment (wei = 0.01 ANDE)
+min_bid_increment = "10000000000000000"  # 0.01 ANDE
+
+# Maximum bundle size (transactions)
+max_bundle_size = 10
+
+# Bundle submission deadline before block (ms)
+bundle_deadline = 200
+
+# Enable bundle simulation before inclusion
+enable_bundle_simulation = true
+
+# Maximum bundle simulation time (ms)
+max_simulation_time = 100
+
+# =========================================================================
+# MEV DISTRIBUTION
+# =========================================================================
+
+[mev_distribution]
+
+# Enable MEV distribution to stakers
+enable_distribution = true
+
+# MEV Distributor contract address (deploy first)
+# TODO: Update with actual deployed contract address
+distributor_address = "0x0000000000000000000000000000000000000000"
+
+# Distribution interval (blocks)
+# How often to distribute accumulated MEV
+distribution_interval = 7200  # ~24 hours at 12s blocks
+
+# Minimum MEV to trigger distribution (wei = 10 ANDE)
+min_distribution_amount = "10000000000000000000"  # 10 ANDE
+
+# Maximum MEV buffer before forcing distribution (wei = 1000 ANDE)
+max_mev_buffer = "1000000000000000000000"  # 1000 ANDE
+
+# Auto-deposit threshold (wei = 100 ANDE)
+# Automatically deposit to distributor when buffer reaches this amount
+auto_deposit_threshold = "100000000000000000000"  # 100 ANDE
+
+# =========================================================================
+# DISTRIBUTION SPLITS
+# =========================================================================
+
+[mev_distribution.splits]
+
+# Stakers share (basis points, 10000 = 100%)
+stakers_share = 7000  # 70%
+
+# Protocol treasury share (basis points)
+treasury_share = 2000  # 20%
+
+# Builder/Sequencer share (basis points)
+builder_share = 1000  # 10%
+
+# Treasury address
+treasury_address = "0x0000000000000000000000000000000000000000"
+
+# =========================================================================
+# MEV PROTECTION (Anti-MEV Features)
+# =========================================================================
+
+[mev_protection]
+
+# Enable MEV protection for users
+enable_protection = true
+
+# Fair ordering mechanism
+enable_fair_ordering = true
+
+# Transaction order randomization within block
+enable_tx_randomization = false
+
+# Encrypted mempool (future feature)
+enable_encrypted_mempool = false
+
+# Flashbots-style private transaction pool
+enable_private_pool = true
+private_pool_rpc = "http://localhost:8546"
+
+# =========================================================================
+# MONITORING & METRICS
+# =========================================================================
+
+[mev_monitoring]
+
+# Enable MEV-specific metrics
+enable_metrics = true
+
+# Metrics export port (different from main metrics)
+metrics_port = 9092
+metrics_path = "/mev-metrics"
+
+# Track MEV by type
+track_by_type = true
+
+# Track MEV by protocol
+track_by_protocol = true
+
+# Track MEV by searcher
+track_by_searcher = true
+
+# Historical data retention (days)
+metrics_retention_days = 30
+
+# =========================================================================
+# ALERTS & NOTIFICATIONS
+# =========================================================================
+
+[mev_alerts]
+
+# Enable alert system
+enable_alerts = true
+
+# Alert on large MEV opportunities (wei = 10 ANDE)
+large_opportunity_threshold = "10000000000000000000"  # 10 ANDE
+
+# Alert on suspicious MEV patterns
+enable_pattern_alerts = true
+
+# Alert on failed auctions
+alert_on_failed_auctions = true
+
+# Alert on distribution failures
+alert_on_distribution_failures = true
+
+# Webhook URL for alerts (optional)
+webhook_url = ""
+
+# Discord webhook (optional)
+discord_webhook = ""
+
+# Telegram bot token (optional)
+telegram_bot_token = ""
+telegram_chat_id = ""
+
+# =========================================================================
+# SEARCHER MANAGEMENT
+# =========================================================================
+
+[mev_searchers]
+
+# Enable searcher registration
+enable_searcher_registration = true
+
+# Minimum stake required for searchers (wei = 100 ANDE)
+min_searcher_stake = "100000000000000000000"  # 100 ANDE
+
+# Searcher whitelist mode (if false, anyone can participate)
+whitelist_mode = false
+
+# Whitelisted searcher addresses
+whitelisted_searchers = [
+    "0x0000000000000000000000000000000000000000",
+]
+
+# Maximum searchers per auction
+max_searchers_per_auction = 50
+
+# Reputation system enabled
+enable_reputation = true
+
+# Ban searchers with failed simulations
+ban_failed_simulations = true
+max_failed_simulations = 10
+
+# =========================================================================
+# PERFORMANCE TUNING
+# =========================================================================
+
+[mev_performance]
+
+# Concurrent MEV detection workers
+detection_workers = 4
+
+# MEV detection queue size
+detection_queue_size = 1000
+
+# Auction processing threads
+auction_threads = 2
+
+# Bundle simulation parallelism
+simulation_parallelism = 4
+
+# Cache size for MEV opportunities
+opportunity_cache_size = 10000
+
+# =========================================================================
+# SECURITY & COMPLIANCE
+# =========================================================================
+
+[mev_security]
+
+# Enable MEV sandboxing (isolate MEV execution)
+enable_sandboxing = true
+
+# Maximum gas per MEV bundle
+max_bundle_gas = 10000000
+
+# Blacklist malicious searcher addresses
+enable_blacklist = true
+blacklisted_addresses = []
+
+# Rate limiting per searcher
+enable_rate_limiting = true
+max_bundles_per_searcher_per_block = 5
+
+# Require bundle signatures
+require_bundle_signatures = true
+
+# =========================================================================
+# EXPERIMENTAL FEATURES
+# =========================================================================
+
+[mev_experimental]
+
+# Cross-chain MEV detection (future)
+enable_cross_chain = false
+
+# Predictive MEV detection using ML (future)
+enable_ml_detection = false
+
+# MEV recycling (redistribute to affected users)
+enable_mev_recycling = false
+
+# Privacy-preserving MEV auctions
+enable_private_auctions = false
+
+# =========================================================================
+# LOGGING & DEBUGGING
+# =========================================================================
+
+[mev_logging]
+
+# Log level (info, debug, trace)
+log_level = "info"
+
+# Log all MEV opportunities detected
+log_opportunities = true
+
+# Log auction results
+log_auction_results = true
+
+# Log distribution events
+log_distributions = true
+
+# Detailed bundle execution logs
+log_bundle_execution = false
+
+# Save MEV data to database
+enable_database_logging = true
+database_url = "postgresql://ande:ande@localhost:5432/ande_mev"
+
+# =========================================================================
+# END OF MEV CONFIGURATION
+# =========================================================================
