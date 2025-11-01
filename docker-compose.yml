@@ -47,6 +47,14 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
     networks:
       - andechain-p2p
 
@@ -92,15 +100,31 @@ services:
       - "8545:8545"   # HTTP RPC
       - "8546:8546"   # WebSocket
       - "8551:8551"   # Engine API
-      - "9001:9001"   # Metrics
+      - "9001:9001"   # Metrics (Main)
+      - "9091:9091"   # Metrics (Parallel EVM)
+      - "9092:9092"   # Metrics (MEV Integration)
       - "30303:30303" # P2P
     volumes:
       - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
       - jwttoken-sequencer:/jwt:ro
       - sequencer-data:/data
+      - ./config/parallel-evm.production.toml:/config/parallel-evm.toml:ro
+      - ./config/mev-integration.production.toml:/config/mev-integration.toml:ro
     environment:
-      - RUST_LOG=info,ev_reth=debug,ande_precompile=trace
+      - RUST_LOG=info,ev_reth=info,ande_precompile=info,parallel_evm=info,mev=info
       - RUST_BACKTRACE=1
+      - PARALLEL_EVM_CONFIG=/config/parallel-evm.toml
+      - MEV_CONFIG=/config/mev-integration.toml
+      - ENABLE_PARALLEL_EVM=true
+      - ENABLE_MEV_DETECTION=true
+    deploy:
+      resources:
+        limits:
+          cpus: '16'  # Increased for Parallel EVM (16 workers)
+          memory: 16G  # Increased for high throughput
+        reservations:
+          cpus: '8'
+          memory: 8G
     command:
       - node
       - --datadir=/data
@@ -160,15 +184,58 @@ services:
       - jwttoken-sequencer:/jwt:ro
       - evolve-data:/root/.evolve
       - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
     environment:
+      # ============================================
+      # ANDE CHAIN PRODUCTION ADAPTIVE CONFIGURATION
+      # ============================================
       - EVM_ENGINE_URL=http://ev-reth-sequencer:8551
       - EVM_ETH_URL=http://ev-reth-sequencer:8545
       - EVM_JWT_PATH=/jwt/jwt.hex
-      - EVM_BLOCK_TIME=2s
-      - DA_BLOCK_TIME=30s
+      
+      # ============================================
+      # ADAPTIVE BLOCK PRODUCTION (Dynamic & Professional)
+      # Responds to network load automatically
+      # ============================================
+      - EVM_BLOCK_TIME=1s
+      - EVM_LAZY_BLOCK_INTERVAL=5s
+      - EVM_LAZY_MODE=true
+      
+      # ============================================
+      # OPTIMIZED DA SUBMISSION (Production Ready)
+      # Balanced for cost and performance
+      # ============================================
+      - DA_BLOCK_TIME=12s
+      - DA_BATCH_SIZE=50
+      - DA_SUBMISSION_GAS_MULTIPLIER=1.3
+      
+      # ============================================
+      # CELESTIA MOCHA-4 CONFIGURATION
+      # ============================================
       - DA_ADDRESS=http://celestia-light:26658
       - DA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
       - DA_START_HEIGHT=8624000
+      - DA_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdLCJOb25jZSI6InNtM3UxL0pNR2p4c296TktVVy9tWEdIcjBPUlpudXgzanRQMkdEUTdBbHM9IiwiRXhwaXJlc0F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ.hp2KgPgkXq1t5bnsMkngt1H7ElIYIazmzyJUUsw6LDk
+      
+      # ============================================
+      # GAS OPTIMIZATION (Production Testnet)
+      # Meets Celestia minimum requirements
+      # ============================================
+      - DA_GAS_PRICE=0.004
+      - DA_GAS_MULTIPLIER=1.1
+      - DA_MAX_SUBMIT_ATTEMPTS=50
+      - DA_RETRY_DELAY=10s
+      
+      # ============================================
+      # CHAIN CONFIGURATION
+      # ============================================
       - CHAIN_ID=6174
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -211,8 +278,17 @@ services:
           echo "ℹ️  Evolve already initialized, skipping init..."
         fi
 
-        # Start sequencer
-        echo "🚀 Starting ANDE Chain Sequencer..."
+        # Start sequencer with adaptive configuration
+        echo "🚀 Starting ANDE Chain - Adaptive Sequencer"
+        echo "================================================"
+        echo "📊 Configuration:"
+        echo "   Block Production: ADAPTIVE (1s active / 5s idle)"
+        echo "   Mode: Lazy (tx-driven block production)"
+        echo "   DA Submission: Batched (optimized)"
+        echo "   Gas Price: 0.004 utia (Celestia minimum)"
+        echo "   Max Retries: 50 (enhanced reliability)"
+        echo "================================================"
+        
         # Create passphrase file for start
         echo "andechain-sequencer-production-2025" > /tmp/passphrase-start.txt
         exec evm-single start \
@@ -222,14 +298,23 @@ services:
           --evm.jwt-secret-file=/jwt/jwt.hex \
           --evm.genesis-hash=$$GENESIS_HASH \
           --evnode.node.aggregator=true \
+          --evnode.node.lazy_mode=true \
           --evnode.node.block_time=$$EVM_BLOCK_TIME \
+          --evnode.node.lazy_block_interval=$$EVM_LAZY_BLOCK_INTERVAL \
           --evnode.da.address=$$DA_ADDRESS \
           --evnode.da.namespace=$$DA_NAMESPACE \
+          --evnode.da.auth_token=$$DA_AUTH_TOKEN \
+          --evnode.da.gas_price=$$DA_GAS_PRICE \
+          --evnode.da.gas_multiplier=$$DA_GAS_MULTIPLIER \
+          --evnode.da.max_submit_attempts=$$DA_MAX_SUBMIT_ATTEMPTS \
+          --evnode.da.block_time=$$DA_BLOCK_TIME \
           --evnode.signer.passphrase_file=/tmp/passphrase-start.txt \
           --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
           --evnode.rpc.address=0.0.0.0:7331 \
           --evnode.instrumentation.prometheus=true \
-          --evnode.instrumentation.prometheus_listen_addr=:26660
+          --evnode.instrumentation.prometheus_listen_addr=:26660 \
+          --evnode.log.level=info \
+          --evnode.log.format=json
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7331/status"]
       interval: 30s
@@ -255,7 +340,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./infra/stacks/single-sequencer/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/monitoring.production.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus-alerts.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -344,7 +430,7 @@ services:
       - prometheus
       - grafana
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
