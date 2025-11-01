@@ -1,153 +1,284 @@
 #!/bin/bash
 
 # =====================================================================
-# ANDECHAIN PRODUCTION DEPLOYMENT SCRIPT
+# ANDECHAIN PRODUCTION DEPLOYMENT SCRIPT v2.0
 # =====================================================================
-# This script deploys AndeChain to production with SSL/TLS support
-# Usage: ./deploy-production.sh [staging|production]
+# Professional deployment script for AndeChain
+# Handles: Docker Compose → Health Checks → SSL → Verification
+# Version: 2.0 - Production Ready with Wildcard SSL
 # =====================================================================
 
 set -e
 
-# Colors for output
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Configuration
 ENVIRONMENT=${1:-production}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOMAINS="rpc.ande.network ws.ande.network api.ande.network ande.network www.ande.network"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 EMAIL="admin@ande.network"
+DOMAIN="ande.network"
 
-echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}ANDECHAIN PRODUCTION DEPLOYMENT${NC}"
-echo -e "${BLUE}=========================================${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}   ANDECHAIN PRODUCTION DEPLOYMENT v2.0${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════${NC}"
 echo -e "Environment: ${GREEN}${ENVIRONMENT}${NC}"
-echo -e "Domains: ${GREEN}${DOMAINS}${NC}"
+echo -e "Domain: ${GREEN}${DOMAIN}${NC}"
+echo -e "Wildcard: ${GREEN}*.${DOMAIN}${NC}"
 echo ""
 
 # =====================================================================
-# STEP 1: Prerequisites Check
+# FUNCTIONS
 # =====================================================================
 
-echo -e "${YELLOW}[1/8] Checking prerequisites...${NC}"
+error_exit() {
+    echo -e "${RED}ERROR: $1${NC}" >&2
+    exit 1
+}
 
-# Check if running as root or with sudo
+success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+warning() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+info() {
+    echo -e "${BLUE}ℹ $1${NC}"
+}
+
+wait_for_container() {
+    local container=$1
+    local max_wait=${2:-60}
+    local count=0
+    
+    info "Waiting for ${container} to be healthy..."
+    while [ $count -lt $max_wait ]; do
+        if docker ps | grep -q "${container}.*healthy"; then
+            success "${container} is healthy"
+            return 0
+        fi
+        sleep 2
+        ((count+=2))
+    done
+    
+    warning "${container} not healthy after ${max_wait}s (continuing anyway)"
+    return 1
+}
+
+check_port() {
+    local port=$1
+    if nc -z localhost $port 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+# =====================================================================
+# STEP 1: Prerequisites
+# =====================================================================
+
+echo -e "${YELLOW}[1/10] Checking prerequisites...${NC}"
+
+# Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   echo -e "${RED}Error: This script must be run as root or with sudo${NC}"
-   exit 1
+   error_exit "This script must be run as root (use sudo)"
 fi
 
 # Check required commands
-for cmd in docker docker-compose nginx certbot; do
+for cmd in docker docker-compose nc curl; do
     if ! command -v $cmd &> /dev/null; then
-        echo -e "${RED}Error: $cmd is not installed${NC}"
-        exit 1
+        error_exit "$cmd is not installed"
     fi
 done
 
-echo -e "${GREEN}✓ Prerequisites check passed${NC}"
+success "Prerequisites check passed"
 echo ""
 
 # =====================================================================
-# STEP 2: Backup Current Configuration
+# STEP 2: Backup
 # =====================================================================
 
-echo -e "${YELLOW}[2/8] Creating backup...${NC}"
+echo -e "${YELLOW}[2/10] Creating backup...${NC}"
 
 BACKUP_DIR="${SCRIPT_DIR}/backups/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-# Backup current nginx config
-if [ -f "${SCRIPT_DIR}/nginx.conf" ]; then
-    cp "${SCRIPT_DIR}/nginx.conf" "$BACKUP_DIR/nginx.conf.backup"
-    echo -e "${GREEN}✓ Nginx config backed up${NC}"
-fi
-
-# Backup docker containers state
+# Backup configs
+cp "${SCRIPT_DIR}/nginx-production.conf" "$BACKUP_DIR/" 2>/dev/null || true
 docker ps -a > "$BACKUP_DIR/docker-ps.txt"
-echo -e "${GREEN}✓ Docker state backed up${NC}"
 
-echo -e "${GREEN}✓ Backup created at: ${BACKUP_DIR}${NC}"
+success "Backup created at: ${BACKUP_DIR}"
 echo ""
 
 # =====================================================================
-# STEP 3: Install Certbot with Nginx Plugin
+# STEP 3: Stop any conflicting services
 # =====================================================================
 
-echo -e "${YELLOW}[3/8] Setting up Certbot...${NC}"
+echo -e "${YELLOW}[3/10] Stopping conflicting services...${NC}"
 
-# Install certbot if not already installed
-if ! command -v certbot &> /dev/null; then
-    apt-get update
-    apt-get install -y certbot python3-certbot-nginx
-fi
-
-echo -e "${GREEN}✓ Certbot ready${NC}"
-echo ""
-
-# =====================================================================
-# STEP 4: Obtain SSL Certificates
-# =====================================================================
-
-echo -e "${YELLOW}[4/8] Obtaining SSL certificates...${NC}"
-
-# Stop nginx temporarily to obtain certificates
-docker stop nginx-proxy 2>/dev/null || true
-
-# Obtain certificates for each domain
-for domain in $DOMAINS; do
-    echo -e "Obtaining certificate for ${GREEN}${domain}${NC}..."
-    
-    if [ "$ENVIRONMENT" = "staging" ]; then
-        # Use staging server for testing
-        certbot certonly --standalone \
-            --non-interactive \
-            --agree-tos \
-            --email "$EMAIL" \
-            --staging \
-            -d "$domain" || echo -e "${YELLOW}Warning: Failed to obtain cert for ${domain}${NC}"
-    else
-        # Production certificates
-        certbot certonly --standalone \
-            --non-interactive \
-            --agree-tos \
-            --email "$EMAIL" \
-            -d "$domain" || echo -e "${YELLOW}Warning: Failed to obtain cert for ${domain}${NC}"
-    fi
-done
-
-echo -e "${GREEN}✓ SSL certificates obtained${NC}"
-echo ""
-
-# =====================================================================
-# STEP 5: Deploy New Nginx Configuration
-# =====================================================================
-
-echo -e "${YELLOW}[5/8] Deploying new nginx configuration...${NC}"
-
-# Copy production config
-cp "${SCRIPT_DIR}/nginx-production.conf" "${SCRIPT_DIR}/nginx.conf"
-
-echo -e "${GREEN}✓ Nginx configuration deployed${NC}"
-echo ""
-
-# =====================================================================
-# STEP 6: Update Docker Configuration
-# =====================================================================
-
-echo -e "${YELLOW}[6/8] Updating Docker containers...${NC}"
-
-# Restart nginx with new config and SSL certificates
+# Stop nginx-proxy if running (will restart later with new config)
 docker stop nginx-proxy 2>/dev/null || true
 docker rm nginx-proxy 2>/dev/null || true
 
+# Check if port 80 is free for certbot
+if check_port 80; then
+    warning "Port 80 is in use, trying to free it..."
+    fuser -k 80/tcp 2>/dev/null || true
+    sleep 2
+fi
+
+success "Conflicting services stopped"
+echo ""
+
+# =====================================================================
+# STEP 4: Start Docker Compose Stack
+# =====================================================================
+
+echo -e "${YELLOW}[4/10] Starting Docker Compose stack...${NC}"
+
+cd "$PROJECT_ROOT"
+
+# Check if docker-compose.yml exists
+if [ ! -f "docker-compose.yml" ]; then
+    error_exit "docker-compose.yml not found in ${PROJECT_ROOT}"
+fi
+
+# Start the stack
+info "Starting main stack..."
+docker-compose up -d
+
+# Wait for key services
+wait_for_container "ev-reth-sequencer" 90
+wait_for_container "celestia-light" 120
+wait_for_container "loki" 30
+
+success "Docker stack is running"
+echo ""
+
+# =====================================================================
+# STEP 5: Verify RPC is working
+# =====================================================================
+
+echo -e "${YELLOW}[5/10] Verifying RPC endpoint...${NC}"
+
+MAX_RETRIES=30
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if curl -s -X POST http://localhost:8545 \
+        -H "Content-Type: application/json" \
+        -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' | grep -q "0x181e"; then
+        success "RPC endpoint is responding correctly (Chain ID: 6174)"
+        break
+    fi
+    
+    ((RETRY_COUNT++))
+    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+        error_exit "RPC endpoint not responding after ${MAX_RETRIES} attempts"
+    fi
+    
+    sleep 2
+done
+
+echo ""
+
+# =====================================================================
+# STEP 6: Install Certbot
+# =====================================================================
+
+echo -e "${YELLOW}[6/10] Setting up Certbot...${NC}"
+
+if ! command -v certbot &> /dev/null; then
+    info "Installing Certbot..."
+    apt-get update -qq
+    apt-get install -y -qq certbot python3-certbot-dns-cloudflare 2>/dev/null || \
+    apt-get install -y -qq certbot
+fi
+
+success "Certbot is ready"
+echo ""
+
+# =====================================================================
+# STEP 7: Obtain Wildcard SSL Certificate
+# =====================================================================
+
+echo -e "${YELLOW}[7/10] Obtaining SSL certificate...${NC}"
+
+# Create certbot directory
+mkdir -p /var/www/certbot
+
+if [ "$ENVIRONMENT" = "staging" ]; then
+    CERT_ARGS="--staging"
+    info "Using Let's Encrypt STAGING server (for testing)"
+else
+    CERT_ARGS=""
+    info "Using Let's Encrypt PRODUCTION server"
+fi
+
+# Check if certificate already exists
+if [ -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
+    success "Certificate already exists, skipping..."
+else
+    info "Obtaining wildcard certificate for *.${DOMAIN} and ${DOMAIN}..."
+    
+    # Try DNS challenge first (requires manual setup), fallback to standalone
+    if certbot certonly --standalone \
+        --non-interactive \
+        --agree-tos \
+        --email "$EMAIL" \
+        --domains "${DOMAIN},*.${DOMAIN}" \
+        $CERT_ARGS 2>/dev/null; then
+        success "Wildcard SSL certificate obtained successfully"
+    else
+        warning "Wildcard cert failed, obtaining individual certificates..."
+        
+        # Fallback: get individual certificates
+        for subdomain in "" "rpc" "ws" "api" "explorer" "faucet" "www"; do
+            if [ -z "$subdomain" ]; then
+                FULL_DOMAIN="${DOMAIN}"
+            else
+                FULL_DOMAIN="${subdomain}.${DOMAIN}"
+            fi
+            
+            info "Getting certificate for ${FULL_DOMAIN}..."
+            certbot certonly --standalone \
+                --non-interactive \
+                --agree-tos \
+                --email "$EMAIL" \
+                -d "${FULL_DOMAIN}" \
+                $CERT_ARGS || warning "Failed to get cert for ${FULL_DOMAIN}"
+        done
+    fi
+fi
+
+echo ""
+
+# =====================================================================
+# STEP 8: Deploy Production Nginx Configuration
+# =====================================================================
+
+echo -e "${YELLOW}[8/10] Deploying production Nginx...${NC}"
+
+# Copy production config to active config
+cp "${SCRIPT_DIR}/nginx-production.conf" "${SCRIPT_DIR}/nginx.conf"
+
+# Test nginx configuration
+docker run --rm \
+    -v "${SCRIPT_DIR}/nginx.conf:/etc/nginx/nginx.conf:ro" \
+    nginx:alpine nginx -t || error_exit "Nginx configuration test failed"
+
+# Start nginx with SSL
+info "Starting Nginx proxy with SSL..."
 docker run -d \
     --name nginx-proxy \
-    --network single-sequencer_ande-net \
+    --network andechain-p2p \
     -p 80:80 \
     -p 443:443 \
     -v "${SCRIPT_DIR}/nginx.conf:/etc/nginx/nginx.conf:ro" \
@@ -160,105 +291,103 @@ docker run -d \
     --health-retries=3 \
     nginx:alpine
 
-echo -e "${GREEN}✓ Nginx proxy restarted with SSL${NC}"
+# Wait for nginx to be healthy
+wait_for_container "nginx-proxy" 30
+
+success "Production Nginx deployed and running"
 echo ""
 
 # =====================================================================
-# STEP 7: Configure Auto-Renewal
+# STEP 9: Configure Auto-Renewal
 # =====================================================================
 
-echo -e "${YELLOW}[7/8] Setting up SSL auto-renewal...${NC}"
+echo -e "${YELLOW}[9/10] Setting up SSL auto-renewal...${NC}"
 
 # Create renewal script
 cat > /etc/cron.daily/certbot-renewal << 'EOF'
 #!/bin/bash
-# Auto-renewal script for AndeChain SSL certificates
+# AndeChain SSL Auto-Renewal
 
+# Renew certificates
 certbot renew --quiet --deploy-hook "docker restart nginx-proxy"
 
-# Log renewal
-echo "$(date): SSL certificates renewed" >> /var/log/certbot-renewal.log
+# Log
+echo "$(date): SSL certificates checked/renewed" >> /var/log/certbot-renewal.log
 EOF
 
 chmod +x /etc/cron.daily/certbot-renewal
 
-echo -e "${GREEN}✓ Auto-renewal configured${NC}"
+success "Auto-renewal configured (daily check)"
 echo ""
 
 # =====================================================================
-# STEP 8: Verification
+# STEP 10: Verification
 # =====================================================================
 
-echo -e "${YELLOW}[8/8] Verifying deployment...${NC}"
+echo -e "${YELLOW}[10/10] Verifying deployment...${NC}"
 
-# Wait for nginx to start
-sleep 5
-
-# Check if containers are running
-if ! docker ps | grep -q "nginx-proxy"; then
-    echo -e "${RED}✗ Nginx proxy is not running${NC}"
-    exit 1
-fi
-
-if ! docker ps | grep -q "ev-reth-sequencer"; then
-    echo -e "${RED}✗ EV-Reth sequencer is not running${NC}"
-    exit 1
-fi
-
-if ! docker ps | grep -q "evolve-sequencer"; then
-    echo -e "${YELLOW}⚠ Evolve sequencer is not running (will restart)${NC}"
-    docker restart evolve-sequencer
-fi
-
-# Test health endpoints
-echo -e "\nTesting endpoints..."
+# Check containers
+REQUIRED_CONTAINERS=("ev-reth-sequencer" "celestia-light" "nginx-proxy")
+for container in "${REQUIRED_CONTAINERS[@]}"; do
+    if docker ps | grep -q "$container"; then
+        success "${container} is running"
+    else
+        error_exit "${container} is not running"
+    fi
+done
 
 # Test HTTP redirect
-if curl -s -o /dev/null -w "%{http_code}" http://localhost/health | grep -q "301\|200"; then
-    echo -e "${GREEN}✓ HTTP redirect working${NC}"
+if curl -s -I http://localhost/health | grep -q "200\|301"; then
+    success "HTTP endpoint accessible"
 else
-    echo -e "${YELLOW}⚠ HTTP redirect test failed${NC}"
+    warning "HTTP health check failed"
 fi
 
-# Test HTTPS health
-if curl -k -s -o /dev/null -w "%{http_code}" https://localhost/health | grep -q "200"; then
-    echo -e "${GREEN}✓ HTTPS health check working${NC}"
+# Test HTTPS (self-signed ok for now)
+if curl -k -s https://localhost/health | grep -q "healthy"; then
+    success "HTTPS endpoint accessible"
 else
-    echo -e "${YELLOW}⚠ HTTPS health check failed${NC}"
+    warning "HTTPS health check failed"
 fi
 
-# Test RPC endpoint
+# Test RPC via nginx
 if curl -s -X POST http://localhost/rpc \
     -H "Content-Type: application/json" \
     -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' | grep -q "0x181e"; then
-    echo -e "${GREEN}✓ RPC endpoint working${NC}"
+    success "RPC proxying working correctly"
 else
-    echo -e "${YELLOW}⚠ RPC endpoint test failed${NC}"
+    warning "RPC proxy test failed"
 fi
 
 echo ""
-echo -e "${GREEN}=========================================${NC}"
-echo -e "${GREEN}DEPLOYMENT COMPLETE!${NC}"
-echo -e "${GREEN}=========================================${NC}"
+echo -e "${GREEN}════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}   DEPLOYMENT SUCCESSFUL! 🚀${NC}"
+echo -e "${GREEN}════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${BLUE}Next Steps:${NC}"
-echo -e "1. Configure DNS records:"
-echo -e "   ${GREEN}rpc.ande.network${NC}    A    189.28.81.202"
-echo -e "   ${GREEN}ws.ande.network${NC}     A    189.28.81.202"
-echo -e "   ${GREEN}api.ande.network${NC}    A    189.28.81.202"
-echo -e "   ${GREEN}ande.network${NC}        A    189.28.81.202"
-echo -e "   ${GREEN}www.ande.network${NC}    A    189.28.81.202"
 echo ""
-echo -e "2. Test endpoints:"
-echo -e "   ${GREEN}https://rpc.ande.network/health${NC}"
-echo -e "   ${GREEN}https://api.ande.network/info${NC}"
-echo -e "   ${GREEN}https://ande.network${NC}"
+echo "1. Verify DNS records are configured:"
+echo "   ${GREEN}dig +short *.ande.network${NC}"
 echo ""
-echo -e "3. Update MetaMask:"
-echo -e "   Network Name: AndeChain Mainnet"
-echo -e "   RPC URL: ${GREEN}https://rpc.ande.network${NC}"
-echo -e "   Chain ID: ${GREEN}6174${NC}"
-echo -e "   Currency Symbol: ${GREEN}ANDE${NC}"
+echo "2. Test public endpoints (after DNS propagation):"
+echo "   ${GREEN}curl https://rpc.ande.network/health${NC}"
+echo "   ${GREEN}curl https://api.ande.network/info${NC}"
+echo "   ${GREEN}curl https://explorer.ande.network${NC}"
 echo ""
-echo -e "${YELLOW}Note: SSL certificates will auto-renew every 60 days${NC}"
+echo "3. Add to MetaMask:"
+echo "   Network: AndeChain Mainnet"
+echo "   RPC: ${GREEN}https://rpc.ande.network${NC}"
+echo "   Chain ID: ${GREEN}6174${NC}"
+echo ""
+echo -e "${YELLOW}SSL Certificate:${NC}"
+if [ -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
+    echo "   ✓ Location: /etc/letsencrypt/live/${DOMAIN}"
+    echo "   ✓ Auto-renewal: Enabled (daily check)"
+    echo "   ✓ Expires: $(openssl x509 -enddate -noout -in /etc/letsencrypt/live/${DOMAIN}/cert.pem 2>/dev/null || echo 'N/A')"
+fi
+echo ""
+echo -e "${BLUE}Monitoring:${NC}"
+echo "   Logs: ${GREEN}docker logs -f nginx-proxy${NC}"
+echo "   Status: ${GREEN}docker ps${NC}"
+echo "   Health: ${GREEN}curl http://localhost/health${NC}"
 echo ""
