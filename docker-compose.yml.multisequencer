@@ -1,0 +1,783 @@
+# 🌐 ANDE Chain - Sovereign EVM Rollup on Celestia DA
+# Production Configuration - Single Sequencer
+# Architecture: ev-reth (modified Reth) + Evolve Sequencer + Celestia Mocha-4
+# Updated: 2025-11-03 - Production Ready with PoS Support
+
+networks:
+  andechain-p2p:
+    name: andechain-p2p
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  sequencer-data:
+    driver: local
+  evolve-data:
+    driver: local
+  celestia-data:
+    driver: local
+  jwttoken-sequencer:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+
+services:
+  # ============================================
+  # 1. Celestia Light Node (Data Availability Layer)
+  # ============================================
+  celestia-light:
+    container_name: celestia-light
+    image: ghcr.io/celestiaorg/celestia-node:v0.28.2-mocha
+    restart: unless-stopped
+    ports:
+      - "2121:2121"   # Celestia P2P
+      - "26658:26658" # Celestia RPC
+    volumes:
+      - celestia-data:/home/celestia
+    command: ["sh", "-c", "celestia light init --p2p.network mocha-4 || true && celestia light start --core.ip rpc-mocha.pops.one --p2p.network mocha-4 --rpc.addr 0.0.0.0 --rpc.port 26658"]
+    healthcheck:
+      test: ["CMD", "sh", "-c", "netstat -tuln | grep -q ':26658'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 2. JWT Secrets Initialization (Production Security)
+  # ============================================
+  jwt-init-sequencer:
+    container_name: jwt-init-sequencer
+    image: alpine:3.22.0
+    volumes:
+      - jwttoken-sequencer:/jwt
+    command: ["/bin/sh", "-c", "if [ ! -f /jwt/jwt.hex ]; then apk add --no-cache openssl && openssl rand -hex 32 | tr -d '\\n' > /jwt/jwt.hex && echo '✅ Production JWT generated for ANDE Chain sequencer'; else echo '✅ JWT exists for ANDE Chain sequencer'; fi"]
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 3. Init container to fix permissions
+  # ============================================
+  sequencer-init:
+    container_name: sequencer-init
+    image: alpine:3.22.0
+    volumes:
+      - sequencer-data:/data
+    command: ["/bin/sh", "-c", "chown -R 65532:65532 /data && echo '✅ Sequencer data permissions fixed'"]
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 4. ANDE Chain Sequencers (3 ev-reth nodes with Token Duality)
+  # ============================================
+  ev-reth-sequencer-1:
+    container_name: ev-reth-sequencer-1
+    image: ev-reth-andechain:production
+    restart: unless-stopped
+    depends_on:
+      sequencer-1-init:
+        condition: service_completed_successfully
+      jwt-init-sequencer-1:
+        condition: service_completed_successfully
+      celestia-light:
+        condition: service_healthy
+    ports:
+      - "8545:8545"   # HTTP RPC
+      - "8546:8546"   # WebSocket
+      - "8551:8551"   # Engine API
+      - "9001:9001"   # Metrics
+      - "30303:30303" # P2P
+    volumes:
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+      - jwttoken-sequencer-1:/jwt:ro
+      - sequencer-1-data:/data
+    environment:
+      - RUST_LOG=info,ev_reth=info,ande_precompile=info
+      - RUST_BACKTRACE=1
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+    command:
+      - node
+      - --datadir=/data
+      - --chain=/genesis.json
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --max-outbound-peers=25
+      - --max-inbound-peers=25
+      - --metrics=0.0.0.0:9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "POST", "-H", "Content-Type: application/json", "-d", "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=ev-reth-1"
+
+  ev-reth-sequencer-2:
+    container_name: ev-reth-sequencer-2
+    image: ev-reth-andechain:production
+    restart: unless-stopped
+    depends_on:
+      sequencer-2-init:
+        condition: service_completed_successfully
+      jwt-init-sequencer-2:
+        condition: service_completed_successfully
+      celestia-light:
+        condition: service_healthy
+      ev-reth-sequencer-1:
+        condition: service_started
+    ports:
+      - "8645:8545"   # HTTP RPC
+      - "8646:8546"   # WebSocket
+      - "8651:8551"   # Engine API
+      - "9002:9001"   # Metrics
+      - "30304:30303" # P2P
+    volumes:
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+      - jwttoken-sequencer-2:/jwt:ro
+      - sequencer-2-data:/data
+    environment:
+      - RUST_LOG=info,ev_reth=info,ande_precompile=info
+      - RUST_BACKTRACE=1
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+    command:
+      - node
+      - --datadir=/data
+      - --chain=/genesis.json
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --max-outbound-peers=25
+      - --max-inbound-peers=25
+      - --metrics=0.0.0.0:9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "POST", "-H", "Content-Type: application/json", "-d", "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=ev-reth-2"
+
+  ev-reth-sequencer-3:
+    container_name: ev-reth-sequencer-3
+    image: ev-reth-andechain:production
+    restart: unless-stopped
+    depends_on:
+      sequencer-3-init:
+        condition: service_completed_successfully
+      jwt-init-sequencer-3:
+        condition: service_completed_successfully
+      celestia-light:
+        condition: service_healthy
+      ev-reth-sequencer-1:
+        condition: service_started
+    ports:
+      - "8745:8545"   # HTTP RPC
+      - "8746:8546"   # WebSocket
+      - "8751:8551"   # Engine API
+      - "9003:9001"   # Metrics
+      - "30305:30303" # P2P
+    volumes:
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+      - jwttoken-sequencer-3:/jwt:ro
+      - sequencer-3-data:/data
+    environment:
+      - RUST_LOG=info,ev_reth=info,ande_precompile=info
+      - RUST_BACKTRACE=1
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+    command:
+      - node
+      - --datadir=/data
+      - --chain=/genesis.json
+      - --http
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=admin,eth,net,web3,txpool,debug,trace
+      - --http.corsdomain=*
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3,txpool
+      - --ws.origins=*
+      - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8551
+      - --authrpc.jwtsecret=/jwt/jwt.hex
+      - --port=30303
+      - --max-outbound-peers=25
+      - --max-inbound-peers=25
+      - --metrics=0.0.0.0:9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "POST", "-H", "Content-Type: application/json", "-d", "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=ev-reth-3"
+
+  # ============================================
+  # 5. Evolve Sequencers (Consensus Layer - Multi-Sequencer)
+  # ============================================
+  evolve-sequencer-1:
+    container_name: evolve-sequencer-1
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    restart: unless-stopped
+    depends_on:
+      ev-reth-sequencer-1:
+        condition: service_started
+      celestia-light:
+        condition: service_healthy
+      jwt-init-sequencer-1:
+        condition: service_completed_successfully
+    ports:
+      - "7331:7331"    # RPC
+      - "7676:7676"    # P2P
+      - "26660:26660"  # Metrics
+    volumes:
+      - jwttoken-sequencer-1:/jwt:ro
+      - evolve-1-data:/root/.evolve
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    environment:
+      # ============================================
+      # ANDE CHAIN MULTI-SEQUENCER CONFIGURATION
+      # ============================================
+      - EVM_ENGINE_URL=http://ev-reth-sequencer-1:8551
+      - EVM_ETH_URL=http://ev-reth-sequencer-1:8545
+      - EVM_JWT_PATH=/jwt/jwt.hex
+      - SEQUENCER_ID=1
+      
+      # ============================================
+      # ADAPTIVE BLOCK PRODUCTION (Dynamic & Professional)
+      # Responds to network load automatically
+      # ============================================
+      - EVM_BLOCK_TIME=1s
+      - EVM_LAZY_BLOCK_INTERVAL=5s
+      - EVM_LAZY_MODE=true
+      
+      # ============================================
+      # OPTIMIZED DA SUBMISSION (Production Ready)
+      # Balanced for cost and performance
+      # ============================================
+      - DA_BLOCK_TIME=12s
+      - DA_BATCH_SIZE=50
+      - DA_SUBMISSION_GAS_MULTIPLIER=1.3
+      
+      # ============================================
+      # CELESTIA MOCHA-4 CONFIGURATION
+      # ============================================
+      - DA_ADDRESS=http://celestia-light:26658
+      - DA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_START_HEIGHT=8624000
+      - DA_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdLCJOb25jZSI6InNtM3UxL0pNR2p4c296TktVVy9tWEdIcjBPUlpudXgzanRQMkdEUTdBbHM9IiwiRXhwaXJlc0F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ.hp2KgPgkXq1t5bnsMkngt1H7ElIYIazmzyJUUsw6LDk
+      
+      # ============================================
+      # GAS OPTIMIZATION (Production Testnet)
+      # Meets Celestia minimum requirements
+      # ============================================
+      - DA_GAS_PRICE=0.004
+      - DA_GAS_MULTIPLIER=1.1
+      - DA_MAX_SUBMIT_ATTEMPTS=50
+      - DA_RETRY_DELAY=10s
+      
+      # ============================================
+      # CHAIN CONFIGURATION
+      # ============================================
+      - CHAIN_ID=6174
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "🚀 Initializing ANDE Chain Sequencer..."
+
+        # Wait for ev-reth to be ready
+        until curl -sf -X POST -H "Content-Type: application/json" \
+          -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+          http://ev-reth-sequencer-1:8545 > /dev/null; do
+          echo "⏳ Waiting for ev-reth-sequencer-1 RPC..."
+          sleep 5
+        done
+
+        # Get genesis hash
+        GENESIS_HASH=$$(curl -s -X POST -H "Content-Type: application/json" \
+          -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}' \
+          http://ev-reth-sequencer-1:8545 | grep -o '"hash":"0x[^"]*"' | cut -d'"' -f4)
+
+        echo "✅ Genesis Hash: $$GENESIS_HASH"
+
+        # Read JWT secret
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+
+        # Initialize if needed
+        if [ ! -f /root/.evolve/config/signer.json ]; then
+          echo "📝 Initializing Evolve node..."
+          # Create passphrase file
+          echo "andechain-sequencer-production-2025" > /tmp/passphrase.txt
+          evm-single init \
+            --home=/root/.evolve \
+            --chain_id=ande-chain-6174 \
+            --evnode.node.aggregator=true \
+            --evnode.da.namespace=$$DA_NAMESPACE \
+            --evnode.da.address=$$DA_ADDRESS \
+            --evnode.signer.passphrase_file=/tmp/passphrase.txt
+          rm /tmp/passphrase.txt
+        else
+          echo "ℹ️  Evolve already initialized, skipping init..."
+        fi
+
+        # Start sequencer with multi-sequencer configuration
+        echo "🚀 Starting ANDE Chain - Multi-Sequencer #1"
+        echo "================================================"
+        echo "📊 Configuration:"
+        echo "   Sequencer ID: 1 (Primary)"
+        echo "   Block Production: ADAPTIVE (1s active / 5s idle)"
+        echo "   Mode: Lazy (tx-driven block production)"
+        echo "   DA Submission: Batched (optimized)"
+        echo "   Gas Price: 0.004 utia (Celestia minimum)"
+        echo "   Max Retries: 50 (enhanced reliability)"
+        echo "================================================"
+        
+        # Create passphrase file for start
+        echo "andechain-sequencer-production-2025" > /tmp/passphrase-start.txt
+        exec evm-single start \
+          --home=/root/.evolve \
+          --evm.eth-url=$$EVM_ETH_URL \
+          --evm.engine-url=$$EVM_ENGINE_URL \
+          --evm.jwt-secret-file=/jwt/jwt.hex \
+          --evm.genesis-hash=$$GENESIS_HASH \
+          --evnode.node.aggregator=true \
+          --evnode.node.lazy_mode=true \
+          --evnode.node.block_time=$$EVM_BLOCK_TIME \
+          --evnode.node.lazy_block_interval=$$EVM_LAZY_BLOCK_INTERVAL \
+          --evnode.da.address=$$DA_ADDRESS \
+          --evnode.da.namespace=$$DA_NAMESPACE \
+          --evnode.da.auth_token=$$DA_AUTH_TOKEN \
+          --evnode.da.gas_price=$$DA_GAS_PRICE \
+          --evnode.da.gas_multiplier=$$DA_GAS_MULTIPLIER \
+          --evnode.da.max_submit_attempts=$$DA_MAX_SUBMIT_ATTEMPTS \
+          --evnode.da.block_time=$$DA_BLOCK_TIME \
+          --evnode.signer.passphrase_file=/tmp/passphrase-start.txt \
+          --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 \
+          --evnode.rpc.address=0.0.0.0:7331 \
+          --evnode.instrumentation.prometheus=true \
+          --evnode.instrumentation.prometheus_listen_addr=:26660 \
+          --evnode.log.level=info \
+          --evnode.log.format=json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7331/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=evolve-sequencer-1"
+
+  evolve-sequencer-2:
+    container_name: evolve-sequencer-2
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    restart: unless-stopped
+    depends_on:
+      ev-reth-sequencer-2:
+        condition: service_started
+      celestia-light:
+        condition: service_healthy
+      jwt-init-sequencer-2:
+        condition: service_completed_successfully
+      evolve-sequencer-1:
+        condition: service_started
+    ports:
+      - "7332:7331"    # RPC
+      - "7677:7676"    # P2P
+      - "26661:26660"  # Metrics
+    volumes:
+      - jwttoken-sequencer-2:/jwt:ro
+      - evolve-2-data:/root/.evolve
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    environment:
+      - EVM_ENGINE_URL=http://ev-reth-sequencer-2:8551
+      - EVM_ETH_URL=http://ev-reth-sequencer-2:8545
+      - EVM_JWT_PATH=/jwt/jwt.hex
+      - SEQUENCER_ID=2
+      - EVM_BLOCK_TIME=1s
+      - EVM_LAZY_BLOCK_INTERVAL=5s
+      - EVM_LAZY_MODE=true
+      - DA_BLOCK_TIME=12s
+      - DA_BATCH_SIZE=50
+      - DA_SUBMISSION_GAS_MULTIPLIER=1.3
+      - DA_ADDRESS=http://celestia-light:26658
+      - DA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_START_HEIGHT=8624000
+      - DA_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdLCJOb25jZSI6InNtM3UxL0pNR2p4c296TktVVy9tWEdIcjBPUlpudXgzanRQMkdEUTdBbHM9IiwiRXhwaXJlc0F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ.hp2KgPgkXq1t5bnsMkngt1H7ElIYIazmzyJUUsw6LDk
+      - DA_GAS_PRICE=0.004
+      - DA_GAS_MULTIPLIER=1.1
+      - DA_MAX_SUBMIT_ATTEMPTS=50
+      - DA_RETRY_DELAY=10s
+      - CHAIN_ID=6174
+      - PEER_SEEDS=/ip4/evolve-sequencer-1/tcp/7676
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "🚀 Initializing ANDE Chain Sequencer #2..."
+        until curl -sf -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://ev-reth-sequencer-2:8545 > /dev/null; do
+          echo "⏳ Waiting for ev-reth-sequencer-2 RPC..."
+          sleep 5
+        done
+        GENESIS_HASH=$$(curl -s -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}' http://ev-reth-sequencer-2:8545 | grep -o '"hash":"0x[^"]*"' | cut -d'"' -f4)
+        echo "✅ Genesis Hash: $$GENESIS_HASH"
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+        if [ ! -f /root/.evolve/config/signer.json ]; then
+          echo "📝 Initializing Evolve node #2..."
+          echo "andechain-sequencer-2-2025" > /tmp/passphrase.txt
+          evm-single init --home=/root/.evolve --chain_id=ande-chain-6174 --evnode.node.aggregator=false --evnode.da.namespace=$$DA_NAMESPACE --evnode.da.address=$$DA_ADDRESS --evnode.signer.passphrase_file=/tmp/passphrase.txt
+          rm /tmp/passphrase.txt
+        else
+          echo "ℹ️  Evolve #2 already initialized, skipping init..."
+        fi
+        echo "🚀 Starting ANDE Chain - Multi-Sequencer #2"
+        echo "andechain-sequencer-2-2025" > /tmp/passphrase-start.txt
+        exec evm-single start --home=/root/.evolve --evm.eth-url=$$EVM_ETH_URL --evm.engine-url=$$EVM_ENGINE_URL --evm.jwt-secret-file=/jwt/jwt.hex --evm.genesis-hash=$$GENESIS_HASH --evnode.node.aggregator=false --evnode.node.lazy_mode=true --evnode.node.block_time=$$EVM_BLOCK_TIME --evnode.node.lazy_block_interval=$$EVM_LAZY_BLOCK_INTERVAL --evnode.da.address=$$DA_ADDRESS --evnode.da.namespace=$$DA_NAMESPACE --evnode.da.auth_token=$$DA_AUTH_TOKEN --evnode.da.gas_price=$$DA_GAS_PRICE --evnode.da.gas_multiplier=$$DA_GAS_MULTIPLIER --evnode.da.max_submit_attempts=$$DA_MAX_SUBMIT_ATTEMPTS --evnode.da.block_time=$$DA_BLOCK_TIME --evnode.signer.passphrase_file=/tmp/passphrase-start.txt --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 --evnode.p2p.seeds=$$PEER_SEEDS --evnode.rpc.address=0.0.0.0:7331 --evnode.instrumentation.prometheus=true --evnode.instrumentation.prometheus_listen_addr=:26660 --evnode.log.level=info --evnode.log.format=json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7331/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=evolve-sequencer-2"
+
+  evolve-sequencer-3:
+    container_name: evolve-sequencer-3
+    image: ghcr.io/evstack/ev-node-evm-single:main
+    restart: unless-stopped
+    depends_on:
+      ev-reth-sequencer-3:
+        condition: service_started
+      celestia-light:
+        condition: service_healthy
+      jwt-init-sequencer-3:
+        condition: service_completed_successfully
+      evolve-sequencer-1:
+        condition: service_started
+    ports:
+      - "7333:7331"    # RPC
+      - "7678:7676"    # P2P
+      - "26662:26660"  # Metrics
+    volumes:
+      - jwttoken-sequencer-3:/jwt:ro
+      - evolve-3-data:/root/.evolve
+      - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    environment:
+      - EVM_ENGINE_URL=http://ev-reth-sequencer-3:8551
+      - EVM_ETH_URL=http://ev-reth-sequencer-3:8545
+      - EVM_JWT_PATH=/jwt/jwt.hex
+      - SEQUENCER_ID=3
+      - EVM_BLOCK_TIME=1s
+      - EVM_LAZY_BLOCK_INTERVAL=5s
+      - EVM_LAZY_MODE=true
+      - DA_BLOCK_TIME=12s
+      - DA_BATCH_SIZE=50
+      - DA_SUBMISSION_GAS_MULTIPLIER=1.3
+      - DA_ADDRESS=http://celestia-light:26658
+      - DA_NAMESPACE=000000000000000000000000000000000000616e6465636861696e2d7631
+      - DA_START_HEIGHT=8624000
+      - DA_AUTH_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdLCJOb25jZSI6InNtM3UxL0pNR2p4c296TktVVy9tWEdIcjBPUlpudXgzanRQMkdEUTdBbHM9IiwiRXhwaXJlc0F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ.hp2KgPgkXq1t5bnsMkngt1H7ElIYIazmzyJUUsw6LDk
+      - DA_GAS_PRICE=0.004
+      - DA_GAS_MULTIPLIER=1.1
+      - DA_MAX_SUBMIT_ATTEMPTS=50
+      - DA_RETRY_DELAY=10s
+      - CHAIN_ID=6174
+      - PEER_SEEDS=/ip4/evolve-sequencer-1/tcp/7676
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "🚀 Initializing ANDE Chain Sequencer #3..."
+        until curl -sf -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://ev-reth-sequencer-3:8545 > /dev/null; do
+          echo "⏳ Waiting for ev-reth-sequencer-3 RPC..."
+          sleep 5
+        done
+        GENESIS_HASH=$$(curl -s -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}' http://ev-reth-sequencer-3:8545 | grep -o '"hash":"0x[^"]*"' | cut -d'"' -f4)
+        echo "✅ Genesis Hash: $$GENESIS_HASH"
+        JWT_SECRET=$$(cat /jwt/jwt.hex)
+        if [ ! -f /root/.evolve/config/signer.json ]; then
+          echo "📝 Initializing Evolve node #3..."
+          echo "andechain-sequencer-3-2025" > /tmp/passphrase.txt
+          evm-single init --home=/root/.evolve --chain_id=ande-chain-6174 --evnode.node.aggregator=false --evnode.da.namespace=$$DA_NAMESPACE --evnode.da.address=$$DA_ADDRESS --evnode.signer.passphrase_file=/tmp/passphrase.txt
+          rm /tmp/passphrase.txt
+        else
+          echo "ℹ️  Evolve #3 already initialized, skipping init..."
+        fi
+        echo "🚀 Starting ANDE Chain - Multi-Sequencer #3"
+        echo "andechain-sequencer-3-2025" > /tmp/passphrase-start.txt
+        exec evm-single start --home=/root/.evolve --evm.eth-url=$$EVM_ETH_URL --evm.engine-url=$$EVM_ENGINE_URL --evm.jwt-secret-file=/jwt/jwt.hex --evm.genesis-hash=$$GENESIS_HASH --evnode.node.aggregator=false --evnode.node.lazy_mode=true --evnode.node.block_time=$$EVM_BLOCK_TIME --evnode.node.lazy_block_interval=$$EVM_LAZY_BLOCK_INTERVAL --evnode.da.address=$$DA_ADDRESS --evnode.da.namespace=$$DA_NAMESPACE --evnode.da.auth_token=$$DA_AUTH_TOKEN --evnode.da.gas_price=$$DA_GAS_PRICE --evnode.da.gas_multiplier=$$DA_GAS_MULTIPLIER --evnode.da.max_submit_attempts=$$DA_MAX_SUBMIT_ATTEMPTS --evnode.da.block_time=$$DA_BLOCK_TIME --evnode.signer.passphrase_file=/tmp/passphrase-start.txt --evnode.p2p.listen_address=/ip4/0.0.0.0/tcp/7676 --evnode.p2p.seeds=$$PEER_SEEDS --evnode.rpc.address=0.0.0.0:7331 --evnode.instrumentation.prometheus=true --evnode.instrumentation.prometheus_listen_addr=:26660 --evnode.log.level=info --evnode.log.format=json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7331/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=evolve-sequencer-3"
+
+  # ============================================
+  # 6. Prometheus Monitoring
+  # ============================================
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/monitoring.production.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus-alerts.yml:/etc/prometheus/alert.rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 7. Grafana Dashboard
+  # ============================================
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=andechain-admin-2025
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - andechain-p2p
+    depends_on:
+      - loki
+
+  # ============================================
+  # 8. Loki - Logs Centralizados
+  # ============================================
+  loki:
+    container_name: loki
+    image: grafana/loki:latest
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    environment:
+      - LOKI_CONFIG=/etc/loki/local-config.yaml
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # 9. Nginx - Reverse Proxy para Testnet Pública
+  # ============================================
+  nginx:
+    container_name: nginx-proxy
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/stacks/single-sequencer/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ev-reth-sequencer-1
+      - ev-reth-sequencer-2
+      - ev-reth-sequencer-3
+      - evolve-sequencer-1
+      - evolve-sequencer-2
+      - evolve-sequencer-3
+      - prometheus
+      - grafana
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=nginx"
+
+  # ============================================
+  # 10. cAdvisor - Monitoreo de Recursos
+  # ============================================
+  cadvisor:
+    container_name: cadvisor
+    image: gcr.io/cadvisor/cadvisor:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - andechain-p2p
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
