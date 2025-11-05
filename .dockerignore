@@ -1,0 +1,245 @@
+# =============================================================================
+# GLOBAL DOCKERIGNORE FOR ANDECHAIN PROJECT
+# =============================================================================
+# This file optimizes Docker builds by excluding unnecessary files
+# Reduces build context size and improves build performance
+
+# =============================================================================
+# VERSION CONTROL
+# =============================================================================
+.git/
+.gitignore
+.gitmodules
+.gitattributes
+
+# =============================================================================
+# DOCUMENTATION & MARKDOWN
+# =============================================================================
+*.md
+!README.md
+!CHANGELOG.md
+docs/
+*.txt
+!requirements.txt
+!package*.txt
+
+# =============================================================================
+# BUILD ARTIFACTS & CACHE
+# =============================================================================
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+.pnp.*
+dist/
+build/
+.next/
+.nuxt/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# =============================================================================
+# ENVIRONMENT & CONFIG FILES
+# =============================================================================
+.env
+.env.local
+.env.*.local
+.envrc
+secrets/
+*.key
+*.pem
+*.p12
+*.p8
+*.crt
+*.csr
+*.cer
+*.der
+
+# =============================================================================
+# IDE & EDITOR FILES
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-*
+.atom/
+
+# =============================================================================
+# TEMPORARY & LOG FILES
+# =============================================================================
+*.log
+logs/
+*.tmp
+*.temp
+tmp/
+temp/
+.cache/
+*.pid
+*.seed
+*.pid.lock
+
+# =============================================================================
+# TEST ARTIFACTS
+# =============================================================================
+coverage/
+.nyc_output/
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# =============================================================================
+# DOCKER FILES
+# =============================================================================
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# =============================================================================
+# CI/CD FILES
+# =============================================================================
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.jenkins/
+azure-pipelines.yml
+bitbucket-pipelines.yml
+
+# =============================================================================
+# BLOCKCHAIN SPECIFIC
+# =============================================================================
+# Blockchain data directories (keep these out of builds)
+data/
+chaindata/
+keystore/
+wallets/
+**/blockchain-data/
+geth/
+prysm/
+
+# =============================================================================
+# MONITORING & METRICS
+# =============================================================================
+prometheus_data/
+grafana_data/
+alertmanager_data/
+
+# =============================================================================
+# LARGE FILES & BINARIES
+# =============================================================================
+*.iso
+*.dmg
+*.gz
+*.zip
+*.tar
+*.rar
+*.7z
+*.deb
+*.rpm
+*.msi
+*.exe
+*.dll
+*.dylib
+*.so
+
+# =============================================================================
+# OS SPECIFIC
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# =============================================================================
+# PROJECT SPECIFIC EXCLUSIONS
+# =============================================================================
+# Exclude other service directories from each build context
+# This prevents copying unnecessary files across different services
+
+# When building ev-reth, exclude frontend files
+andefrontend/
+
+# When building frontend, exclude blockchain files  
+ev-reth/
+andechain/
+
+# Development databases and volumes
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+redis_data/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# =============================================================================
+# SECURITY SENSITIVE FILES
+# =============================================================================
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.pem
+*.key
+*.crt
+*.csr
+.ssh/

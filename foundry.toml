@@ -1,0 +1,146 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "tests"
+cache_path = "cache"
+
+# Compiler settings
+solc = "0.8.25"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 20000
+via_ir = true
+bytecode_hash = "none"
+
+# Remappings for dependencies
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "ds-test/=lib/ds-test/src/",
+    "erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+    "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/",
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/"
+]
+
+# Exclude problematic files that require newer Solidity versions
+ignored_files = [
+    "contracts/lib/openzeppelin-contracts/contracts/account/**/*",
+    "contracts/lib/openzeppelin-contracts/contracts/mocks/account/**/*",
+    "contracts/lib/openzeppelin-contracts/contracts/utils/cryptography/signers/**/*",
+    "contracts/lib/openzeppelin-contracts-upgradeable/contracts/account/**/*",
+    "contracts/lib/openzeppelin-contracts-upgradeable/contracts/mocks/account/**/*",
+    "contracts/lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/signers/**/*",
+    "contracts/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/account/**/*",
+    "contracts/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/mocks/account/**/*",
+    "contracts/lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/utils/cryptography/signers/**/*",
+    "lib/openzeppelin-contracts/contracts/account/**/*",
+    "lib/openzeppelin-contracts/contracts/mocks/account/**/*",
+    "lib/openzeppelin-contracts/contracts/utils/cryptography/signers/**/*",
+    "lib/openzeppelin-contracts-upgradeable/contracts/account/**/*",
+    "lib/openzeppelin-contracts-upgradeable/contracts/mocks/account/**/*",
+    "lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/signers/**/*"
+]
+
+# Test configuration
+[profile.default.fuzz]
+runs = 256
+max_test_rejects = 65536
+seed = '0x3e8'
+dictionary_weight = 40
+include_storage = true
+include_push_bytes = true
+
+# Gas reporting  
+gas_reports = ["*"]
+gas_reports_ignore = ["test/**/*", "script/**/*"]
+
+# RPC endpoints
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+goerli = "${GOERLI_RPC_URL}"
+sepolia = "${SEPOLIA_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
+arbitrum = "${ARBITRUM_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+avalanche = "${AVALANCHE_RPC_URL}"
+bsc = "${BSC_RPC_URL}"
+andechain = "${ANDECHAIN_RPC_URL}"
+localhost = "http://localhost:8545"
+
+# Etherscan API keys for verification
+[etherscan]
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
+goerli = { key = "${ETHERSCAN_API_KEY}" }
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
+polygon = { key = "${POLYGONSCAN_API_KEY}" }
+arbitrum = { key = "${ARBISCAN_API_KEY}" }
+optimism = { key = "${OPTIMISMSCAN_API_KEY}" }
+avalanche = { key = "${SNOWTRACE_API_KEY}" }
+bsc = { key = "${BSCSCAN_API_KEY}" }
+
+# Production profile for deployments
+[profile.production]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "tests"
+solc = "0.8.25"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200000
+via_ir = true
+bytecode_hash = "none"
+
+# CI profile for continuous integration
+[profile.ci]
+src = "contracts"
+out = "out"
+libs = ["lib"] 
+test = "tests"
+solc = "0.8.25"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 20000
+via_ir = false
+fuzz = { runs = 50 }
+invariant = { runs = 10, depth = 15 }
+
+# Development profile with faster compilation
+[profile.dev]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "tests"
+solc = "0.8.25"
+evm_version = "cancun"
+optimizer = false
+via_ir = false
+
+# Formatting configuration
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+multiline_func_header = "all"
+quote_style = "double"
+number_underscore = "thousands"
+hex_underscore = "remove"
+single_line_statement_blocks = "preserve"
+override_spacing = true
+wrap_comments = true
+ignore = [
+    "tests/foundry/**",
+]
+
+# Documentation configuration  
+[doc]
+out = "docs"
+title = "AndeChain Smart Contracts"
+book = "book.toml"
+ignore = ["**/test/**", "**/tests/**", "**/script/**", "**/scripts/**"]
+repository = "https://github.com/ande-labs/andechain"
+homepage = "https://andechain.com"
