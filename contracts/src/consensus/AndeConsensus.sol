@@ -4,10 +4,10 @@ pragma solidity ^0.8.25;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-// MessageHashUtils not available in v4.9.0, using ECDSA.toEthSignedMessageHash instead
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @title AndeConsensus
@@ -559,8 +559,8 @@ contract AndeConsensus is
 
         // Verificar firma
         bytes32 messageHash = keccak256(abi.encodePacked(blockNumber, blockHash));
-        bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
-        address signer = ethSignedHash.recover(signature);
+        bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        address signer = ECDSA.recover(ethSignedHash, signature);
         
         if (signer != msg.sender) {
             revert InvalidSignature();
@@ -606,8 +606,8 @@ contract AndeConsensus is
 
         // Verificar firma
         bytes32 messageHash = keccak256(abi.encodePacked(blockNumber, blockHash));
-        bytes32 ethSignedHash = messageHash.toEthSignedMessageHash();
-        address signer = ethSignedHash.recover(signature);
+        bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        address signer = ECDSA.recover(ethSignedHash, signature);
         
         if (signer != msg.sender) {
             revert InvalidSignature();
@@ -667,8 +667,8 @@ contract AndeConsensus is
             revert InvalidSignature();
         }
 
-        address signer1 = message1.toEthSignedMessageHash().recover(signature1);
-        address signer2 = message2.toEthSignedMessageHash().recover(signature2);
+        address signer1 = MessageHashUtils.toEthSignedMessageHash(message1).recover(signature1);
+        address signer2 = MessageHashUtils.toEthSignedMessageHash(message2).recover(signature2);
 
         if (signer1 != validator || signer2 != validator) {
             revert InvalidSignature();
