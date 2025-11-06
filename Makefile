@@ -475,6 +475,260 @@ verify-mainnet:
 	@cat $(CONTRACTS_DIR)/deployments/addresses-local.json | jq -r '.contracts'
 
 # ==========================================
+# PUBLIC TESTNET DEPLOYMENT
+# ==========================================
+
+setup-ssl: ## Setup SSL certificates with certbot
+	@echo "$(BLUE)Setting up SSL certificates...$(NC)"
+	@echo "$(YELLOW)Prerequisites:$(NC)"
+	@echo "  - Domain DNS must point to this server"
+	@echo "  - Ports 80 and 443 must be open"
+	@echo ""
+	@echo "$(BLUE)Domains to configure:$(NC)"
+	@grep "^DOMAIN_" .env.$(ENV) 2>/dev/null || echo "$(RED)No domains configured in .env.$(ENV)$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Run certbot for each domain:$(NC)"
+	@echo "  docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d YOUR_DOMAIN"
+	@echo ""
+	@echo "$(YELLOW)After certificates are obtained, restart nginx:$(NC)"
+	@echo "  docker compose restart nginx"
+
+renew-ssl: ## Renew SSL certificates
+	@echo "$(BLUE)Renewing SSL certificates...$(NC)"
+	@docker compose run --rm certbot renew
+	@docker compose restart nginx
+	@echo "$(GREEN)✅ Certificates renewed$(NC)"
+
+check-ssl: ## Check SSL certificate expiration
+	@echo "$(BLUE)Checking SSL certificates...$(NC)"
+	@for domain in $$(grep "^DOMAIN_" .env.$(ENV) | cut -d'=' -f2); do \
+		echo "$(YELLOW)Checking $$domain$(NC)"; \
+		echo | openssl s_client -servername $$domain -connect $$domain:443 2>/dev/null | \
+		openssl x509 -noout -dates 2>/dev/null || echo "$(RED)No certificate for $$domain$(NC)"; \
+	done
+
+setup-public: validate-testnet ## Setup chain for public access
+	@echo "$(BLUE)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  Setting up AndeChain for Public Access       ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(GREEN)Step 1: Configure .env.testnet$(NC)"
+	@echo "  - Set DOMAIN_* variables"
+	@echo "  - Set LETSENCRYPT_EMAIL"
+	@echo "  - Set secure passwords"
+	@echo ""
+	@echo "$(GREEN)Step 2: Configure DNS$(NC)"
+	@echo "  Point these domains to your server IP:"
+	@grep "^DOMAIN_" .env.testnet 2>/dev/null | sed 's/DOMAIN_/  - /' | sed 's/=/ → /'
+	@echo ""
+	@echo "$(GREEN)Step 3: Configure Firewall$(NC)"
+	@echo "  sudo ufw allow 80/tcp"
+	@echo "  sudo ufw allow 443/tcp"
+	@echo "  sudo ufw allow 30303/tcp  # P2P"
+	@echo "  sudo ufw enable"
+	@echo ""
+	@echo "$(GREEN)Step 4: Obtain SSL certificates$(NC)"
+	@echo "  make setup-ssl ENV=testnet"
+	@echo ""
+	@echo "$(GREEN)Step 5: Start services$(NC)"
+	@echo "  docker compose up -d"
+	@echo ""
+	@echo "$(GREEN)Step 6: Verify$(NC)"
+	@echo "  make health-public"
+
+health-public: ## Check public endpoints health
+	@echo "$(BLUE)Checking public endpoints...$(NC)"
+	@echo ""
+	@echo "$(GREEN)RPC Endpoint:$(NC)"
+	@RPC_DOMAIN=$$(grep "^DOMAIN_RPC" .env.$(ENV) | cut -d'=' -f2) && \
+		curl -s -X POST https://$$RPC_DOMAIN \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' | \
+		jq -r '.result' | xargs printf "Block: %d\n" 2>/dev/null || echo "$(RED)RPC not responding$(NC)"
+	@echo ""
+	@echo "$(GREEN)WebSocket Endpoint:$(NC)"
+	@WS_DOMAIN=$$(grep "^DOMAIN_WS" .env.$(ENV) | cut -d'=' -f2) && \
+		echo "  wss://$$WS_DOMAIN (test with MetaMask)"
+	@echo ""
+	@echo "$(GREEN)Explorer:$(NC)"
+	@EXPLORER_DOMAIN=$$(grep "^DOMAIN_EXPLORER" .env.$(ENV) | cut -d'=' -f2) && \
+		curl -s https://$$EXPLORER_DOMAIN -o /dev/null && \
+		echo "  ✅ https://$$EXPLORER_DOMAIN" || echo "  ❌ Explorer not responding"
+	@echo ""
+	@echo "$(GREEN)Monitoring:$(NC)"
+	@STATUS_DOMAIN=$$(grep "^DOMAIN_STATUS" .env.$(ENV) | cut -d'=' -f2) && \
+		curl -s https://$$STATUS_DOMAIN -o /dev/null && \
+		echo "  ✅ https://$$STATUS_DOMAIN" || echo "  ❌ Status page not responding"
+
+test-from-external: ## Test RPC from external network
+	@echo "$(BLUE)Testing public RPC access...$(NC)"
+	@RPC_DOMAIN=$$(grep "^DOMAIN_RPC" .env.$(ENV) | cut -d'=' -f2) && \
+		echo "Testing https://$$RPC_DOMAIN" && \
+		curl -X POST https://$$RPC_DOMAIN \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' && \
+		echo "" && \
+		curl -X POST https://$$RPC_DOMAIN \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}' && \
+		echo ""
+
+generate-secrets: ## Generate secure secrets for production
+	@echo "$(BLUE)Generating secure secrets...$(NC)"
+	@echo ""
+	@echo "$(GREEN)JWT Secret (for JWT):$(NC)"
+	@openssl rand -hex 32
+	@echo ""
+	@echo "$(GREEN)Blockscout Secret Key Base:$(NC)"
+	@openssl rand -base64 64 | tr -d '\n' && echo ""
+	@echo ""
+	@echo "$(GREEN)Grafana Admin Password:$(NC)"
+	@openssl rand -base64 24 | tr -d '\n' && echo ""
+	@echo ""
+	@echo "$(GREEN)PostgreSQL Password:$(NC)"
+	@openssl rand -base64 32 | tr -d '\n' && echo ""
+	@echo ""
+	@echo "$(YELLOW)Save these in your .env.$(ENV) file$(NC)"
+
+check-security: ## Security checklist for public deployment
+	@echo "$(BLUE)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  Security Checklist for Public Deployment     ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(GREEN)1. Secrets & Passwords:$(NC)"
+	@grep -q "blockscout_secure_password_2025" docker-compose.yml && \
+		echo "  $(RED)❌ Default password in docker-compose.yml$(NC)" || \
+		echo "  $(GREEN)✅ No default passwords found$(NC)"
+	@test -f .env && \
+		echo "  $(RED)❌ .env file exists (should be .env.testnet)$(NC)" || \
+		echo "  $(GREEN)✅ Using environment-specific files$(NC)"
+	@echo ""
+	@echo "$(GREEN)2. Firewall Configuration:$(NC)"
+	@command -v ufw >/dev/null 2>&1 && \
+		(sudo ufw status | grep -q "Status: active" && \
+		echo "  $(GREEN)✅ Firewall active$(NC)" || \
+		echo "  $(RED)❌ Firewall not active$(NC)") || \
+		echo "  $(YELLOW)⚠️  ufw not found$(NC)"
+	@echo ""
+	@echo "$(GREEN)3. SSL/TLS Certificates:$(NC)"
+	@test -d /etc/letsencrypt/live && \
+		echo "  $(GREEN)✅ Let's Encrypt directory exists$(NC)" || \
+		echo "  $(YELLOW)⚠️  No SSL certificates yet$(NC)"
+	@echo ""
+	@echo "$(GREEN)4. Rate Limiting:$(NC)"
+	@grep -q "limit_req_zone" infra/stacks/single-sequencer/nginx.conf && \
+		echo "  $(GREEN)✅ Rate limiting configured$(NC)" || \
+		echo "  $(RED)❌ No rate limiting$(NC)"
+	@echo ""
+	@echo "$(GREEN)5. Docker Security:$(NC)"
+	@docker ps --format "{{.Names}}" | while read container; do \
+		docker inspect $$container | grep -q "Privileged.*true" && \
+		echo "  $(RED)❌ $$container running privileged$(NC)" || true; \
+	done
+	@echo "  $(GREEN)✅ Security check complete$(NC)"
+	@echo ""
+	@echo "$(GREEN)6. Monitoring:$(NC)"
+	@docker ps | grep -q "prometheus" && \
+		echo "  $(GREEN)✅ Prometheus running$(NC)" || \
+		echo "  $(YELLOW)⚠️  Prometheus not running$(NC)"
+	@docker ps | grep -q "grafana" && \
+		echo "  $(GREEN)✅ Grafana running$(NC)" || \
+		echo "  $(YELLOW)⚠️  Grafana not running$(NC)"
+
+optimize-production: ## Apply production optimizations
+	@echo "$(BLUE)Applying production optimizations...$(NC)"
+	@echo ""
+	@echo "$(GREEN)1. System limits:$(NC)"
+	@echo "  Add to /etc/sysctl.conf:"
+	@echo "    fs.file-max = 2097152"
+	@echo "    net.core.somaxconn = 65535"
+	@echo "    net.ipv4.tcp_max_syn_backlog = 8192"
+	@echo ""
+	@echo "$(GREEN)2. Docker limits:$(NC)"
+	@echo "  Configured in docker-compose.yml"
+	@echo "  - CPU limits"
+	@echo "  - Memory limits"
+	@echo "  - ulimits for file descriptors"
+	@echo ""
+	@echo "$(GREEN)3. Nginx tuning:$(NC)"
+	@echo "  worker_connections: 8192"
+	@echo "  keepalive_requests: 1000"
+	@echo "  Rate limiting enabled"
+	@echo ""
+	@echo "$(GREEN)Apply system settings:$(NC)"
+	@echo "  sudo sysctl -p"
+
+# ==========================================
+# ANDE FAUCET OPERATIONS
+# ==========================================
+
+setup-faucet: ## Setup ANDE faucet for testnet
+	@echo "$(BLUE)╔════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║  Setting up ANDE Testnet Faucet               ║$(NC)"
+	@echo "$(BLUE)╚════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(GREEN)Step 1: Create faucet wallet$(NC)"
+	@echo "  cast wallet new"
+	@echo ""
+	@echo "$(GREEN)Step 2: Fund the faucet wallet$(NC)"
+	@echo "  Transfer ANDE tokens to the faucet address"
+	@echo ""
+	@echo "$(GREEN)Step 3: Configure .env.testnet$(NC)"
+	@echo "  - Set FAUCET_PRIVATE_KEY"
+	@echo "  - Set FAUCET_AMOUNT (default: 10 ANDE)"
+	@echo "  - Set FAUCET_COOLDOWN (default: 24 hours)"
+	@echo "  - Configure HCAPTCHA keys (get from hcaptcha.com)"
+	@echo ""
+	@echo "$(GREEN)Step 4: Start faucet$(NC)"
+	@echo "  make start-faucet"
+
+start-faucet: ## Start ANDE faucet service
+	@echo "$(BLUE)Starting ANDE Faucet...$(NC)"
+	@test -n "$(FAUCET_PRIVATE_KEY)" || { echo "$(RED)❌ FAUCET_PRIVATE_KEY not set in .env$(NC)"; exit 1; }
+	@docker compose up -d ande-faucet
+	@echo "$(GREEN)✅ Faucet started$(NC)"
+	@echo "$(BLUE)Local URL: http://localhost:8081$(NC)"
+	@echo "$(BLUE)Public URL: https://faucet.ande.network$(NC)"
+
+stop-faucet: ## Stop ANDE faucet service
+	@echo "$(BLUE)Stopping ANDE Faucet...$(NC)"
+	@docker compose stop ande-faucet
+	@echo "$(GREEN)✅ Faucet stopped$(NC)"
+
+faucet-logs: ## View faucet logs
+	@docker logs ande-faucet --tail 100 -f
+
+faucet-status: ## Check faucet status and balance
+	@echo "$(BLUE)ANDE Faucet Status:$(NC)"
+	@echo ""
+	@docker ps --filter "name=ande-faucet" --format "table {{.Names}}\t{{.Status}}"
+	@echo ""
+	@echo "$(GREEN)Faucet Wallet Balance:$(NC)"
+	@FAUCET_ADDR=$$(cast wallet address --private-key $(FAUCET_PRIVATE_KEY) 2>/dev/null) && \
+		BAL=$$(cast balance $$FAUCET_ADDR --rpc-url http://localhost:8545 2>/dev/null) && \
+		echo "  Address: $$FAUCET_ADDR" && \
+		echo "  Balance: $$(cast --to-unit $$BAL ether) ANDE" || \
+		echo "  $(RED)Failed to check balance$(NC)"
+
+fund-faucet: ## Fund the faucet wallet with ANDE tokens
+	@echo "$(BLUE)Funding faucet wallet...$(NC)"
+	@read -p "Amount to send (in ANDE): " amount && \
+	FAUCET_ADDR=$$(cast wallet address --private-key $(FAUCET_PRIVATE_KEY)) && \
+	echo "Faucet address: $$FAUCET_ADDR" && \
+	echo "Sending $$amount ANDE..." && \
+	cast send $$FAUCET_ADDR --value $${amount}ether --rpc-url http://localhost:8545 --private-key $(DEPLOYER_PRIVATE_KEY)
+
+test-faucet: ## Test faucet by requesting tokens
+	@echo "$(BLUE)Testing faucet...$(NC)"
+	@read -p "Recipient address: " recipient && \
+	curl -X POST http://localhost:8081/api/claim \
+		-H "Content-Type: application/json" \
+		-d "{\"address\":\"$$recipient\"}" && \
+	echo "" && \
+	echo "$(GREEN)Check balance:$(NC)" && \
+	cast balance $$recipient --rpc-url http://localhost:8545
+
+# ==========================================
 # CELESTIA DA OPERATIONS
 # ==========================================
 

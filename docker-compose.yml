@@ -28,6 +28,14 @@ volumes:
     driver: local
   postgres-data:
     driver: local
+  certbot-certs:
+    driver: local
+  certbot-www:
+    driver: local
+  nginx-logs:
+    driver: local
+  faucet-data:
+    driver: local
 
 services:
   # ============================================
@@ -113,12 +121,13 @@ services:
       - ./config/parallel-evm.toml:/config/parallel-evm.toml:ro
       - ./config/mev-integration.toml:/config/mev-integration.toml:ro
     environment:
-      - RUST_LOG=info,ev_reth=info,ande_precompile=info,parallel_evm=info,mev=info
-      - RUST_BACKTRACE=1
+      - RUST_LOG=${RUST_LOG:-info,ev_reth=info,ande_precompile=info,parallel_evm=info,mev=info}
+      - RUST_BACKTRACE=${RUST_BACKTRACE:-1}
       - PARALLEL_EVM_CONFIG=/config/parallel-evm.toml
       - MEV_CONFIG=/config/mev-integration.toml
-      - ENABLE_PARALLEL_EVM=true
-      - ENABLE_MEV_DETECTION=true
+      - ENABLE_PARALLEL_EVM=${ENABLE_PARALLEL_EVM:-true}
+      - ENABLE_MEV_DETECTION=${ENABLE_MEV_DETECTION:-true}
+      - MAX_PEERS=${MAX_PEERS:-50}
     deploy:
       resources:
         limits:
@@ -371,10 +380,13 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=andechain-admin-2025
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-andechain-admin-2025}
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
-      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-https://status.ande.network}
       - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_USERS_ALLOW_SIGN_UP=false
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 30s
@@ -415,24 +427,44 @@ services:
         max-file: "5"
 
   # ============================================
-  # 8. Nginx - Reverse Proxy para Testnet Pública
+  # 8. Certbot - SSL Certificate Management
+  # ============================================
+  certbot:
+    container_name: certbot
+    image: certbot/certbot:latest
+    volumes:
+      - certbot-certs:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - andechain-p2p
+
+  # ============================================
+  # 9. Nginx - Production Reverse Proxy with SSL
   # ============================================
   nginx:
     container_name: nginx-proxy
-    image: nginx:latest
+    image: nginx:alpine
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./infra/stacks/single-sequencer/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot-certs:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+      - nginx-logs:/var/log/nginx
+    environment:
+      - NGINX_HOST=${NGINX_HOST:-localhost}
+      - NGINX_PORT=${NGINX_PORT:-80}
     depends_on:
       - ev-reth-sequencer
       - evolve-sequencer
       - prometheus
       - grafana
+      - blockscout
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -445,6 +477,7 @@ services:
         max-size: "100m"
         max-file: "10"
         labels: "service=nginx"
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
 
   # ============================================
   # 9. cAdvisor - Monitoreo de Recursos
@@ -479,9 +512,9 @@ services:
     image: postgres:15-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=blockscout
-      - POSTGRES_USER=blockscout
-      - POSTGRES_PASSWORD=blockscout_secure_password_2025
+      - POSTGRES_DB=${POSTGRES_DB:-blockscout}
+      - POSTGRES_USER=${POSTGRES_USER:-blockscout}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-blockscout_secure_password_2025}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -517,7 +550,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Database
-      - DATABASE_URL=postgresql://blockscout:blockscout_secure_password_2025@postgres:5432/blockscout?ssl=false
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-blockscout}:${POSTGRES_PASSWORD:-blockscout_secure_password_2025}@postgres:5432/${POSTGRES_DB:-blockscout}?ssl=false
       
       # Chain configuration
       - ETHEREUM_JSONRPC_VARIANT=geth
@@ -564,8 +597,8 @@ services:
       - INDEXER_DISABLE_BLOCK_REWARD_FETCHER=true
       - INDEXER_DISABLE_EMPTY_BLOCKS_SANITIZER=true
       
-      # Secret key (CHANGE IN PRODUCTION!)
-      - SECRET_KEY_BASE=56NtB48ear7+wMSf0+b8dhv1aF4/DZa74LPGDq2yDPo1gh8VELLPZw5Y7p3aZKfN
+      # Secret key - MUST be changed in production
+      - SECRET_KEY_BASE=${BLOCKSCOUT_SECRET_KEY_BASE:-56NtB48ear7+wMSf0+b8dhv1aF4/DZa74LPGDq2yDPo1gh8VELLPZw5Y7p3aZKfN}
       
       # Ecto settings
       - ECTO_USE_SSL=false
@@ -583,3 +616,66 @@ services:
       options:
         max-size: "100m"
         max-file: "5"
+
+  # ============================================
+  # 12. ANDE Faucet - Testnet Token Distribution
+  # ============================================
+  ande-faucet:
+    container_name: ande-faucet
+    image: chainfaucet/eth-faucet:latest
+    restart: unless-stopped
+    depends_on:
+      ev-reth-sequencer:
+        condition: service_started
+    ports:
+      - "8081:8080"
+    environment:
+      # AndeChain Configuration (SOVEREIGN)
+      - WEB3_PROVIDER=http://ev-reth-sequencer:8545
+      - CHAIN_ID=${CHAIN_ID:-6174}
+      - CHAIN_NAME=${CHAIN_NAME:-AndeChain Testnet}
+      - NATIVE_TOKEN_NAME=ANDE
+      - NATIVE_TOKEN_SYMBOL=ANDE
+      
+      # Faucet Wallet (MUST BE FUNDED!)
+      - PRIVATE_KEY=${FAUCET_PRIVATE_KEY}
+      
+      # Distribution Settings
+      - FAUCET_AMOUNT=${FAUCET_AMOUNT:-10}
+      - FAUCET_COOLDOWN=${FAUCET_COOLDOWN:-86400}
+      
+      # Security & Rate Limiting
+      - MAX_REQUEST_PER_IP=1
+      - MAX_REQUEST_PER_ADDRESS=1
+      - CAPTCHA_ENABLED=${CAPTCHA_ENABLED:-true}
+      - HCAPTCHA_SITE_KEY=${HCAPTCHA_SITE_KEY:-}
+      - HCAPTCHA_SECRET_KEY=${HCAPTCHA_SECRET_KEY:-}
+      
+      # UI Customization
+      - FAUCET_NAME=AndeChain Testnet Faucet
+      - FOOTER_TEXT=Powered by AndeChain - Sovereign Rollup
+      - BLOCK_EXPLORER=https://explorer.ande.network
+      
+    volumes:
+      - faucet-data:/app/data
+    networks:
+      - andechain-p2p
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M

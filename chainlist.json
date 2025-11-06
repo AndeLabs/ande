@@ -1,23 +1,10 @@
 {
   "name": "AndeChain Testnet",
   "chain": "ANDE",
-  "icon": {
-    "url": "https://www.ande.network/logo.png",
-    "width": 512,
-    "height": 512,
-    "format": "png"
-  },
+  "icon": "ande",
   "rpc": [
     "https://rpc.ande.network",
-    "wss://ws.ande.network"
-  ],
-  "features": [
-    {
-      "name": "EIP155"
-    },
-    {
-      "name": "EIP1559"
-    }
+    "http://189.28.81.202:8545"
   ],
   "faucets": [
     "https://faucet.ande.network"
@@ -31,7 +18,6 @@
   "shortName": "ande-testnet",
   "chainId": 6174,
   "networkId": 6174,
-  "slip44": 60,
   "explorers": [
     {
       "name": "AndeChain Explorer",
@@ -40,15 +26,18 @@
       "icon": "blockscout"
     }
   ],
-  "ens": {
-    "registry": ""
-  },
   "parent": {
-    "type": "sovereign-rollup",
-    "chain": "celestia-mocha-4",
-    "bridges": [],
-    "da_layer": "Celestia Mocha-4 Testnet"
+    "type": "L2",
+    "chain": "eip155-celestia",
+    "bridges": [
+      {
+        "url": "https://www.ande.network"
+      }
+    ]
   },
-  "status": "active",
-  "testnet": true
+  "redFlags": [
+    "Low validator count"
+  ],
+  "testnet": true,
+  "slug": "ande-testnet"
 }

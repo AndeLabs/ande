@@ -1,0 +1,76 @@
+# ==========================================
+# ANDE FAUCET - Sovereign Chain Testnet
+# ==========================================
+# Faucet for distributing native ANDE tokens
+# on our sovereign rollup testnet
+# ==========================================
+
+version: '3.8'
+
+networks:
+  andechain-p2p:
+    external: true
+
+volumes:
+  faucet-data:
+    driver: local
+
+services:
+  # ==========================================
+  # ANDE Token Faucet
+  # Based on EV-Stack faucet, adapted for ANDE
+  # ==========================================
+  ande-faucet:
+    container_name: ande-faucet
+    image: chainfaucet/eth-faucet:latest
+    restart: unless-stopped
+    ports:
+      - "${FAUCET_PORT:-8081}:8080"
+    environment:
+      # Chain Configuration - SOVEREIGN ANDE CHAIN
+      - WEB3_PROVIDER=${RPC_URL:-http://ev-reth-sequencer:8545}
+      - CHAIN_ID=${CHAIN_ID:-6174}
+      - CHAIN_NAME=${CHAIN_NAME:-AndeChain Testnet}
+      - NATIVE_TOKEN_NAME=${NATIVE_TOKEN_NAME:-ANDE}
+      - NATIVE_TOKEN_SYMBOL=${NATIVE_TOKEN_SYMBOL:-ANDE}
+      
+      # Faucet Configuration
+      - PRIVATE_KEY=${FAUCET_PRIVATE_KEY}
+      - FAUCET_AMOUNT=${FAUCET_AMOUNT:-10}
+      - FAUCET_COOLDOWN=${FAUCET_COOLDOWN:-86400}
+      
+      # Security & Rate Limiting
+      - MAX_REQUEST_PER_IP=${MAX_REQUEST_PER_IP:-1}
+      - MAX_REQUEST_PER_ADDRESS=${MAX_REQUEST_PER_ADDRESS:-1}
+      - CAPTCHA_ENABLED=${CAPTCHA_ENABLED:-true}
+      - HCAPTCHA_SITE_KEY=${HCAPTCHA_SITE_KEY:-}
+      - HCAPTCHA_SECRET_KEY=${HCAPTCHA_SECRET_KEY:-}
+      
+      # UI Customization
+      - FAUCET_NAME=${FAUCET_NAME:-AndeChain Testnet Faucet}
+      - FOOTER_TEXT=${FOOTER_TEXT:-Powered by AndeChain - Sovereign Rollup}
+      - BLOCK_EXPLORER=${BLOCK_EXPLORER:-https://explorer.ande.network}
+      
+    volumes:
+      - faucet-data:/app/data
+    networks:
+      - andechain-p2p
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
