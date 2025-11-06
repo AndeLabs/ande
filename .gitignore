@@ -1,0 +1,110 @@
+# AndeChain Git Ignore Rules
+# ==========================
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.cert
+secrets/
+.vault-password
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Build artifacts
+build/
+dist/
+*.o
+*.so
+*.dylib
+*.exe
+
+# Dependencies
+node_modules/
+venv/
+env/
+.Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.classpath
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+test-results/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache
+
+# Package managers
+package-lock.json
+yarn.lock
+Pipfile.lock
+
+# System files
+.LSOverride
+.AppleDouble
+.AppleDB
+Thumbs.db
+desktop.ini
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Certificates and sensitive data
+/etc/letsencrypt/
+*.key.pem
+*.cert.pem
+
+# Test data
+test-datadir/
+test-data/
+
+# Backup files
+*.backup
+*.bak
+*.swp
+*~
+
+# Node modules (if used)
+node_modules/
+
+# Generated files that shouldn't be committed
+/dist/
+/build/
+
+# Local development overrides
+.local/
+local/
+
+# Exclude unrelated directories
+ande-reth/
+ande/
+andechain
+RESUMEN_FINAL_PRODUCCION.txt
+TESTNET_EXECUTIVE_SUMMARY.md
+TESTNET_PRODUCTION_CHECKLIST.md
+TEST_FROM_EXTERNAL.sh
+test-datadir/
+build.log
