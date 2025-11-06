@@ -463,7 +463,7 @@ contract AndeSwapV3Pool is ReentrancyGuard {
     function _computeSwapStep(
         uint160 sqrtRatioCurrentX96,
         uint160 sqrtRatioTargetX96,
-        uint128 liquidity,
+        uint128 liquidityParam,
         int256 amountRemaining,
         uint24 feePips
     )
@@ -478,6 +478,7 @@ contract AndeSwapV3Pool is ReentrancyGuard {
     {
         // Simplified swap math
         // Real implementation uses precise sqrt price calculations
+        // Note: liquidityParam is intentionally unused in this simplified version
         return (sqrtRatioTargetX96, 0, 0, 0);
     }
     

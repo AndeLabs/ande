@@ -34,18 +34,18 @@ contract ReflectionERC20 is ERC20, Ownable {
     constructor(
         string memory name,
         string memory symbol,
-        uint256 totalSupply,
+        uint256 initialSupply,
         address _creator,
         uint256 _reflectionFee
     ) ERC20(name, symbol) Ownable(_creator) {
         creator = _creator;
         reflectionFee = _reflectionFee;
         
-        _tTotal = totalSupply;
-        _rTotal = (MAX - (MAX % totalSupply));
+        _tTotal = initialSupply;
+        _rTotal = (MAX - (MAX % initialSupply));
         
         _rOwned[_creator] = _rTotal;
-        emit Transfer(address(0), _creator, totalSupply);
+        emit Transfer(address(0), _creator, initialSupply);
     }
     
     /**

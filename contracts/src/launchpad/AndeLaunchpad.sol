@@ -529,10 +529,11 @@ contract AndeLaunchpad is Ownable, ReentrancyGuard {
         
         VestingSchedule storage vesting = vestingSchedules[launchId];
         
+        uint256 initialUnlockAmount = (allocation.tokensPurchased * vesting.initialUnlock) / PRECISION;
+        
         if (block.timestamp < launch.endTime + vesting.cliff) {
             // Still in cliff, only initial unlock
-            uint256 initialAmount = (allocation.tokensPurchased * vesting.initialUnlock) / PRECISION;
-            return initialAmount > allocation.tokensClaimed ? initialAmount - allocation.tokensClaimed : 0;
+            return initialUnlockAmount > allocation.tokensClaimed ? initialUnlockAmount - allocation.tokensClaimed : 0;
         }
         
         // Linear vesting
@@ -545,8 +546,7 @@ contract AndeLaunchpad is Ownable, ReentrancyGuard {
         }
         
         uint256 vestedAmount = (allocation.tokensPurchased * elapsed) / vesting.duration;
-        uint256 initialAmount = (allocation.tokensPurchased * vesting.initialUnlock) / PRECISION;
-        uint256 totalVested = initialAmount + vestedAmount;
+        uint256 totalVested = initialUnlockAmount + vestedAmount;
         
         return totalVested > allocation.tokensClaimed ? totalVested - allocation.tokensClaimed : 0;
     }
