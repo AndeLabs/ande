@@ -36,7 +36,7 @@ contract DeployCore is Script {
     // ============================================================================
     
     // Network configuration
-    uint256 public constant ANDECHAIN_TESTNET_ID = 2019;
+    uint256 public constant ANDECHAIN_TESTNET_ID = 6174;  // Updated to actual chain ID
     uint256 public constant LOCAL_TESTNET_ID = 1234;
     
     // Governance parameters

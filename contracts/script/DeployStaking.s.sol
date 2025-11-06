@@ -20,8 +20,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 contract DeployStaking is Script {
     // Direcciones conocidas (actualizar según tu deployment)
-    // ANDETokenDuality Proxy Address (Production)
-    address constant ANDE_TOKEN_ADDRESS = 0x7a2088a1bFc9d81c55368AE168C2C02570cB814F;
+    // ANDETokenDuality Proxy Address (Deployed: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0)
+    address constant ANDE_TOKEN_ADDRESS = 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0;
     
     // Roles
     address public admin;

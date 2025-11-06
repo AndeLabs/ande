@@ -115,8 +115,9 @@ contract AndeFaultGame is IDisputeGame, Initializable {
             startTime: uint64(block.timestamp)
         });
 
-        minBond = _minBond > 0 ? _minBond : 0.1 ether;
-        maxBond = _maxBond > 0 ? _maxBond : 100 ether;
+        // Default bonds in ANDE (native token of AndeChain)
+        minBond = _minBond > 0 ? _minBond : 0.1 ether; // 0.1 ANDE
+        maxBond = _maxBond > 0 ? _maxBond : 100 ether; // 100 ANDE
 
         // Add root claim as first claim
         claims.push(ClaimData({
