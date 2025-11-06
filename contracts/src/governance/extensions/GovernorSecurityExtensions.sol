@@ -51,6 +51,7 @@ abstract contract GovernorSecurityExtensions is GovernorUpgradeable {
     /**
      * @notice Override de _castVote con protección anti-whale
      * @dev Limita el voting power a 10% del total supply
+     * SECURITY: Implementa cap de voting power para prevenir whale attacks
      */
     function _castVote(
         uint256 proposalId,
@@ -61,6 +62,7 @@ abstract contract GovernorSecurityExtensions is GovernorUpgradeable {
     ) internal virtual override returns (uint256) {
         uint256 weight = _getVotes(account, proposalSnapshot(proposalId), params);
         
+        // Anti-whale protection: cap voting power at 10% of total supply
         uint256 totalSupply = _getTotalSupply(proposalSnapshot(proposalId));
         uint256 maxAllowedVotes = (totalSupply * MAX_VOTING_POWER_BPS) / 10000;
         
@@ -69,7 +71,11 @@ abstract contract GovernorSecurityExtensions is GovernorUpgradeable {
             weight = maxAllowedVotes;
         }
         
-        return _countVote(proposalId, account, support, weight, params);
+        // Call _countVote with capped weight
+        _countVote(proposalId, account, support, weight, params);
+        
+        // Return the capped weight used for voting
+        return weight;
     }
     
     /**
