@@ -139,8 +139,8 @@ contract MultiSequencerIntegrationTest is Test {
         // Approve staking contract
         andeToken.approve(address(staking), MIN_STAKE);
         
-        // Stake for sequencer role
-        staking.stakeSequencer(MIN_STAKE, uint8(AndeNativeStaking.LockPeriod.TWELVE_MONTHS));
+        // Stake for sequencer role (automatically uses 12 months lock)
+        staking.stakeSequencer(MIN_STAKE);
         
         vm.stopPrank();
         
