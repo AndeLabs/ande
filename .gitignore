@@ -1,110 +1,69 @@
-# AndeChain Git Ignore Rules
-# ==========================
+# 🔥 AndeChain - Git Ignore Configuration
 
-# Environment and secrets
+# 🔐 Environment & Secrets
 .env
 .env.local
 .env.*.local
-*.pem
-*.key
-*.crt
-*.cert
-secrets/
-.vault-password
+deployed-addresses.json
+private-keys.txt
+set_addresses.sh
 
-# Logs
-*.log
-logs/
-*.log.*
-
-# Build artifacts
-build/
-dist/
-*.o
-*.so
-*.dylib
-*.exe
-
-# Dependencies
+# 📦 Dependencies
 node_modules/
-venv/
-env/
-.Python
-__pycache__/
-*.py[cod]
-*$py.class
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log
+package-lock.json
+pnpm-lock.yaml
 
-# IDE and editor files
+# 🔧 Build Artifacts
+artifacts/
+cache/
+out/
+broadcast/
+contracts/typechain-types/
+dist/
+build/
+coverage/
+gas-reports/
+security-reports/
+ai-analysis/
+
+# 🛠️ Foundry
+cache_hardhat/
+cache_forge/
+lib/forge-std/
+
+# 🤖 AI & Assistant Files
+**/GEMINI.md
+**/.gemini/
+CLAUDE.md
+gemini-analysis.json
+ai-summary.md
+
+# ========================================
+# MARKDOWN DOCUMENTATION STRATEGY
+# ========================================
+# Ignore ALL markdown by default
+*.md
+
+# Un-ignore only the root README.md and docs/ directory
+!/README.md
+!/docs/
+!/docs/**/*.md
+
+# ----------------------------------------
+# IDE & OS
+# ----------------------------------------
+.DS_Store
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
-.project
-.classpath
 
-# Test artifacts
-.pytest_cache/
-.coverage
-htmlcov/
-test-results/
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-.cache
-
-# Package managers
-package-lock.json
-yarn.lock
-Pipfile.lock
-
-# System files
-.LSOverride
-.AppleDouble
-.AppleDB
-Thumbs.db
-desktop.ini
-
-# Docker
-docker-compose.override.yml
-.dockerignore
-
-# Certificates and sensitive data
-/etc/letsencrypt/
-*.key.pem
-*.cert.pem
-
-# Test data
-test-datadir/
-test-data/
-
-# Backup files
-*.backup
-*.bak
-*.swp
-*~
-
-# Node modules (if used)
-node_modules/
-
-# Generated files that shouldn't be committed
-/dist/
-/build/
-
-# Local development overrides
-.local/
-local/
-
-# Exclude unrelated directories
-ande-reth/
-ande/
-andechain
-RESUMEN_FINAL_PRODUCCION.txt
-TESTNET_EXECUTIVE_SUMMARY.md
-TESTNET_PRODUCTION_CHECKLIST.md
-TEST_FROM_EXTERNAL.sh
-test-datadir/
-build.log
+# ----------------------------------------
+# Logs
+# ----------------------------------------
+*.log
+logs/

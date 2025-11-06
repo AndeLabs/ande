@@ -1,0 +1,18 @@
+{
+  "chainId": "0x181E",
+  "chainName": "AndeChain Testnet",
+  "nativeCurrency": {
+    "name": "ANDE",
+    "symbol": "ANDE",
+    "decimals": 18
+  },
+  "rpcUrls": [
+    "https://rpc.ande.network"
+  ],
+  "blockExplorerUrls": [
+    "https://explorer.ande.network"
+  ],
+  "iconUrls": [
+    "https://www.ande.network/logo.png"
+  ]
+}

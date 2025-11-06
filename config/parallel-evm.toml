@@ -1,0 +1,67 @@
+# AndeChain Parallel EVM Production Configuration
+# Optimized for high throughput and low latency
+
+[parallel_execution]
+# Number of worker threads for parallel execution
+# Set to number of CPU cores for optimal performance
+workers = 16
+
+# Maximum transactions per block to process in parallel
+max_parallel_txs = 1000
+
+# Enable optimistic execution (execute before validation)
+optimistic_execution = true
+
+# Conflict detection strategy: "pessimistic" or "optimistic"
+conflict_detection = "optimistic"
+
+[memory]
+# Multi-version memory configuration
+# Cache size in MB for multi-version data structures
+mv_memory_cache_size = 4096
+
+# Maximum versions to keep per memory location
+max_versions_per_location = 100
+
+[scheduler]
+# Task scheduling algorithm: "round_robin", "work_stealing", "priority"
+algorithm = "work_stealing"
+
+# Queue size per worker
+worker_queue_size = 10000
+
+# Enable task stealing across workers
+enable_stealing = true
+
+[validation]
+# Validation strategy after parallel execution
+# "sequential" - validate in order
+# "parallel" - validate in parallel (faster but more complex)
+validation_strategy = "parallel"
+
+# Maximum retry attempts for conflicted transactions
+max_retries = 3
+
+[metrics]
+# Enable detailed metrics for parallel execution
+enabled = true
+
+# Metrics port (must match docker-compose)
+port = 9091
+
+# Export interval in seconds
+export_interval = 10
+
+[optimization]
+# Enable read-only transaction fast path
+readonly_fastpath = true
+
+# Cache frequent storage reads
+cache_storage_reads = true
+
+# Prefetch account states
+prefetch_accounts = true
+
+# Batch commit to state
+batch_commit = true
+batch_size = 500

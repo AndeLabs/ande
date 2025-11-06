@@ -1,0 +1,43 @@
+{
+  "name": "AndeChain Testnet",
+  "chain": "ANDE",
+  "icon": "ande",
+  "rpc": [
+    "https://rpc.ande.network",
+    "http://189.28.81.202:8545"
+  ],
+  "faucets": [
+    "https://faucet.ande.network"
+  ],
+  "nativeCurrency": {
+    "name": "ANDE",
+    "symbol": "ANDE",
+    "decimals": 18
+  },
+  "infoURL": "https://www.ande.network",
+  "shortName": "ande-testnet",
+  "chainId": 6174,
+  "networkId": 6174,
+  "explorers": [
+    {
+      "name": "AndeChain Explorer",
+      "url": "https://explorer.ande.network",
+      "standard": "EIP3091",
+      "icon": "blockscout"
+    }
+  ],
+  "parent": {
+    "type": "L2",
+    "chain": "eip155-celestia",
+    "bridges": [
+      {
+        "url": "https://www.ande.network"
+      }
+    ]
+  },
+  "redFlags": [
+    "Low validator count"
+  ],
+  "testnet": true,
+  "slug": "ande-testnet"
+}

@@ -1,0 +1,48 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: nightly
+
+    - name: Install dependencies
+      run: forge install
+
+    - name: Compile contracts
+      run: forge build
+
+    - name: Run Slither Analysis
+      run: |
+        pip3 install slither-analyzer
+        slither . --exclude-dependencies --filter high --filter critical --json slither-report.json || true
+
+    - name: Run Tests
+      run: forge test --gas-report
+
+    - name: Generate Coverage Report
+      run: forge coverage --report lcov
+
+    - name: Upload Slither Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: slither-report
+        path: slither-report.json
+
+    - name: Security Score
+      run: |
+        echo "🔒 Security Analysis Complete"
+        echo "📊 Reports available in artifacts"

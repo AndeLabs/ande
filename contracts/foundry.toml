@@ -1,0 +1,65 @@
+[profile.default]
+# Directorio donde se encuentra el código fuente de los contratos.
+src = "src"
+# Directorio donde se guardarán los artefactos de compilación (ABI, bytecode).
+out = "out"
+# Directorio de dependencias de Solidity.
+libs = ["lib"]
+# Enable auto remappings for OpenZeppelin
+auto_detect_remappings = true
+auto_detect_solc = true
+
+# Manual remappings for OpenZeppelin
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "ds-test/=lib/forge-std/lib/ds-test/src/"
+]
+
+# --- Configuraciones del Compilador ---
+
+# Fija la versión del compilador de Solidity para garantizar builds consistentes.
+solc_version = "0.8.25"
+evm_version = "cancun"
+
+# Habilita el optimizador de Solidity, crucial para reducir costos de gas en producción.
+optimizer = true
+# Número de "runs" para el optimizador. Un número alto optimiza para tamaño de contrato (costo de despliegue),
+# un número bajo optimiza para costo de ejecución de funciones.
+optimizer_runs = 20000
+
+# Habilita la compilación a través de IR (Intermediate Representation) para evitar errores de "Stack too deep".
+via_ir = true
+
+# --- File System Permissions ---
+# Allow scripts to write deployment files
+fs_permissions = [
+    { access = "read-write", path = "./deployments" },
+    { access = "read-write", path = "./broadcast" },
+    { access = "read-write", path = "../andefrontend/src/contracts" }
+]
+
+# --- Perfiles de Ejecución ---
+
+# Perfil específico para nuestro rollup local. Hereda la configuración de `default`.
+[profile.local]
+src = "src"
+out = "out"
+libs = ["lib"]
+
+# --- Endpoints RPC ---
+
+# Centraliza las URLs de las redes para facilitar los comandos de despliegue.
+# Ahora podemos usar `forge script --rpc-url local`.
+[rpc_endpoints]
+local = "http://localhost:8545"
+
+# --- Verificación de Contratos ---
+
+# Configuración para verificar automáticamente los contratos en un explorador de bloques.
+# La clave es un placeholder, pero la URL apunta a nuestro Blockscout local.
+[etherscan]
+local = { key = "dummy-key", url = "http://localhost:4000/api" }
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

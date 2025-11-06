@@ -1,0 +1,26 @@
+{
+  "../infra/stacks/da-local/ev-node": {
+    "rev": "79cc0944cfeb0a1576e1c7dfcb1e8c2c3678ae80"
+  },
+  "lib/account-abstraction": {
+    "tag": {
+      "name": "v0.8.0",
+      "rev": "4cbc06072cdc19fd60f285c5997f4f7f57a588de"
+    }
+  },
+  "lib/openzeppelin-contracts": {
+    "tag": {
+      "name": "v5.0.0",
+      "rev": "932fddf69a699a9a80fd2396fd1a2ab91cdda123"
+    }
+  },
+  "lib/openzeppelin-contracts-upgradeable": {
+    "tag": {
+      "name": "v5.0.0",
+      "rev": "625fb3c2b2696f1747ba2e72d1e1113066e6c177"
+    }
+  },
+  "lib/solady": {
+    "rev": "836c169fe357b3c23ad5d5755a9b4fbbfad7a99b"
+  }
+}

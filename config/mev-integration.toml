@@ -1,0 +1,45 @@
+# AndeChain MEV Integration Production Configuration
+# MEV detection and protection for fair transaction ordering
+
+[mev_detection]
+# Enable MEV detection
+enabled = true
+
+# Detection algorithms to enable
+algorithms = ["sandwich", "frontrun", "backrun", "arbitrage"]
+
+[protection]
+# MEV protection mode: "detect_only", "reorder", "reject"
+mode = "detect_only"
+
+# Reject transactions with detected MEV attempts
+reject_mev = false
+
+# Warn users about potential MEV
+warn_users = true
+
+[ordering]
+# Transaction ordering strategy
+# "fifo" - First In First Out (standard)
+# "priority_gas" - By gas price
+# "fair_ordering" - MEV-resistant ordering
+strategy = "fifo"
+
+# Enable time-based ordering for fairness
+time_based_ordering = false
+
+[monitoring]
+# MEV monitoring and alerting
+enabled = true
+port = 9092
+
+# Alert on detected MEV attempts
+alert_threshold = 5  # Alert after 5 detected attempts
+alert_window = 60    # In 60 seconds
+
+[simulation]
+# Enable transaction simulation before execution
+enabled = false
+
+# Simulation timeout in milliseconds
+timeout_ms = 100

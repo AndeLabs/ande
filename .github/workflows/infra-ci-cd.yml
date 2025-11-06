@@ -1,0 +1,26 @@
+name: AndeChain Infrastructure CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'andechain/infra/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'andechain/infra/**'
+
+jobs:
+  validate-infra:
+    name: Validate Infrastructure Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        working-directory: ./andechain/infra
+        run: |
+          docker compose config -q
+          echo "✅ Docker Compose configuration is valid."
