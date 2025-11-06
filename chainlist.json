@@ -1,0 +1,54 @@
+{
+  "name": "AndeChain Testnet",
+  "chain": "ANDE",
+  "icon": {
+    "url": "https://www.ande.network/logo.png",
+    "width": 512,
+    "height": 512,
+    "format": "png"
+  },
+  "rpc": [
+    "https://rpc.ande.network",
+    "wss://ws.ande.network"
+  ],
+  "features": [
+    {
+      "name": "EIP155"
+    },
+    {
+      "name": "EIP1559"
+    }
+  ],
+  "faucets": [
+    "https://faucet.ande.network"
+  ],
+  "nativeCurrency": {
+    "name": "ANDE",
+    "symbol": "ANDE",
+    "decimals": 18
+  },
+  "infoURL": "https://www.ande.network",
+  "shortName": "ande-testnet",
+  "chainId": 6174,
+  "networkId": 6174,
+  "slip44": 60,
+  "explorers": [
+    {
+      "name": "AndeChain Explorer",
+      "url": "https://explorer.ande.network",
+      "standard": "EIP3091",
+      "icon": "blockscout"
+    }
+  ],
+  "ens": {
+    "registry": ""
+  },
+  "parent": {
+    "type": "sovereign-rollup",
+    "chain": "celestia-mocha-4",
+    "bridges": [],
+    "da_layer": "Celestia Mocha-4 Testnet"
+  },
+  "status": "active",
+  "testnet": true
+}
