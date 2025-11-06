@@ -108,8 +108,8 @@ services:
       - ./infra/stacks/single-sequencer/genesis.json:/genesis.json:ro
       - jwttoken-sequencer:/jwt:ro
       - sequencer-data:/data
-      - ./config/parallel-evm.production.toml:/config/parallel-evm.toml:ro
-      - ./config/mev-integration.production.toml:/config/mev-integration.toml:ro
+      - ./config/parallel-evm.toml:/config/parallel-evm.toml:ro
+      - ./config/mev-integration.toml:/config/mev-integration.toml:ro
     environment:
       - RUST_LOG=info,ev_reth=info,ande_precompile=info,parallel_evm=info,mev=info
       - RUST_BACKTRACE=1
@@ -120,10 +120,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '16'  # Increased for Parallel EVM (16 workers)
+          cpus: '4'  # Increased for Parallel EVM (16 workers)
           memory: 16G  # Increased for high throughput
         reservations:
-          cpus: '8'
+          cpus: '2'
           memory: 8G
     command:
       - node
@@ -340,8 +340,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./config/monitoring.production.yaml:/etc/prometheus/prometheus.yml:ro
-      - ./config/prometheus-alerts.yml:/etc/prometheus/alert.rules.yml:ro
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/alerts.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
